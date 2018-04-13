@@ -604,8 +604,16 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
     bo->proto = strdup(options->proto);
     bo->host = strdup(options->host);
     bo->port = options->port;
-    bo->apikey = strdup(options->apikey);
-    bo->secretkey = strdup(options->secretkey);
+    if (options->apikey) {
+        bo->apikey = strdup(options->apikey);
+    } else {
+        bo->user = NULL;
+    }
+    if (options->secretkey) {
+        bo->secretkey = strdup(options->secretkey);
+    } else {
+        bo->user = NULL;
+    }
     if (options->user) {
         bo->user = strdup(options->user);
     } else {

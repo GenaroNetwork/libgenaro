@@ -260,7 +260,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
         return;
     }
 
-    const char *client_id = state->env->bridge_options->user;
+    const char *client_id = state->env->bridge_options->user ? state->env->bridge_options->user : state->env->bridge_options->apikey;
     p->report->reporter_id = strdup(client_id);
     p->report->client_id = strdup(client_id);
     p->report->data_hash = strdup(hash);
