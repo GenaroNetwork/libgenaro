@@ -68,7 +68,7 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
     return read_bytes;
 }
 
-int put_shard(storj_http_options_t *http_options,
+int put_shard(genaro_http_options_t *http_options,
               char *farmer_id,
               char *proto,
               char *host,
@@ -77,7 +77,7 @@ int put_shard(storj_http_options_t *http_options,
               uint64_t shard_total_bytes,
               FILE *original_file,
               uint64_t file_position,
-              storj_encryption_ctx_t *ctx,
+              genaro_encryption_ctx_t *ctx,
               char *token,
               int *status_code,
               int *read_code,
@@ -288,7 +288,7 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
 }
 
 /* shard_data must be allocated for shard_total_bytes */
-int fetch_shard(storj_http_options_t *http_options,
+int fetch_shard(genaro_http_options_t *http_options,
                 char *farmer_id,
                 char *proto,
                 char *host,
@@ -392,7 +392,7 @@ int fetch_shard(storj_http_options_t *http_options,
     int error_code = 0;
     if (req != CURLE_OK) {
         // TODO include the actual http error code
-        error_code = STORJ_FARMER_REQUEST_ERROR;
+        error_code = GENARO_FARMER_REQUEST_ERROR;
     }
 
     // set the status code
@@ -413,7 +413,7 @@ int fetch_shard(storj_http_options_t *http_options,
     if (body->length != shard_total_bytes) {
         free(body->sha256_ctx);
         free(body);
-        return STORJ_FARMER_INTEGRITY_ERROR;
+        return GENARO_FARMER_INTEGRITY_ERROR;
     }
 
     uint8_t *hash_sha256 = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
@@ -447,7 +447,7 @@ int fetch_shard(storj_http_options_t *http_options,
     free(hash_rmd160);
 
     if (strcmp(shard_hash, hash) != 0) {
-        error_code = STORJ_FARMER_INTEGRITY_ERROR;
+        error_code = GENARO_FARMER_INTEGRITY_ERROR;
     }
 
     free(hash);
@@ -505,8 +505,8 @@ static size_t body_json_receive(void *buffer, size_t size, size_t nmemb,
     return buflen;
 }
 
-int fetch_json(storj_http_options_t *http_options,
-               storj_bridge_options_t *options,
+int fetch_json(genaro_http_options_t *http_options,
+               genaro_bridge_options_t *options,
                char *method,
                char *path,
                struct json_object *request_body,

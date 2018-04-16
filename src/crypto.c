@@ -432,7 +432,7 @@ int encrypt_meta(const char *filemeta,
     size_t base64_len = BASE64_ENCODE_LENGTH(buf_len);
     *buffer_base64 = calloc(base64_len + 3, sizeof(uint8_t));
     if (!*buffer_base64) {
-        //STORJ_MEMORY_ERROR
+        //GENARO_MEMORY_ERROR
         return 1;
     }
 
@@ -452,7 +452,7 @@ int decrypt_meta(const char *buffer_base64,
     uint32_t buffer_len = BASE64_DECODE_LENGTH(strlen(buffer_base64));
     uint8_t *buffer = calloc(buffer_len, sizeof(uint8_t));
     if (!buffer) {
-        //STORJ_MEMORY_ERROR
+        //GENARO_MEMORY_ERROR
         return 1;
     }
 
@@ -472,7 +472,7 @@ int decrypt_meta(const char *buffer_base64,
 
     if (GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1 > decode_len) {
         free(buffer);
-        //STORJ_META_DECRYPTION_ERROR
+        //GENARO_META_DECRYPTION_ERROR
         return 1;
     }
 
@@ -510,13 +510,13 @@ int decrypt_meta(const char *buffer_base64,
 
     int digest_match = memcmp(actual_digest, digest, GCM_DIGEST_SIZE);
     if (digest_match != 0) {
-        //STORJ_META_DECRYPTION_ERROR
+        //GENARO_META_DECRYPTION_ERROR
         return 1;
     }
 
     *filemeta = calloc(length + 1, sizeof(char));
     if (!*filemeta) {
-        //STORJ_MEMORY_ERROR
+        //GENARO_MEMORY_ERROR
         return 1;
     }
     memcpy(*filemeta, &clear_text, length);

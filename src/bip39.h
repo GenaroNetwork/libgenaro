@@ -23,8 +23,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef STORJ_BIP39_H
-#define STORJ_BIP39_H
+#ifndef GENARO_BIP39_H
+#define GENARO_BIP39_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -61,4 +61,4 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
 
 const char * const *mnemonic_wordlist(void);
 
-#endif /* STORJ_BIP39_H */
+#endif /* GENARO_BIP39_H */

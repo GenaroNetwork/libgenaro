@@ -4,8 +4,8 @@
  *
  * Helper utilities
  */
-#ifndef STORJ_UTILS_H
-#define STORJ_UTILS_H
+#ifndef GENARO_UTILS_H
+#define GENARO_UTILS_H
 #define _GNU_SOURCE
 
 #include <assert.h>
@@ -62,4 +62,4 @@ int unmap_file(uint8_t *map, uint64_t filesize);
 
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 
-#endif /* STORJ_UTILS_H */
+#endif /* GENARO_UTILS_H */

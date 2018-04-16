@@ -4,8 +4,8 @@
  *
  * Helper crypto utilities
  */
-#ifndef STORJ_CRYPTO_H
-#define STORJ_CRYPTO_H
+#ifndef GENARO_CRYPTO_H
+#define GENARO_CRYPTO_H
 
 #include <nettle/aes.h>
 #include <nettle/ripemd160.h>
@@ -175,4 +175,4 @@ int decrypt_meta(const char *buffer_base64,
                  uint8_t *decrypt_key,
                  char **filemeta);
 
-#endif /* STORJ_CRYPTO_H */
+#endif /* GENARO_CRYPTO_H */

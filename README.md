@@ -1,7 +1,7 @@
-libstorj
+libgenaro
 =======
 
-[![Build Status](https://travis-ci.org/Storj/libstorj.svg?branch=master)](https://travis-ci.org/Storj/libstorj)
+[![Build Status](https://travis-ci.org/Storj/libgenaro.svg?branch=master)](https://travis-ci.org/Storj/libgenaro)
 
 Asynchronous multi-platform C library and CLI for encrypted file transfer on the Storj network.
 
@@ -34,7 +34,7 @@ To run tests:
 
 To run command line utility:
 ```bash
-./src/storj --help
+./src/genaro --help
 ```
 
 And to install locally:
@@ -84,7 +84,7 @@ cd ./depends
 make HOST="x86_64-w64-mingw32"
 ```
 
-Configure command for libstorj-c:
+Configure command for libgenaro-c:
 ```
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-w64-mingw32/lib/pkgconfig" CFLAGS="-DCURL_STATICLIB -I$(pwd)/depends/build/x86_64-w64-mingw32/include -L$(pwd)/depends/build/x86_64-w64-mingw32/lib -static" ./configure --with-pic --host=x86_64-w64-mingw32 --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-w64-mingw32
 ```
@@ -104,9 +104,9 @@ cd ./depends
 make HOST="x86_64-w64-mingw32" BUILD_DLL=1
 ```
 
-Configure command for libstorj-c:
+Configure command for libgenaro-c:
 ```
-PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-w64-mingw32/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/x86_64-w64-mingw32/include -L$(pwd)/depends/build/x86_64-w64-mingw32/lib -DSTORJDLL" ./configure --host=x86_64-w64-mingw32 --prefix=$(pwd)/depends/build/x86_64-w64-mingw32
+PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-w64-mingw32/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/x86_64-w64-mingw32/include -L$(pwd)/depends/build/x86_64-w64-mingw32/lib -DGENARODLL" ./configure --host=x86_64-w64-mingw32 --prefix=$(pwd)/depends/build/x86_64-w64-mingw32
 ```
 
 **ARM GNU/Linux**
@@ -132,7 +132,7 @@ cd ./depends
 make HOST="arm-linux-gnueabihf"
 ```
 
-Configure command for libstorj-c:
+Configure command for libgenaro-c:
 ```
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/arm-linux-gnueabihf/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/arm-linux-gnueabihf/include -L$(pwd)/depends/build/arm-linux-gnueabihf/lib -static -std=gnu99" ./configure --with-pic --host=arm-linux-gnueabihf --enable-static --disable-shared --prefix=$(pwd)/depends/build/arm-linux-gnueabihf
 ```
@@ -147,7 +147,7 @@ cd ./depends
 make HOST="x86_64-pc-linux-gnu"
 ```
 
-Configure command for libstorj-c:
+Configure command for libgenaro-c:
 ```
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-pc-linux-gnu/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/x86_64-pc-linux-gnu/include -L$(pwd)/depends/build/x86_64-pc-linux-gnu/lib -static" ./configure --host=x86_64-pc-linux-gnu --with-pic --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-pc-linux-gnu
 ```
@@ -169,7 +169,7 @@ cd ./depends
 make HOST="i686-pc-linux-gnu"
 ```
 
-Configure command for libstorj-c:
+Configure command for libgenaro-c:
 ```
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/i686-pc-linux-gnu/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/i686-pc-linux-gnu/include -L$(pwd)/depends/build/i686-pc-linux-gnu/lib -static -m32" LDFLAGS="-m32" ./configure --host=i686-pc-linux-gnu --with-pic --enable-static --disable-shared --prefix=$(pwd)/depends/build/i686-pc-linux-gnu
 ```
@@ -192,7 +192,7 @@ cd ./depends
 make HOST="x86_64-apple-darwin11" DARWIN_SDK_PATH="/path/to/MacOSX10.11.sdk"
 ```
 
-Configure command for libstorj-c:
+Configure command for libgenaro-c:
 ```
 export PATH="$(pwd)/depends/toolchain/build/bin:${PATH}" && PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-apple-darwin11/lib/pkgconfig" CC=clang CXX=clang++ CFLAGS="-target x86_64-apple-darwin11 -isysroot $(pwd)/depends/MacOSX10.11.sdk -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(pwd)/depends/build/x86_64-apple-darwin11/include" LDFLAGS="-L$(pwd)/depends/toolchain/build/lib -L$(pwd)/depends/MacOSX10.11.sdk/usr/lib -L$(pwd)/depends/build/x86_64-apple-darwin11/lib -Wl,-syslibroot $(pwd)/depends/MacOSX10.11.sdk" ./configure --with-pic --host="x86_64-apple-darwin11" --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-apple-darwin11
 ```

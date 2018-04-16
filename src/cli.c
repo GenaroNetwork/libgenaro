@@ -14,9 +14,9 @@
 #include <unistd.h>
 #endif
 
-#include "storj.h"
+#include "genaro.h"
 
-#define STORJ_THREADPOOL_SIZE "64"
+#define GENARO_THREADPOOL_SIZE "64"
 
 typedef struct {
     char *user;
@@ -60,14 +60,14 @@ static inline void noop() {};
     "  -l, --log <level>         set the log level (default 0)\n"       \
     "  -d, --debug               set the debug log level\n\n"           \
     "environment variables:\n"                                          \
-    "  STORJ_KEYPASS             imported user settings passphrase\n"   \
-    "  STORJ_BRIDGE              the bridge host "                      \
+    "  GENARO_KEYPASS             imported user settings passphrase\n"   \
+    "  GENARO_BRIDGE              the bridge host "                      \
     "(e.g. https://api.storj.io)\n"                                     \
-    "  STORJ_BRIDGE_USER         bridge username\n"                     \
+    "  GENARO_BRIDGE_USER         bridge username\n"                     \
     "  GENARO_APIKEY                 bridge api key\n"                  \
     "  GENARO_SECRETKEY              bridge secret key\n"               \
-    "  STORJ_BRIDGE_PASS         bridge password\n"                     \
-    "  STORJ_ENCRYPTION_KEY      file encryption key\n\n"
+    "  GENARO_BRIDGE_PASS         bridge password\n"                     \
+    "  GENARO_ENCRYPTION_KEY      file encryption key\n\n"
 
 
 #define CLI_VERSION "libstorj-2.0.0-beta"
@@ -75,7 +75,7 @@ static inline void noop() {};
 static void json_logger(const char *message, int level, void *handle)
 {
     printf("{\"message\": \"%s\", \"level\": %i, \"timestamp\": %" PRIu64 "}\n",
-           message, level, storj_util_timestamp());
+           message, level, genaro_util_timestamp());
 }
 
 static char *get_home_dir()
@@ -218,7 +218,7 @@ static int generate_mnemonic(char **mnemonic)
 
     *mnemonic = NULL;
 
-    int generate_code = storj_mnemonic_generate(strength, mnemonic);
+    int generate_code = genaro_mnemonic_generate(strength, mnemonic);
     if (*mnemonic == NULL || generate_code == 0) {
         printf("Failed to generate encryption key.\n");
         status = 1;
@@ -358,7 +358,7 @@ static void upload_file_complete(int status, char *file_id, void *handle)
 {
     printf("\n");
     if (status != 0) {
-        printf("Upload failure: %s\n", storj_strerror(status));
+        printf("Upload failure: %s\n", genaro_strerror(status));
         exit(status);
     }
 
@@ -371,15 +371,15 @@ static void upload_file_complete(int status, char *file_id, void *handle)
 
 void upload_signal_handler(uv_signal_t *req, int signum)
 {
-    storj_upload_state_t *state = req->data;
-    storj_bridge_store_file_cancel(state);
+    genaro_upload_state_t *state = req->data;
+    genaro_bridge_store_file_cancel(state);
     if (uv_signal_stop(req)) {
         printf("Unable to stop signal\n");
     }
     uv_close((uv_handle_t *)req, close_signal);
 }
 
-static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
+static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path)
 {
     FILE *fd = fopen(file_path, "r");
 
@@ -394,12 +394,12 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
     }
 
     // Upload opts env variables:
-    char *prepare_frame_limit = getenv("STORJ_PREPARE_FRAME_LIMIT");
-    char *push_frame_limit = getenv("STORJ_PUSH_FRAME_LIMIT");
-    char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
-    char *rs = getenv("STORJ_REED_SOLOMON");
+    char *prepare_frame_limit = getenv("GENARO_PREPARE_FRAME_LIMIT");
+    char *push_frame_limit = getenv("GENARO_PUSH_FRAME_LIMIT");
+    char *push_shard_limit = getenv("GENARO_PUSH_SHARD_LIMIT");
+    char *rs = getenv("GENARO_REED_SOLOMON");
 
-    storj_upload_opts_t upload_opts = {
+    genaro_upload_opts_t upload_opts = {
         .prepare_frame_limit = (prepare_frame_limit) ? atoi(prepare_frame_limit) : 1,
         .push_frame_limit = (push_frame_limit) ? atoi(push_frame_limit) : 64,
         .push_shard_limit = (push_shard_limit) ? atoi(push_shard_limit) : 64,
@@ -418,12 +418,12 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
 
 
 
-    storj_progress_cb progress_cb = (storj_progress_cb)noop;
+    genaro_progress_cb progress_cb = (genaro_progress_cb)noop;
     if (env->log_options->level == 0) {
         progress_cb = file_progress;
     }
 
-    storj_upload_state_t *state = storj_bridge_store_file(env,
+    genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
                                                           NULL,
                                                           progress_cb,
@@ -445,13 +445,13 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     if (status) {
         // TODO send to stderr
         switch(status) {
-            case STORJ_FILE_DECRYPTION_ERROR:
+            case GENARO_FILE_DECRYPTION_ERROR:
                 printf("Unable to properly decrypt file, please check " \
                        "that the correct encryption key was " \
                        "imported correctly.\n\n");
                 break;
             default:
-                printf("Download failure: %s\n", storj_strerror(status));
+                printf("Download failure: %s\n", genaro_strerror(status));
         }
 
         exit(status);
@@ -462,15 +462,15 @@ static void download_file_complete(int status, FILE *fd, void *handle)
 
 void download_signal_handler(uv_signal_t *req, int signum)
 {
-    storj_download_state_t *state = req->data;
-    storj_bridge_resolve_file_cancel(state);
+    genaro_download_state_t *state = req->data;
+    genaro_bridge_resolve_file_cancel(state);
     if (uv_signal_stop(req)) {
         printf("Unable to stop signal\n");
     }
     uv_close((uv_handle_t *)req, close_signal);
 }
 
-static int download_file(storj_env_t *env, char *bucket_id,
+static int download_file(genaro_env_t *env, char *bucket_id,
                          char *file_id, char *path)
 {
     FILE *fd = NULL;
@@ -511,12 +511,12 @@ static int download_file(storj_env_t *env, char *bucket_id,
     uv_signal_init(env->loop, sig);
     uv_signal_start(sig, download_signal_handler, SIGINT);
 
-    storj_progress_cb progress_cb = (storj_progress_cb)noop;
+    genaro_progress_cb progress_cb = (genaro_progress_cb)noop;
     if (path && env->log_options->level == 0) {
         progress_cb = file_progress;
     }
 
-    storj_download_state_t *state = storj_bridge_resolve_file(env, bucket_id,
+    genaro_download_state_t *state = genaro_bridge_resolve_file(env, bucket_id,
                                                               file_id, fd, NULL,
                                                               progress_cb,
                                                               download_file_complete);
@@ -684,7 +684,7 @@ static int import_keys(user_options_t *options)
             memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
         }
 
-        if (!storj_mnemonic_check(mnemonic)) {
+        if (!genaro_mnemonic_check(mnemonic)) {
             printf("Encryption key integrity check failed.\n");
             status = 1;
             goto clear_variables;
@@ -708,7 +708,7 @@ static int import_keys(user_options_t *options)
         goto clear_variables;
     }
 
-    if (storj_encrypt_write_auth(user_file, key, user, pass, mnemonic)) {
+    if (genaro_encrypt_write_auth(user_file, key, user, pass, mnemonic)) {
         status = 1;
         printf("Failed to write to disk\n");
         goto clear_variables;
@@ -834,7 +834,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
 
     for (int i = 0; i < req->total_files; i++) {
 
-        storj_file_meta_t *file = &req->files[i];
+        genaro_file_meta_t *file = &req->files[i];
 
         printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
                file->id,
@@ -847,7 +847,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
 
 cleanup:
     json_object_put(req->response);
-    storj_free_list_files_request(req);
+    genaro_free_list_files_request(req);
     free(work_req);
     exit(ret_status);
 }
@@ -904,14 +904,14 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
     }
 
     for (int i = 0; i < req->total_buckets; i++) {
-        storj_bucket_meta_t *bucket = &req->buckets[i];
+        genaro_bucket_meta_t *bucket = &req->buckets[i];
         printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
                bucket->id, bucket->decrypted ? "true" : "false",
                bucket->created, bucket->name);
     }
 
     json_object_put(req->response);
-    storj_free_get_buckets_request(req);
+    genaro_free_get_buckets_request(req);
     free(work_req);
 }
 
@@ -1011,7 +1011,7 @@ static int export_keys(char *host)
         get_password(key, '*');
         printf("\n\n");
 
-        if (storj_decrypt_read_auth(user_file, key, &user, &pass, &mnemonic)) {
+        if (genaro_decrypt_read_auth(user_file, key, &user, &pass, &mnemonic)) {
             printf("Unable to read user file.\n");
             status = 1;
             goto clear_variables;
@@ -1063,23 +1063,23 @@ int main(int argc, char **argv)
     // locally set default value.
 #ifdef _WIN32
     if (!getenv("UV_THREADPOOL_SIZE")) {
-        _putenv_s("UV_THREADPOOL_SIZE", STORJ_THREADPOOL_SIZE);
+        _putenv_s("UV_THREADPOOL_SIZE", GENARO_THREADPOOL_SIZE);
     }
 #else
-    setenv("UV_THREADPOOL_SIZE", STORJ_THREADPOOL_SIZE, 0);
+    setenv("UV_THREADPOOL_SIZE", GENARO_THREADPOOL_SIZE, 0);
 #endif
 
-    char *storj_bridge = getenv("STORJ_BRIDGE");
+    char *genaro_bridge = getenv("GENARO_BRIDGE");
     int c;
     int log_level = 0;
 
-    char *proxy = getenv("STORJ_PROXY");
+    char *proxy = getenv("GENARO_PROXY");
 
     while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:",
                                  cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
-                storj_bridge = optarg;
+                genaro_bridge = optarg;
                 break;
             case 'p':
                 proxy = optarg;
@@ -1115,15 +1115,15 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (!storj_bridge) {
-        storj_bridge = "https://api.storj.io:443/";
+    if (!genaro_bridge) {
+        genaro_bridge = "https://api.storj.io:443/";
     }
 
     // Parse the host, part and proto from the storj bridge url
     char proto[6];
     char host[100];
     int port = 0;
-    sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
+    sscanf(genaro_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
     if (port == 0) {
         if (strcmp(proto, "https") == 0) {
@@ -1148,16 +1148,16 @@ int main(int argc, char **argv)
     }
 
     // initialize event loop and environment
-    storj_env_t *env = NULL;
+    genaro_env_t *env = NULL;
 
-    storj_http_options_t http_options = {
+    genaro_http_options_t http_options = {
         .user_agent = CLI_VERSION,
-        .low_speed_limit = STORJ_LOW_SPEED_LIMIT,
-        .low_speed_time = STORJ_LOW_SPEED_TIME,
-        .timeout = STORJ_HTTP_TIMEOUT
+        .low_speed_limit = GENARO_LOW_SPEED_LIMIT,
+        .low_speed_time = GENARO_LOW_SPEED_TIME,
+        .timeout = GENARO_HTTP_TIMEOUT
     };
 
-    storj_log_options_t log_options = {
+    genaro_log_options_t log_options = {
         .logger = json_logger,
         .level = log_level
     };
@@ -1175,9 +1175,9 @@ int main(int argc, char **argv)
     char *secretkey = NULL;
 
     if (strcmp(command, "get-info") == 0) {
-        printf("Storj bridge: %s\n\n", storj_bridge);
+        printf("Storj bridge: %s\n\n", genaro_bridge);
 
-        storj_bridge_options_t options = {
+        genaro_bridge_options_t options = {
             .proto = proto,
             .host  = host,
             .port  = port,
@@ -1187,15 +1187,15 @@ int main(int argc, char **argv)
             .secretkey = NULL
         };
 
-        env = storj_init_env(&options, NULL, &http_options, &log_options);
+        env = genaro_init_env(&options, NULL, &http_options, &log_options);
         if (!env) {
             return 1;
         }
 
-        storj_bridge_get_info(env, NULL, get_info_callback);
+        genaro_bridge_get_info(env, NULL, get_info_callback);
 
     } else if(strcmp(command, "register") == 0) {
-        storj_bridge_options_t options = {
+        genaro_bridge_options_t options = {
             .proto = proto,
             .host  = host,
             .port  = port,
@@ -1205,7 +1205,7 @@ int main(int argc, char **argv)
             .secretkey = NULL
         };
 
-        env = storj_init_env(&options, NULL, &http_options, &log_options);
+        env = genaro_init_env(&options, NULL, &http_options, &log_options);
         if (!env) {
             return 1;
         }
@@ -1231,7 +1231,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        storj_bridge_register(env, user, pass, &user_opts, register_callback);
+        genaro_bridge_register(env, user, pass, &user_opts, register_callback);
     } else {
 
         char *user_file = NULL;
@@ -1245,14 +1245,14 @@ int main(int argc, char **argv)
         free(root_dir);
 
         // First, get auth from environment variables
-        user = getenv("STORJ_BRIDGE_USER") ?
-            strdup(getenv("STORJ_BRIDGE_USER")) : NULL;
+        user = getenv("GENARO_BRIDGE_USER") ?
+            strdup(getenv("GENARO_BRIDGE_USER")) : NULL;
 
-        pass = getenv("STORJ_BRIDGE_PASS") ?
-            strdup(getenv("STORJ_BRIDGE_PASS")) : NULL;
+        pass = getenv("GENARO_BRIDGE_PASS") ?
+            strdup(getenv("GENARO_BRIDGE_PASS")) : NULL;
 
-        mnemonic = getenv("STORJ_ENCRYPTION_KEY") ?
-            strdup(getenv("STORJ_ENCRYPTION_KEY")) : NULL;
+        mnemonic = getenv("GENARO_ENCRYPTION_KEY") ?
+            strdup(getenv("GENARO_ENCRYPTION_KEY")) : NULL;
         
         apikey = getenv("GENARO_APIKEY") ?
             strdup(getenv("GENARO_APIKEY")) : NULL;
@@ -1260,7 +1260,7 @@ int main(int argc, char **argv)
         secretkey = getenv("GENARO_SECRETKEY") ?
             strdup(getenv("GENARO_SECRETKEY")) : NULL;
 
-        char *keypass = getenv("STORJ_KEYPASS");
+        char *keypass = getenv("GENARO_KEYPASS");
 
         // Second, try to get from encrypted user file
         if (( ((!user || !pass) && (!apikey || !secretkey)) || !mnemonic) && access(user_file, F_OK) != -1) {
@@ -1284,7 +1284,7 @@ int main(int argc, char **argv)
             char *file_user = NULL;
             char *file_pass = NULL;
             char *file_mnemonic = NULL;
-            if (storj_decrypt_read_auth(user_file, key, &file_user,
+            if (genaro_decrypt_read_auth(user_file, key, &file_user,
                                         &file_pass, &file_mnemonic)) {
                 printf("Unable to read user file. Invalid keypass or path.\n");
                 free(key);
@@ -1361,7 +1361,7 @@ int main(int argc, char **argv)
             printf("\n");
         }
 
-        storj_bridge_options_t options = {
+        genaro_bridge_options_t options = {
             .proto = proto,
             .host  = host,
             .port  = port,
@@ -1371,11 +1371,11 @@ int main(int argc, char **argv)
             .secretkey = secretkey
         };
 
-        storj_encrypt_options_t encrypt_options = {
+        genaro_encrypt_options_t encrypt_options = {
             .mnemonic = mnemonic
         };
 
-        env = storj_init_env(&options, &encrypt_options,
+        env = genaro_init_env(&options, &encrypt_options,
                              &http_options, &log_options);
         if (!env) {
             status = 1;
@@ -1420,7 +1420,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_list_files(env, bucket_id, NULL, list_files_callback);
+            genaro_bridge_list_files(env, bucket_id, NULL, list_files_callback);
         } else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];
 
@@ -1430,7 +1430,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_create_bucket(env, bucket_name,
+            genaro_bridge_create_bucket(env, bucket_name,
                                        NULL, create_bucket_callback);
 
         } else if (strcmp(command, "remove-bucket") == 0) {
@@ -1442,7 +1442,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_delete_bucket(env, bucket_id, NULL,
+            genaro_bridge_delete_bucket(env, bucket_id, NULL,
                                        delete_bucket_callback);
 
         } else if (strcmp(command, "remove-file") == 0) {
@@ -1454,11 +1454,11 @@ int main(int argc, char **argv)
                 status = 1;
                 goto end_program;
             }
-            storj_bridge_delete_file(env, bucket_id, file_id,
+            genaro_bridge_delete_file(env, bucket_id, file_id,
                                      NULL, delete_file_callback);
 
         } else if (strcmp(command, "list-buckets") == 0) {
-            storj_bridge_get_buckets(env, NULL, get_buckets_callback);
+            genaro_bridge_get_buckets(env, NULL, get_buckets_callback);
         } else if (strcmp(command, "list-mirrors") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
@@ -1468,7 +1468,7 @@ int main(int argc, char **argv)
                 status = 1;
                 goto end_program;
             }
-            storj_bridge_list_mirrors(env, bucket_id, file_id,
+            genaro_bridge_list_mirrors(env, bucket_id, file_id,
                                       NULL, list_mirrors_callback);
         } else {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
@@ -1484,7 +1484,7 @@ int main(int argc, char **argv)
         uv_loop_close(env->loop);
 
         // cleanup
-        storj_destroy_env(env);
+        genaro_destroy_env(env);
 
         status = 1;
         goto end_program;
@@ -1492,7 +1492,7 @@ int main(int argc, char **argv)
 
 end_program:
     if (env) {
-        storj_destroy_env(env);
+        genaro_destroy_env(env);
     }
     if (user) {
         free(user);

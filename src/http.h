@@ -4,8 +4,8 @@
  *
  * Helper methods and utilities for http requests.
  */
-#ifndef STORJ_HTTP_H
-#define STORJ_HTTP_H
+#ifndef GENARO_HTTP_H
+#define GENARO_HTTP_H
 
 #include <curl/curl.h>
 #include <nettle/sha.h>
@@ -15,7 +15,7 @@
 #include <signal.h>
 #endif
 
-#include "storj.h"
+#include "genaro.h"
 #include "utils.h"
 #include "crypto.h"
 
@@ -49,7 +49,7 @@ typedef struct {
 
 typedef struct {
     FILE *fd;
-    storj_encryption_ctx_t *ctx;
+    genaro_encryption_ctx_t *ctx;
     uint64_t offset;
     uint64_t length;
     uint64_t remain;
@@ -103,7 +103,7 @@ typedef struct {
  * @param[in] canceled Pointer for canceling uploads
  * @return A non-zero error value on failure and 0 on success.
  */
-int put_shard(storj_http_options_t *http_options,
+int put_shard(genaro_http_options_t *http_options,
               char *farmer_id,
               char *proto,
               char *host,
@@ -112,7 +112,7 @@ int put_shard(storj_http_options_t *http_options,
               uint64_t shard_total_bytes,
               FILE *original_file,
               uint64_t file_position,
-              storj_encryption_ctx_t *ctx,
+              genaro_encryption_ctx_t *ctx,
               char *token,
               int *status_code,
               int *read_code,
@@ -136,7 +136,7 @@ int put_shard(storj_http_options_t *http_options,
  * @param[in] canceled Pointer for canceling downloads
  * @return A non-zero error value on failure and 0 on success.
  */
-int fetch_shard(storj_http_options_t *http_options,
+int fetch_shard(genaro_http_options_t *http_options,
                 char *farmer_id,
                 char *proto,
                 char *host,
@@ -162,8 +162,8 @@ int fetch_shard(storj_http_options_t *http_options,
  * @param[out] status_code The resulting status code from the request
  * @return A non-zero error value on failure and 0 on success.
  */
-int fetch_json(storj_http_options_t *http_options,
-               storj_bridge_options_t *options,
+int fetch_json(genaro_http_options_t *http_options,
+               genaro_bridge_options_t *options,
                char *method,
                char *path,
                struct json_object *request_body,
@@ -172,4 +172,4 @@ int fetch_json(storj_http_options_t *http_options,
                int *status_code);
 
 
-#endif /* STORJ_HTTP_H */
+#endif /* GENARO_HTTP_H */

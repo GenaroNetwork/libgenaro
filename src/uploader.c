@@ -1,6 +1,6 @@
 #include "uploader.h"
 
-static void print_shard_info(storj_upload_state_t *state, int index) {
+static void print_shard_info(genaro_upload_state_t *state, int index) {
     shard_tracker_t *shard = &state->shard[index];
     shard_meta_t *shard_meta = state->shard[index].meta;
     farmer_pointer_t *p = state->shard[index].pointer;
@@ -29,10 +29,10 @@ static void print_shard_info(storj_upload_state_t *state, int index) {
     printf("index: %d\n", shard_meta->index);
     printf("size:  %"PRIu64"\n", shard_meta->size);
     printf("is_parity: %d\n", shard_meta->is_parity);
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         printf("Challenge [%d]: %s\n", i, (char *)shard_meta->challenges_as_str[i]);
     }
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         printf("Leaf [%d]: %s\n", i, (char *)shard_meta->tree[i]);
     }
 
@@ -48,7 +48,7 @@ static uv_work_t *uv_work_new()
     return work;
 }
 
-static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
+static uv_work_t *frame_work_new(int *index, genaro_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
@@ -77,7 +77,7 @@ static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
     return work;
 }
 
-static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state)
+static uv_work_t *shard_meta_work_new(int index, genaro_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
@@ -118,9 +118,9 @@ static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state)
     return work;
 }
 
-static storj_exchange_report_t *storj_exchange_report_new()
+static genaro_exchange_report_t *genaro_exchange_report_new()
 {
-    storj_exchange_report_t *report = malloc(sizeof(storj_exchange_report_t));
+    genaro_exchange_report_t *report = malloc(sizeof(genaro_exchange_report_t));
     if (!report) {
         return NULL;
     }
@@ -130,7 +130,7 @@ static storj_exchange_report_t *storj_exchange_report_new()
     report->client_id = NULL;
     report->message = NULL;
 
-    report->send_status = STORJ_REPORT_NOT_PREPARED; // not sent
+    report->send_status = GENARO_REPORT_NOT_PREPARED; // not sent
     report->start = 0;
     report->end = 0;
     report->code = 0;
@@ -166,9 +166,9 @@ static shard_meta_t *shard_meta_new()
     return meta;
 }
 
-static storj_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
+static genaro_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
 {
-    storj_encryption_ctx_t *ctx = calloc(sizeof(storj_encryption_ctx_t), sizeof(char));
+    genaro_encryption_ctx_t *ctx = calloc(sizeof(genaro_encryption_ctx_t), sizeof(char));
     if (!ctx) {
         return NULL;
     }
@@ -228,7 +228,7 @@ static void pointer_cleanup(farmer_pointer_t *farmer_pointer)
     free(farmer_pointer);
 }
 
-static void cleanup_state(storj_upload_state_t *state)
+static void cleanup_state(genaro_upload_state_t *state)
 {
     if (state->final_callback_called) {
         return;
@@ -314,7 +314,7 @@ static void cleanup_state(storj_upload_state_t *state)
     free(state);
 }
 
-static void free_encryption_ctx(storj_encryption_ctx_t *ctx)
+static void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
 {
     if (ctx->encryption_ctr) {
         free(ctx->encryption_ctr);
@@ -334,7 +334,7 @@ static void free_encryption_ctx(storj_encryption_ctx_t *ctx)
 static void after_create_bucket_entry(uv_work_t *work, int status)
 {
     post_to_bucket_request_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     state->pending_work_count -= 1;
 
@@ -372,7 +372,7 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
         }
 
     } else if (state->add_bucket_entry_count == 6) {
-        state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+        state->error_status = GENARO_BRIDGE_REQUEST_ERROR;
     }
 
 clean_variables:
@@ -387,7 +387,7 @@ clean_variables:
 static void create_bucket_entry(uv_work_t *work)
 {
     post_to_bucket_request_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     req->log->info(state->env->log_options, state->handle,
                    "[%s] Creating bucket entry... (retry: %d)",
@@ -424,7 +424,7 @@ static void create_bucket_entry(uv_work_t *work)
     int path_len = strlen(state->bucket_id) + 16;
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         return;
     }
     sprintf(path, "%s%s%s%c", "/buckets/", state->bucket_id, "/files", '\0');
@@ -460,7 +460,7 @@ static void create_bucket_entry(uv_work_t *work)
     free(path);
 }
 
-static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
+static int prepare_bucket_entry_hmac(genaro_upload_state_t *state)
 {
     struct hmac_sha512_ctx hmac_ctx;
     hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->encryption_key);
@@ -507,22 +507,22 @@ static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
     return 0;
 }
 
-static void queue_create_bucket_entry(storj_upload_state_t *state)
+static void queue_create_bucket_entry(genaro_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
     post_to_bucket_request_t *req = malloc(sizeof(post_to_bucket_request_t));
     if (!req) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
     if (prepare_bucket_entry_hmac(state)) {
-        state->error_status = STORJ_FILE_GENERATE_HMAC_ERROR;
+        state->error_status = GENARO_FILE_GENERATE_HMAC_ERROR;
         return;
     }
 
@@ -540,7 +540,7 @@ static void queue_create_bucket_entry(storj_upload_state_t *state)
                                create_bucket_entry, after_create_bucket_entry);
 
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
         return;
     }
 
@@ -564,7 +564,7 @@ static void free_push_shard_work(uv_handle_t *progress_handle)
 static void after_push_shard(uv_work_t *work, int status)
 {
     push_shard_request_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
     uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
     shard_tracker_t *shard = &state->shard[req->shard_meta_index];
 
@@ -579,7 +579,7 @@ static void after_push_shard(uv_work_t *work, int status)
     if (status == UV_ECANCELED) {
         shard->push_shard_request_count = 0;
         shard->progress = AWAITING_PUSH_FRAME;
-        shard->report->send_status = STORJ_REPORT_NOT_PREPARED;
+        shard->report->send_status = GENARO_REPORT_NOT_PREPARED;
         goto clean_variables;
     }
 
@@ -605,23 +605,23 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->uploaded_size = shard->meta->size;
 
         // Update the exchange report with success
-        shard->report->code = STORJ_REPORT_SUCCESS;
-        shard->report->message = STORJ_REPORT_SHARD_UPLOADED;
-        shard->report->send_status = STORJ_REPORT_AWAITING_SEND;
+        shard->report->code = GENARO_REPORT_SUCCESS;
+        shard->report->message = GENARO_REPORT_SHARD_UPLOADED;
+        shard->report->send_status = GENARO_REPORT_AWAITING_SEND;
 
     } else if (!state->canceled){
 
         // Update the exchange report with failure
-        shard->report->code = STORJ_REPORT_FAILURE;
-        shard->report->message = STORJ_REPORT_UPLOAD_ERROR;
-        shard->report->send_status = STORJ_REPORT_AWAITING_SEND;
+        shard->report->code = GENARO_REPORT_FAILURE;
+        shard->report->message = GENARO_REPORT_UPLOAD_ERROR;
+        shard->report->send_status = GENARO_REPORT_AWAITING_SEND;
 
         if (shard->push_shard_request_count == 6) {
 
             req->log->error(state->env->log_options, state->handle,
                             "Failed to push shard %d\n", req->shard_meta_index);
 
-            state->error_status = STORJ_FARMER_REQUEST_ERROR;
+            state->error_status = GENARO_FARMER_REQUEST_ERROR;
         } else {
             req->log->warn(state->env->log_options, state->handle,
                            "Failed to push shard %d... Retrying...",
@@ -635,7 +635,7 @@ static void after_push_shard(uv_work_t *work, int status)
             if (state->exclude == NULL) {
                 state->exclude = calloc(strlen(shard->pointer->farmer_node_id) + 1, sizeof(char));
                 if (!state->exclude) {
-                    state->error_status = STORJ_MEMORY_ERROR;
+                    state->error_status = GENARO_MEMORY_ERROR;
                     return;
                 }
                 strcpy(state->exclude, shard->pointer->farmer_node_id);
@@ -658,7 +658,7 @@ clean_variables:
 static void push_shard(uv_work_t *work)
 {
     push_shard_request_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
     shard_tracker_t *shard = &state->shard[req->shard_meta_index];
 
     req->log->info(state->env->log_options, state->handle,
@@ -673,13 +673,13 @@ static void push_shard(uv_work_t *work)
 
     uint64_t file_position = req->shard_index * state->shard_size;
 
-    storj_encryption_ctx_t *encryption_ctx = NULL;
+    genaro_encryption_ctx_t *encryption_ctx = NULL;
     if (!state->rs) {
         // Initialize the encryption context
         encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
                                                                         state->encryption_key);
         if (!encryption_ctx) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         // Increment the iv to proper placement because we may be reading from the middle of the file
@@ -728,7 +728,7 @@ static void progress_put_shard(uv_async_t* async)
 
     shard_upload_progress_t *progress = async->data;
 
-    storj_upload_state_t *state = progress->state;
+    genaro_upload_state_t *state = progress->state;
 
     state->shard[progress->pointer_index].uploaded_size = progress->bytes;
 
@@ -761,17 +761,17 @@ static void progress_put_shard(uv_async_t* async)
 
 }
 
-static void queue_push_shard(storj_upload_state_t *state, int index)
+static void queue_push_shard(genaro_upload_state_t *state, int index)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
     push_shard_request_t *req = malloc(sizeof(push_shard_request_t));
     if (!req) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -807,7 +807,7 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
         malloc(sizeof(shard_upload_progress_t));
 
     if (!progress) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -827,7 +827,7 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
                                push_shard, after_push_shard);
 
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
         return;
     }
 
@@ -835,16 +835,16 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
 
     if (state->shard[index].report->farmer_id != NULL) {
         free(state->shard[index].report);
-        state->shard[index].report = storj_exchange_report_new();
+        state->shard[index].report = genaro_exchange_report_new();
     }
 
     if (!state->shard[index].report) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
     // setup the exchange report
-    storj_exchange_report_t *report = state->shard[index].report;
+    genaro_exchange_report_t *report = state->shard[index].report;
     report->data_hash = state->shard[index].meta->hash;
     report->reporter_id = (char *)state->env->bridge_options->user ? (char *)state->env->bridge_options->user : (char *)state->env->bridge_options->apikey;
     report->farmer_id = state->shard[index].pointer->farmer_node_id;
@@ -863,7 +863,7 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
 static void after_push_frame(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
     farmer_pointer_t *pointer = req->farmer_pointer;
 
     state->pending_work_count -= 1;
@@ -879,7 +879,7 @@ static void after_push_frame(uv_work_t *work, int status)
 
     if (req->status_code == 429 || req->status_code == 420) {
 
-        state->error_status = STORJ_BRIDGE_RATE_ERROR;
+        state->error_status = GENARO_BRIDGE_RATE_ERROR;
 
     } else if ((req->status_code == 200 || req->status_code == 201) &&
         pointer->token != NULL) {
@@ -894,7 +894,7 @@ static void after_push_frame(uv_work_t *work, int status)
         // Add token to shard[].pointer
         p->token = calloc(strlen(pointer->token) + 1, sizeof(char));
         if (!p->token) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         memcpy(p->token, pointer->token, strlen(pointer->token));
@@ -903,7 +903,7 @@ static void after_push_frame(uv_work_t *work, int status)
         p->farmer_user_agent = calloc(strlen(pointer->farmer_user_agent) + 1,
                                       sizeof(char));
         if (!p->farmer_user_agent) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         memcpy(p->farmer_user_agent, pointer->farmer_user_agent,
@@ -913,7 +913,7 @@ static void after_push_frame(uv_work_t *work, int status)
         p->farmer_address = calloc(strlen(pointer->farmer_address) + 1,
                                    sizeof(char));
         if (!p->farmer_address) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         memcpy(p->farmer_address, pointer->farmer_address,
@@ -922,7 +922,7 @@ static void after_push_frame(uv_work_t *work, int status)
         // Add farmer_port to shard[].pointer
         p->farmer_port = calloc(strlen(pointer->farmer_port) + 1, sizeof(char));
         if (!p->farmer_port) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         memcpy(p->farmer_port, pointer->farmer_port,
@@ -932,7 +932,7 @@ static void after_push_frame(uv_work_t *work, int status)
         p->farmer_protocol = calloc(strlen(pointer->farmer_protocol) + 1,
                                     sizeof(char));
         if (!p->farmer_protocol) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         memcpy(p->farmer_protocol, pointer->farmer_protocol,
@@ -942,7 +942,7 @@ static void after_push_frame(uv_work_t *work, int status)
         p->farmer_node_id = calloc(strlen(pointer->farmer_node_id) + 1,
                                    sizeof(char));
         if (!p->farmer_node_id) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         memcpy(p->farmer_node_id, pointer->farmer_node_id,
@@ -965,8 +965,8 @@ static void after_push_frame(uv_work_t *work, int status)
         );
 
     } else if (state->shard[req->shard_meta_index].push_frame_request_count ==
-               STORJ_MAX_PUSH_FRAME_COUNT) {
-        state->error_status = STORJ_BRIDGE_OFFER_ERROR;
+               GENARO_MAX_PUSH_FRAME_COUNT) {
+        state->error_status = GENARO_BRIDGE_OFFER_ERROR;
     } else {
         state->shard[req->shard_meta_index].progress = AWAITING_PUSH_FRAME;
     }
@@ -984,7 +984,7 @@ clean_variables:
 static void push_frame(uv_work_t *work)
 {
     frame_request_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
     shard_meta_t *shard_meta = state->shard[req->shard_meta_index].meta;
 
     req->log->info(state->env->log_options, state->handle,
@@ -1022,7 +1022,7 @@ static void push_frame(uv_work_t *work)
 
     // Add challenges
     json_object *challenges = json_object_new_array();
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         json_object_array_add(challenges,
                               json_object_new_string(
                                   (char *)shard_meta->challenges_as_str[i]));
@@ -1031,7 +1031,7 @@ static void push_frame(uv_work_t *work)
 
     // Add Tree
     json_object *tree = json_object_new_array();
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         json_object_array_add(tree,
                               json_object_new_string(
                                   (char *)shard_meta->tree[i]));
@@ -1043,7 +1043,7 @@ static void push_frame(uv_work_t *work)
     if (state->exclude) {
         char *exclude_list = calloc(strlen(state->exclude) + 1, sizeof(char));
         if (!exclude_list) {
-            req->error_status = STORJ_MEMORY_ERROR;
+            req->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         strcpy(exclude_list, state->exclude);
@@ -1079,19 +1079,19 @@ static void push_frame(uv_work_t *work)
     if (request_status) {
         req->log->warn(state->env->log_options, state->handle,
                        "Push frame error: %i", request_status);
-        req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+        req->error_status = GENARO_BRIDGE_REQUEST_ERROR;
         goto clean_variables;
     }
 
     struct json_object *obj_token;
     if (!json_object_object_get_ex(response, "token", &obj_token)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
     struct json_object *obj_farmer;
     if (!json_object_object_get_ex(response, "farmer", &obj_farmer)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
@@ -1099,13 +1099,13 @@ static void push_frame(uv_work_t *work)
     if (!json_object_object_get_ex(obj_farmer, "address",
                                    &obj_farmer_address)) {
 
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
     struct json_object *obj_farmer_port;
     if (!json_object_object_get_ex(obj_farmer, "port", &obj_farmer_port)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
@@ -1113,7 +1113,7 @@ static void push_frame(uv_work_t *work)
     if (!json_object_object_get_ex(obj_farmer, "userAgent",
                                    &obj_farmer_user_agent)) {
 
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
@@ -1121,7 +1121,7 @@ static void push_frame(uv_work_t *work)
     if (!json_object_object_get_ex(obj_farmer, "protocol",
                                    &obj_farmer_protocol)) {
 
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
@@ -1129,13 +1129,13 @@ static void push_frame(uv_work_t *work)
     if (!json_object_object_get_ex(obj_farmer, "nodeID",
                                    &obj_farmer_node_id)) {
 
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
     if (!json_object_is_type(obj_token, json_type_string)) {
 
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
@@ -1143,7 +1143,7 @@ static void push_frame(uv_work_t *work)
     char *token = (char *)json_object_get_string(obj_token);
     req->farmer_pointer->token = calloc(strlen(token) + 1, sizeof(char));
     if (!req->farmer_pointer->token) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
     memcpy(req->farmer_pointer->token, token, strlen(token));
@@ -1154,7 +1154,7 @@ static void push_frame(uv_work_t *work)
     req->farmer_pointer->farmer_user_agent =
         calloc(strlen(farmer_user_agent) + 1, sizeof(char));
     if (!req->farmer_pointer->farmer_user_agent) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
     memcpy(req->farmer_pointer->farmer_user_agent,
@@ -1166,7 +1166,7 @@ static void push_frame(uv_work_t *work)
     req->farmer_pointer->farmer_protocol =
         calloc(strlen(farmer_protocol) + 1, sizeof(char));
     if (!req->farmer_pointer->farmer_protocol) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
     memcpy(req->farmer_pointer->farmer_protocol,
@@ -1178,7 +1178,7 @@ static void push_frame(uv_work_t *work)
     req->farmer_pointer->farmer_address =
         calloc(strlen(farmer_address) + 1, sizeof(char));
     if (!req->farmer_pointer->farmer_address) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
     memcpy(req->farmer_pointer->farmer_address,
@@ -1189,7 +1189,7 @@ static void push_frame(uv_work_t *work)
     char *farmer_port = (char *)json_object_get_string(obj_farmer_port);
     req->farmer_pointer->farmer_port = calloc(strlen(farmer_port) + 1, sizeof(char));
     if (!req->farmer_pointer->farmer_port) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
     memcpy(req->farmer_pointer->farmer_port, farmer_port, strlen(farmer_port));
@@ -1199,7 +1199,7 @@ static void push_frame(uv_work_t *work)
     req->farmer_pointer->farmer_node_id =
         calloc(strlen(farmer_node_id) + 1, sizeof(char));
     if (!req->farmer_pointer->farmer_node_id) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
     memcpy(req->farmer_pointer->farmer_node_id,
@@ -1218,20 +1218,20 @@ clean_variables:
     }
 }
 
-static void queue_push_frame(storj_upload_state_t *state, int index)
+static void queue_push_frame(genaro_upload_state_t *state, int index)
 {
     if (state->shard[index].pointer->token != NULL) {
         pointer_cleanup(state->shard[index].pointer);
         state->shard[index].pointer = farmer_pointer_new();
         if (!state->shard[index].pointer) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             return;
         }
     }
 
     uv_work_t *shard_work = frame_work_new(&index, state);
     if (!shard_work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -1239,7 +1239,7 @@ static void queue_push_frame(storj_upload_state_t *state, int index)
     int status = uv_queue_work(state->env->loop, (uv_work_t*) shard_work,
                                push_frame, after_push_frame);
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
         return;
     }
 
@@ -1250,7 +1250,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
 {
     frame_builder_t *req = work->data;
     shard_meta_t *shard_meta = req->shard_meta;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     state->pending_work_count -= 1;
 
@@ -1271,7 +1271,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
         calloc(RIPEMD160_DIGEST_SIZE * 2 + 1, sizeof(char));
 
     if (!state->shard[req->shard_meta_index].meta->hash) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
 
@@ -1288,7 +1288,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
                       "Challenges for shard index %d",
                       req->shard_meta_index);
 
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[req->shard_meta_index].meta->challenges_as_str[i],
                shard_meta->challenges_as_str[i],
                64);
@@ -1305,7 +1305,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
                       "Tree for shard index %d",
                       req->shard_meta_index);
 
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[req->shard_meta_index].meta->tree[i],
                shard_meta->tree[i],
                40);
@@ -1341,11 +1341,11 @@ static void prepare_frame(uv_work_t *work)
 {
     frame_builder_t *req = work->data;
     shard_meta_t *shard_meta = req->shard_meta;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     // Set the challenges
     uint8_t buff[32];
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         memset_zero(buff, 32);
 
         random_buffer(buff, 32);
@@ -1354,7 +1354,7 @@ static void prepare_frame(uv_work_t *work)
         // Convert the uint8_t challenges to character arrays
         char *challenge_as_str = hex2str(32, buff);
         if (!challenge_as_str) {
-            req->error_status = STORJ_MEMORY_ERROR;
+            req->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         memcpy(shard_meta->challenges_as_str[i], challenge_as_str, strlen(challenge_as_str));
@@ -1364,7 +1364,7 @@ static void prepare_frame(uv_work_t *work)
     // Hash of the shard_data
     shard_meta->hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 2, sizeof(char));
     if (!shard_meta->hash) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
 
@@ -1380,18 +1380,18 @@ static void prepare_frame(uv_work_t *work)
     sha256_init(&shard_hash_ctx);
 
     // Calculate the merkle tree with challenges
-    struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    struct sha256_ctx first_sha256_for_leaf[GENARO_SHARD_CHALLENGES];
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         sha256_init(&first_sha256_for_leaf[i]);
         sha256_update(&first_sha256_for_leaf[i], 32, (uint8_t *)&shard_meta->challenges[i]);
     }
 
-    storj_encryption_ctx_t *encryption_ctx = NULL;
+    genaro_encryption_ctx_t *encryption_ctx = NULL;
     if (!state->rs) {
         // Initialize the encryption context
         encryption_ctx = prepare_encryption_ctx(state->encryption_ctr, state->encryption_key);
         if (!encryption_ctx) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
         }
         // Increment the iv to proper placement because we may be reading from the middle of the file
@@ -1418,7 +1418,7 @@ static void prepare_frame(uv_work_t *work)
             req->log->warn(state->env->log_options, state->handle,
                            "Error reading file: %d",
                            errno);
-            req->error_status = STORJ_FILE_READ_ERROR;
+            req->error_status = GENARO_FILE_READ_ERROR;
             goto clean_variables;
         }
 
@@ -1436,7 +1436,7 @@ static void prepare_frame(uv_work_t *work)
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
 
-        for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+        for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
             sha256_update(&first_sha256_for_leaf[i], read_bytes, cphr_txt);
         }
 
@@ -1456,7 +1456,7 @@ static void prepare_frame(uv_work_t *work)
     // Shard Hash
     char *hash = hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
     if (!hash) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
     memcpy(shard_meta->hash, hash, strlen(hash));
@@ -1468,7 +1468,7 @@ static void prepare_frame(uv_work_t *work)
     memset_zero(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE);
     char leaf[RIPEMD160_DIGEST_SIZE*2 +1];
     memset(leaf, '\0', RIPEMD160_DIGEST_SIZE*2 +1);
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         // finish first sha256 for leaf
         sha256_digest(&first_sha256_for_leaf[i], SHA256_DIGEST_SIZE, preleaf_sha256);
 
@@ -1487,11 +1487,11 @@ clean_variables:
     }
 }
 
-static void queue_prepare_frame(storj_upload_state_t *state, int index)
+static void queue_prepare_frame(genaro_upload_state_t *state, int index)
 {
     uv_work_t *shard_work = shard_meta_work_new(index, state);
     if (!shard_work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -1500,7 +1500,7 @@ static void queue_prepare_frame(storj_upload_state_t *state, int index)
                                prepare_frame, after_prepare_frame);
 
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
         return;
     }
 
@@ -1510,7 +1510,7 @@ static void queue_prepare_frame(storj_upload_state_t *state, int index)
 static void after_create_encrypted_file(uv_work_t *work, int status)
 {
     encrypt_file_req_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     state->pending_work_count -= 1;
     state->create_encrypted_file_count += 1;
@@ -1531,7 +1531,7 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
                        "Failed to encrypt data.");
 
         if (state->create_encrypted_file_count == 6) {
-            state->error_status = STORJ_FILE_ENCRYPTION_ERROR;
+            state->error_status = GENARO_FILE_ENCRYPTION_ERROR;
         }
     } else {
         state->log->info(state->env->log_options, state->handle,
@@ -1539,7 +1539,7 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
 
         state->encrypted_file = fopen(state->encrypted_file_path, "r");
         if (!state->encrypted_file) {
-            state->error_status = STORJ_FILE_READ_ERROR;
+            state->error_status = GENARO_FILE_READ_ERROR;
         }
     }
 
@@ -1554,15 +1554,15 @@ clean_variables:
 static void create_encrypted_file(uv_work_t *work)
 {
     encrypt_file_req_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     state->log->info(state->env->log_options, state->handle, "Encrypting file...");
 
     // Initialize the encryption context
-    storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
+    genaro_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
                                                                     state->encryption_key);
     if (!encryption_ctx) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
     }
 
@@ -1596,7 +1596,7 @@ static void create_encrypted_file(uv_work_t *work)
             state->log->warn(state->env->log_options, state->handle,
                            "Error reading file: %d",
                            errno);
-            req->error_status = STORJ_FILE_READ_ERROR;
+            req->error_status = GENARO_FILE_READ_ERROR;
             goto clean_variables;
         }
 
@@ -1627,11 +1627,11 @@ clean_variables:
     }
 }
 
-static void queue_create_encrypted_file(storj_upload_state_t *state)
+static void queue_create_encrypted_file(genaro_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -1647,7 +1647,7 @@ static void queue_create_encrypted_file(storj_upload_state_t *state)
                                create_encrypted_file, after_create_encrypted_file);
 
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
     }
 
     state->creating_encrypted_file = true;
@@ -1656,7 +1656,7 @@ static void queue_create_encrypted_file(storj_upload_state_t *state)
 static void after_request_frame_id(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     state->requesting_frame = false;
     state->pending_work_count -= 1;
@@ -1670,7 +1670,7 @@ static void after_request_frame_id(uv_work_t *work, int status)
 
     if (req->status_code == 429 || req->status_code == 420) {
 
-        state->error_status = STORJ_BRIDGE_RATE_ERROR;
+        state->error_status = GENARO_BRIDGE_RATE_ERROR;
 
     } else if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
 
@@ -1680,7 +1680,7 @@ static void after_request_frame_id(uv_work_t *work, int status)
         state->frame_id = req->frame_id;
 
     } else if (state->frame_request_count == 6) {
-        state->error_status = STORJ_BRIDGE_FRAME_ERROR;
+        state->error_status = GENARO_BRIDGE_FRAME_ERROR;
     }
 
 clean_variables:
@@ -1692,7 +1692,7 @@ clean_variables:
 static void request_frame_id(uv_work_t *work)
 {
     frame_request_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     req->log->info(state->env->log_options,
                    state->handle,
@@ -1727,19 +1727,19 @@ static void request_frame_id(uv_work_t *work)
 
     struct json_object *frame_id;
     if (!json_object_object_get_ex(response, "id", &frame_id)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto cleanup;
     }
 
     if (!json_object_is_type(frame_id, json_type_string)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto cleanup;
     }
 
     char *frame_id_str = (char *)json_object_get_string(frame_id);
     req->frame_id = calloc(strlen(frame_id_str) + 1, sizeof(char));
     if (!req->frame_id) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
 
@@ -1752,11 +1752,11 @@ cleanup:
     json_object_put(body);
 }
 
-static void queue_request_frame_id(storj_upload_state_t *state)
+static void queue_request_frame_id(genaro_upload_state_t *state)
 {
     uv_work_t *work = frame_work_new(NULL, state);
     if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -1765,7 +1765,7 @@ static void queue_request_frame_id(storj_upload_state_t *state)
                                request_frame_id, after_request_frame_id);
 
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
     }
 
     state->requesting_frame = true;
@@ -1774,7 +1774,7 @@ static void queue_request_frame_id(storj_upload_state_t *state)
 static void after_create_parity_shards(uv_work_t *work, int status)
 {
     parity_shard_req_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     state->pending_work_count -= 1;
 
@@ -1785,7 +1785,7 @@ static void after_create_parity_shards(uv_work_t *work, int status)
 
         state->awaiting_parity_shards = true;
 
-        state->error_status = STORJ_FILE_PARITY_ERROR;
+        state->error_status = GENARO_FILE_PARITY_ERROR;
     } else {
         state->log->info(state->env->log_options, state->handle,
                        "Successfully created parity shards");
@@ -1793,7 +1793,7 @@ static void after_create_parity_shards(uv_work_t *work, int status)
         state->parity_file = fopen(state->parity_file_path, "r");
 
         if (!state->parity_file) {
-            state->error_status = STORJ_FILE_READ_ERROR;
+            state->error_status = GENARO_FILE_READ_ERROR;
         }
 
     }
@@ -1807,7 +1807,7 @@ clean_variables:
 static void create_parity_shards(uv_work_t *work)
 {
     parity_shard_req_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    genaro_upload_state_t *state = req->upload_state;
 
     state->log->info(state->env->log_options, state->handle,
                    "Creating parity shards");
@@ -1949,11 +1949,11 @@ clean_variables:
 }
 
 
-static void queue_create_parity_shards(storj_upload_state_t *state)
+static void queue_create_parity_shards(genaro_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -1969,7 +1969,7 @@ static void queue_create_parity_shards(storj_upload_state_t *state)
                                create_parity_shards, after_create_parity_shards);
 
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
     }
 
     state->awaiting_parity_shards = false;
@@ -1983,7 +1983,7 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 
     if (status == UV_ECANCELED) {
         req->report->send_count = 0;
-        req->report->send_status = STORJ_REPORT_AWAITING_SEND;
+        req->report->send_status = GENARO_REPORT_AWAITING_SEND;
 
         goto clean_variables;
     }
@@ -1996,11 +1996,11 @@ static void after_send_exchange_report(uv_work_t *work, int status)
                          "Successfully sent exchange report for shard %d",
                          req->report->pointer_index);
 
-        req->report->send_status = STORJ_REPORT_NOT_PREPARED; // report has been sent
+        req->report->send_status = GENARO_REPORT_NOT_PREPARED; // report has been sent
     } else if (req->report->send_count == 6) {
-        req->report->send_status = STORJ_REPORT_NOT_PREPARED; // report failed retries
+        req->report->send_status = GENARO_REPORT_NOT_PREPARED; // report failed retries
     } else {
-        req->report->send_status = STORJ_REPORT_AWAITING_SEND; // reset report back to unsent
+        req->report->send_status = GENARO_REPORT_AWAITING_SEND; // reset report back to unsent
     }
 
 clean_variables:
@@ -2013,7 +2013,7 @@ clean_variables:
 static void send_exchange_report(uv_work_t *work)
 {
     shard_send_report_t *req = work->data;
-    storj_upload_state_t *state = req->state;
+    genaro_upload_state_t *state = req->state;
 
     struct json_object *body = json_object_new_object();
 
@@ -2063,7 +2063,7 @@ static void send_exchange_report(uv_work_t *work)
     json_object_put(body);
 }
 
-static void queue_send_exchange_report(storj_upload_state_t *state, int index)
+static void queue_send_exchange_report(genaro_upload_state_t *state, int index)
 {
     if (state->shard[index].report->send_count == 6) {
         return;
@@ -2085,7 +2085,7 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index)
     req->options = state->env->bridge_options;
     req->status_code = 0;
     req->report = shard->report;
-    req->report->send_status = STORJ_REPORT_SENDING;
+    req->report->send_status = GENARO_REPORT_SENDING;
     req->state = state;
     req->pointer_index = index;
 
@@ -2095,14 +2095,14 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index)
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                send_exchange_report, after_send_exchange_report);
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
     }
 }
 
 static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 {
     get_bucket_request_t *req = work_req->data;
-    storj_upload_state_t *state = req->handle;
+    genaro_upload_state_t *state = req->handle;
 
     state->log->info(state->env->log_options, state->handle,
                      "Checking if bucket id [%s] exists", state->bucket_id);
@@ -2116,13 +2116,13 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
     } else if (req->status_code == 404 || req->status_code == 400) {
         state->log->error(state->env->log_options, state->handle,
                          "Bucket [%s] doesn't exist", state->bucket_id);
-        state->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
+        state->error_status = GENARO_BRIDGE_BUCKET_NOTFOUND_ERROR;
     } else {
         state->log->error(state->env->log_options, state->handle,
                          "Request failed with status code: %i", req->status_code);
 
          if (state->bucket_verify_count == 6) {
-             state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+             state->error_status = GENARO_BRIDGE_REQUEST_ERROR;
              state->bucket_verify_count = 0;
          }
 
@@ -2134,21 +2134,21 @@ clean_variables:
     queue_next_work(state);
 
     json_object_put(req->response);
-    storj_free_get_bucket_request(req);
+    genaro_free_get_bucket_request(req);
     free(work_req);
 }
 
-static void queue_verify_bucket_id(storj_upload_state_t *state)
+static void queue_verify_bucket_id(genaro_upload_state_t *state)
 {
     state->pending_work_count += 1;
-    storj_bridge_get_bucket(state->env, state->bucket_id, state, verify_bucket_id_callback);
+    genaro_bridge_get_bucket(state->env, state->bucket_id, state, verify_bucket_id_callback);
 }
 
 
 static void verify_file_name_callback(uv_work_t *work_req, int status)
 {
     json_request_t *req = work_req->data;
-    storj_upload_state_t *state = req->handle;
+    genaro_upload_state_t *state = req->handle;
 
     state->pending_work_count -= 1;
     state->file_verify_count += 1;
@@ -2159,13 +2159,13 @@ static void verify_file_name_callback(uv_work_t *work_req, int status)
     } else if (req->status_code == 200) {
         state->log->error(state->env->log_options, state->handle,
                           "File [%s] already exists", state->file_name);
-        state->error_status = STORJ_BRIDGE_BUCKET_FILE_EXISTS;
+        state->error_status = GENARO_BRIDGE_BUCKET_FILE_EXISTS;
     } else {
         state->log->error(state->env->log_options, state->handle,
                           "Request failed with status code: %i", req->status_code);
 
         if (state->file_verify_count == 6) {
-            state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+            state->error_status = GENARO_BRIDGE_REQUEST_ERROR;
             state->file_verify_count = 0;
         }
 
@@ -2186,7 +2186,7 @@ clean_variables:
 static void verify_file_name(uv_work_t *work)
 {
     json_request_t *req = work->data;
-    storj_upload_state_t *state = req->handle;
+    genaro_upload_state_t *state = req->handle;
     int status_code = 0;
 
     state->log->info(state->env->log_options, state->handle,
@@ -2199,13 +2199,13 @@ static void verify_file_name(uv_work_t *work)
     req->status_code = status_code;
 }
 
-static void queue_verify_file_name(storj_upload_state_t *state)
+static void queue_verify_file_name(genaro_upload_state_t *state)
 {
     state->pending_work_count += 1;
 
     CURL *curl = curl_easy_init();
     if (!curl) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -2214,7 +2214,7 @@ static void queue_verify_file_name(storj_upload_state_t *state)
 
     if (!escaped) {
         curl_easy_cleanup(curl);
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -2224,19 +2224,19 @@ static void queue_verify_file_name(storj_upload_state_t *state)
     curl_easy_cleanup(curl);
 
     if (!path) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
     uv_work_t *work = uv_work_new();
     if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
     json_request_t *req = malloc(sizeof(json_request_t));
     if (!req) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -2257,14 +2257,14 @@ static void queue_verify_file_name(storj_upload_state_t *state)
                                verify_file_name, verify_file_name_callback);
 
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
         return;
     }
 }
 
 // Check if a frame/shard is already being prepared/pushed.
 // We want to limit disk reads for dd and network activity
-static int check_in_progress(storj_upload_state_t *state, int status)
+static int check_in_progress(genaro_upload_state_t *state, int status)
 {
     int active = 0;
 
@@ -2277,28 +2277,28 @@ static int check_in_progress(storj_upload_state_t *state, int status)
     return active;
 }
 
-static void queue_push_frame_and_shard(storj_upload_state_t *state)
+static void queue_push_frame_and_shard(genaro_upload_state_t *state)
 {
     for (int index = 0; index < state->total_shards; index++) {
 
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
-            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED &&
+            state->shard[index].report->send_status == GENARO_REPORT_NOT_PREPARED &&
             check_in_progress(state, PUSHING_FRAME) < state->push_frame_limit) {
             queue_push_frame(state, index);
         }
 
         if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
-            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED &&
+            state->shard[index].report->send_status == GENARO_REPORT_NOT_PREPARED &&
             check_in_progress(state, PUSHING_SHARD) < state->push_shard_limit) {
             queue_push_shard(state, index);
         }
     }
 }
 
-static void queue_next_work(storj_upload_state_t *state)
+static void queue_next_work(genaro_upload_state_t *state)
 {
-    storj_log_levels_t *log = state->log;
-    storj_log_options_t *log_options = state->env->log_options;
+    genaro_log_levels_t *log = state->log;
+    genaro_log_options_t *log_options = state->env->log_options;
     void *handle = state->handle;
     int *pending_work_count = &state->pending_work_count;
 
@@ -2361,7 +2361,7 @@ static void queue_next_work(storj_upload_state_t *state)
     }
 
     for (int index = 0; index < state->total_shards; index++ ) {
-        if (state->shard[index].report->send_status == STORJ_REPORT_AWAITING_SEND) {
+        if (state->shard[index].report->send_status == GENARO_REPORT_AWAITING_SEND) {
             queue_send_exchange_report(state, index);
         }
     }
@@ -2381,7 +2381,7 @@ finish_up:
 
 static void begin_work_queue(uv_work_t *work, int status)
 {
-    storj_upload_state_t *state = work->data;
+    genaro_upload_state_t *state = work->data;
 
     // Load progress bar
     state->progress_cb(0, 0, 0, state->handle);
@@ -2394,20 +2394,20 @@ static void begin_work_queue(uv_work_t *work, int status)
 
 static void prepare_upload_state(uv_work_t *work)
 {
-    storj_upload_state_t *state = work->data;
+    genaro_upload_state_t *state = work->data;
 
     // Get the file size, expect to be up to 10tb
 #ifdef _WIN32
     struct _stati64 st;
 
     if(_fstati64(fileno(state->original_file), &st) != 0) {
-        state->error_status = STORJ_FILE_INTEGRITY_ERROR;
+        state->error_status = GENARO_FILE_INTEGRITY_ERROR;
         return;
     }
 #else
     struct stat st;
     if(fstat(fileno(state->original_file), &st) != 0) {
-        state->error_status = STORJ_FILE_INTEGRITY_ERROR;
+        state->error_status = GENARO_FILE_INTEGRITY_ERROR;
         return;
     }
 #endif
@@ -2420,7 +2420,7 @@ static void prepare_upload_state(uv_work_t *work)
     // Set Shard calculations
     state->shard_size = determine_shard_size(state->file_size, 0);
     if (!state->shard_size || state->shard_size == 0) {
-        state->error_status = STORJ_FILE_SIZE_ERROR;
+        state->error_status = GENARO_FILE_SIZE_ERROR;
         return;
     }
 
@@ -2431,7 +2431,7 @@ static void prepare_upload_state(uv_work_t *work)
     int tracker_calloc_amount = state->total_shards * sizeof(shard_tracker_t);
     state->shard = malloc(tracker_calloc_amount);
     if (!state->shard) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -2442,18 +2442,18 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].index = i;
         state->shard[i].pointer = farmer_pointer_new();
         if (!state->shard[i].pointer) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             return;
         }
         state->shard[i].meta = shard_meta_new();
         if (!state->shard[i].meta) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             return;
         }
         state->shard[i].meta->is_parity = (i + 1 > state->total_data_shards) ? true : false;
-        state->shard[i].report = storj_exchange_report_new();
+        state->shard[i].report = genaro_exchange_report_new();
         if (!state->shard[i].report) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             return;
         }
         state->shard[i].uploaded_size = 0;
@@ -2468,7 +2468,7 @@ static void prepare_upload_state(uv_work_t *work)
 
     uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -2504,14 +2504,14 @@ static void prepare_upload_state(uv_work_t *work)
     if (state->index) {
         index = str2hex(strlen(state->index), (char *)state->index);
         if (!index) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto cleanup;
         }
     } else {
         // Get random index used for encryption
         index = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
         if (!index) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             goto cleanup;
         }
         random_buffer(index, SHA256_DIGEST_SIZE);
@@ -2519,7 +2519,7 @@ static void prepare_upload_state(uv_work_t *work)
 
     char *index_as_str = hex2str(SHA256_DIGEST_SIZE, index);
     if (!index_as_str) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
 
@@ -2528,7 +2528,7 @@ static void prepare_upload_state(uv_work_t *work)
     // Caculate the file encryption key based on the index
     key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!key_as_str) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
 
@@ -2539,24 +2539,24 @@ static void prepare_upload_state(uv_work_t *work)
     if (key_status) {
         switch (key_status) {
             case 2:
-                state->error_status = STORJ_HEX_DECODE_ERROR;
+                state->error_status = GENARO_HEX_DECODE_ERROR;
                 break;
             default:
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
         }
         goto cleanup;
     }
 
     uint8_t *encryption_key = str2hex(strlen(key_as_str), key_as_str);
     if (!encryption_key) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
     state->encryption_key = encryption_key;
 
     uint8_t *encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
     if (!encryption_ctr) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
     memcpy(encryption_ctr, index, AES_BLOCK_SIZE);
@@ -2579,7 +2579,7 @@ cleanup:
 
 }
 
-char *create_tmp_name(storj_upload_state_t *state, char *extension)
+char *create_tmp_name(genaro_upload_state_t *state, char *extension)
 {
     char *tmp_folder = strdup(state->env->tmp_path);
     int encode_len = BASE16_ENCODE_LENGTH(SHA256_DIGEST_SIZE);
@@ -2618,7 +2618,7 @@ char *create_tmp_name(storj_upload_state_t *state, char *extension)
     return path;
 }
 
-STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
+GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state)
 {
     if (state->canceled) {
         return 0;
@@ -2626,7 +2626,7 @@ STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
 
     state->canceled = true;
 
-    state->error_status = STORJ_TRANSFER_CANCELED;
+    state->error_status = GENARO_TRANSFER_CANCELED;
 
     // loop over all shards, and cancel any that are queued to be uploaded
     // any uploads that are in-progress will monitor the state->canceled
@@ -2641,18 +2641,18 @@ STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
     return 0;
 }
 
-STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
-                            storj_upload_opts_t *opts,
+GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
+                            genaro_upload_opts_t *opts,
                             void *handle,
-                            storj_progress_cb progress_cb,
-                            storj_finished_upload_cb finished_cb)
+                            genaro_progress_cb progress_cb,
+                            genaro_finished_upload_cb finished_cb)
 {
     if (!opts->fd) {
         env->log->error(env->log_options, handle, "Invalid File descriptor");
         return NULL;
     }
 
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
+    genaro_upload_state_t *state = malloc(sizeof(genaro_upload_state_t));
     if (!state) {
         return NULL;
     }
@@ -2730,7 +2730,7 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     int status = uv_queue_work(env->loop, (uv_work_t*) work,
                                prepare_upload_state, begin_work_queue);
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
     }
     return state;
 }

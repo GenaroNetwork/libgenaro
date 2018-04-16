@@ -4,22 +4,22 @@
  *
  * Structures and functions useful for downloading files.
  */
-#ifndef STORJ_DOWNLOADER_H
-#define STORJ_DOWNLOADER_H
+#ifndef GENARO_DOWNLOADER_H
+#define GENARO_DOWNLOADER_H
 
-#include "storj.h"
+#include "genaro.h"
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
 #include "rs.h"
 
-#define STORJ_DOWNLOAD_CONCURRENCY 24
-#define STORJ_DOWNLOAD_WRITESYNC_CONCURRENCY 4
-#define STORJ_DEFAULT_MIRRORS 5
-#define STORJ_MAX_REPORT_TRIES 2
-#define STORJ_MAX_TOKEN_TRIES 6
-#define STORJ_MAX_POINTER_TRIES 6
-#define STORJ_MAX_INFO_TRIES 6
+#define GENARO_DOWNLOAD_CONCURRENCY 24
+#define GENARO_DOWNLOAD_WRITESYNC_CONCURRENCY 4
+#define GENARO_DEFAULT_MIRRORS 5
+#define GENARO_MAX_REPORT_TRIES 2
+#define GENARO_MAX_TOKEN_TRIES 6
+#define GENARO_MAX_POINTER_TRIES 6
+#define GENARO_MAX_INFO_TRIES 6
 
 /** @brief Enumerable that defines that status of a pointer
  *
@@ -37,7 +37,7 @@ typedef enum {
     POINTER_DOWNLOADED = 2,
     POINTER_MISSING = 3,
     POINTER_FINISHED = 4
-} storj_pointer_status_t;
+} genaro_pointer_status_t;
 
 /** @brief A structure for sharing data with worker threads for writing
  * a shard to a file decriptor.
@@ -49,7 +49,7 @@ typedef struct {
     FILE *destination;
     uint32_t pointer_index;
     /* state should not be modified in worker threads */
-    storj_download_state_t *state;
+    genaro_download_state_t *state;
 } shard_request_write_t;
 
 /** @brief A structure for repairing shards from parity shards */
@@ -65,7 +65,7 @@ typedef struct {
     uint8_t *zilch;
     bool has_missing;
     /* state should not be modified in worker threads */
-    storj_download_state_t *state;
+    genaro_download_state_t *state;
     int error_status;
 } file_request_recover_t;
 
@@ -73,7 +73,7 @@ typedef struct {
  * shards from farmers.
  */
 typedef struct {
-    storj_http_options_t *http_options;
+    genaro_http_options_t *http_options;
     char *farmer_id;
     char *farmer_proto;
     char *farmer_host;
@@ -87,7 +87,7 @@ typedef struct {
     uv_async_t progress_handle;
     uint64_t byte_position;
     /* state should not be modified in worker threads */
-    storj_download_state_t *state;
+    genaro_download_state_t *state;
     int error_status;
     bool *canceled;
 } shard_request_download_t;
@@ -97,38 +97,38 @@ typedef struct {
  */
 typedef struct {
     uint32_t pointer_index;
-    storj_http_options_t *http_options;
-    storj_bridge_options_t *options;
+    genaro_http_options_t *http_options;
+    genaro_bridge_options_t *options;
     int status_code;
-    storj_exchange_report_t *report;
+    genaro_exchange_report_t *report;
     /* state should not be modified in worker threads */
-    storj_download_state_t *state;
+    genaro_download_state_t *state;
 } shard_send_report_t;
 
 typedef struct {
-    storj_http_options_t *http_options;
-    storj_bridge_options_t *options;
+    genaro_http_options_t *http_options;
+    genaro_bridge_options_t *options;
     int status_code;
     const char *bucket_id;
     const char *file_id;
     int error_status;
-    storj_file_meta_t *info;
+    genaro_file_meta_t *info;
     /* state should not be modified in worker threads */
-    storj_download_state_t *state;
+    genaro_download_state_t *state;
 } file_info_request_t;
 
 /** @brief A structure for sharing data with worker threads for replacing a
  * pointer with a new farmer.
  */
 typedef struct {
-    storj_http_options_t *http_options;
-    storj_bridge_options_t *options;
+    genaro_http_options_t *http_options;
+    genaro_bridge_options_t *options;
     uint32_t pointer_index;
     const char *bucket_id;
     const char *file_id;
     char *excluded_farmer_ids;
     /* state should not be modified in worker threads */
-    storj_download_state_t *state;
+    genaro_download_state_t *state;
     struct json_object *response;
     int error_status;
     int status_code;
@@ -138,15 +138,15 @@ typedef struct {
  * requests with the bridge.
  */
 typedef struct {
-    storj_http_options_t *http_options;
-    storj_bridge_options_t *options;
+    genaro_http_options_t *http_options;
+    genaro_bridge_options_t *options;
     char *method;
     char *path;
     bool auth;
     struct json_object *body;
     struct json_object *response;
     /* state should not be modified in worker threads */
-    storj_download_state_t *state;
+    genaro_download_state_t *state;
     int status_code;
 } json_request_download_t;
 
@@ -158,6 +158,6 @@ typedef struct {
  *
  * This method should only be called with in the main loop thread.
  */
-static void queue_next_work(storj_download_state_t *state);
+static void queue_next_work(genaro_download_state_t *state);
 
-#endif /* STORJ_DOWNLOADER_H */
+#endif /* GENARO_DOWNLOADER_H */

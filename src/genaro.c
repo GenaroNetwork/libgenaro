@@ -1,4 +1,4 @@
-#include "storj.h"
+#include "genaro.h"
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
@@ -30,7 +30,7 @@ static void create_bucket_request_worker(uv_work_t *work)
 
     uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
-        req->error_code = STORJ_MEMORY_ERROR;
+        req->error_code = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -69,7 +69,7 @@ static void create_bucket_request_worker(uv_work_t *work)
     json_object_put(body);
 
     if (req->response != NULL) {
-        req->bucket = malloc(sizeof(storj_bucket_meta_t));
+        req->bucket = malloc(sizeof(genaro_bucket_meta_t));
 
         struct json_object *id;
         json_object_object_get_ex(req->response, "id", &id);
@@ -100,7 +100,7 @@ static void get_buckets_request_worker(uv_work_t *work)
     }
 
     if (num_buckets > 0) {
-        req->buckets = malloc(sizeof(storj_bucket_meta_t) * num_buckets);
+        req->buckets = malloc(sizeof(genaro_bucket_meta_t) * num_buckets);
         req->total_buckets = num_buckets;
     }
 
@@ -112,7 +112,7 @@ static void get_buckets_request_worker(uv_work_t *work)
 
     uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
-        req->error_code = STORJ_MEMORY_ERROR;
+        req->error_code = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -139,7 +139,7 @@ static void get_buckets_request_worker(uv_work_t *work)
         json_object_object_get_ex(bucket_item, "name", &name);
         json_object_object_get_ex(bucket_item, "created", &created);
 
-        storj_bucket_meta_t *bucket = &req->buckets[i];
+        genaro_bucket_meta_t *bucket = &req->buckets[i];
         bucket->id = json_object_get_string(id);
         bucket->decrypted = false;
         bucket->created = json_object_get_string(created);
@@ -190,7 +190,7 @@ static void get_bucket_request_worker(uv_work_t *work)
 
     uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
-        req->error_code = STORJ_MEMORY_ERROR;
+        req->error_code = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -213,7 +213,7 @@ static void get_bucket_request_worker(uv_work_t *work)
     json_object_object_get_ex(req->response, "name", &name);
     json_object_object_get_ex(req->response, "created", &created);
 
-    req->bucket = malloc(sizeof(storj_bucket_meta_t));
+    req->bucket = malloc(sizeof(genaro_bucket_meta_t));
     req->bucket->id = json_object_get_string(id);
     req->bucket->decrypted = false;
     req->bucket->created = json_object_get_string(created);
@@ -256,7 +256,7 @@ static void list_files_request_worker(uv_work_t *work)
     }
 
     if (num_files > 0) {
-        req->files = malloc(sizeof(storj_file_meta_t) * num_files);
+        req->files = malloc(sizeof(genaro_file_meta_t) * num_files);
         req->total_files = num_files;
     }
 
@@ -268,7 +268,7 @@ static void list_files_request_worker(uv_work_t *work)
 
     uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
-        req->error_code = STORJ_MEMORY_ERROR;
+        req->error_code = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -299,7 +299,7 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_object_get_ex(file, "id", &id);
         json_object_object_get_ex(file, "created", &created);
 
-        storj_file_meta_t *file = &req->files[i];
+        genaro_file_meta_t *file = &req->files[i];
 
         file->created = json_object_get_string(created);
         file->mimetype = json_object_get_string(mimetype);
@@ -339,8 +339,8 @@ static uv_work_t *uv_work_new()
 }
 
 static json_request_t *json_request_new(
-    storj_http_options_t *http_options,
-    storj_bridge_options_t *options,
+    genaro_http_options_t *http_options,
+    genaro_bridge_options_t *options,
     char *method,
     char *path,
     struct json_object *request_body,
@@ -368,9 +368,9 @@ static json_request_t *json_request_new(
 }
 
 static list_files_request_t *list_files_request_new(
-    storj_http_options_t *http_options,
-    storj_bridge_options_t *options,
-    storj_encrypt_options_t *encrypt_options,
+    genaro_http_options_t *http_options,
+    genaro_bridge_options_t *options,
+    genaro_encrypt_options_t *encrypt_options,
     const char *bucket_id,
     char *method,
     char *path,
@@ -402,9 +402,9 @@ static list_files_request_t *list_files_request_new(
 }
 
 static create_bucket_request_t *create_bucket_request_new(
-    storj_http_options_t *http_options,
-    storj_bridge_options_t *bridge_options,
-    storj_encrypt_options_t *encrypt_options,
+    genaro_http_options_t *http_options,
+    genaro_bridge_options_t *bridge_options,
+    genaro_encrypt_options_t *encrypt_options,
     const char *bucket_name,
     void *handle)
 {
@@ -428,9 +428,9 @@ static create_bucket_request_t *create_bucket_request_new(
 }
 
 static get_buckets_request_t *get_buckets_request_new(
-    storj_http_options_t *http_options,
-    storj_bridge_options_t *options,
-    storj_encrypt_options_t *encrypt_options,
+    genaro_http_options_t *http_options,
+    genaro_bridge_options_t *options,
+    genaro_encrypt_options_t *encrypt_options,
     char *method,
     char *path,
     struct json_object *request_body,
@@ -460,9 +460,9 @@ static get_buckets_request_t *get_buckets_request_new(
 }
 
 static get_bucket_request_t *get_bucket_request_new(
-        storj_http_options_t *http_options,
-        storj_bridge_options_t *options,
-        storj_encrypt_options_t *encrypt_options,
+        genaro_http_options_t *http_options,
+        genaro_bridge_options_t *options,
+        genaro_encrypt_options_t *encrypt_options,
         char *method,
         char *path,
         struct json_object *request_body,
@@ -491,7 +491,7 @@ static get_bucket_request_t *get_bucket_request_new(
 }
 
 static uv_work_t *json_request_work_new(
-    storj_env_t *env,
+    genaro_env_t *env,
     char *method,
     char *path,
     struct json_object *request_body,
@@ -520,7 +520,7 @@ static void default_logger(const char *message,
     puts(message);
 }
 
-static void log_formatter(storj_log_options_t *options,
+static void log_formatter(genaro_log_options_t *options,
                           void *handle,
                           int level,
                           const char *format,
@@ -539,7 +539,7 @@ static void log_formatter(storj_log_options_t *options,
     }
 }
 
-static void log_formatter_debug(storj_log_options_t *options, void *handle,
+static void log_formatter_debug(genaro_log_options_t *options, void *handle,
                                 const char *format, ...)
 {
     va_list args;
@@ -548,7 +548,7 @@ static void log_formatter_debug(storj_log_options_t *options, void *handle,
     va_end(args);
 }
 
-static void log_formatter_info(storj_log_options_t *options, void *handle,
+static void log_formatter_info(genaro_log_options_t *options, void *handle,
                                const char *format, ...)
 {
     va_list args;
@@ -557,7 +557,7 @@ static void log_formatter_info(storj_log_options_t *options, void *handle,
     va_end(args);
 }
 
-static void log_formatter_warn(storj_log_options_t *options, void *handle,
+static void log_formatter_warn(genaro_log_options_t *options, void *handle,
                                const char *format, ...)
 {
     va_list args;
@@ -566,7 +566,7 @@ static void log_formatter_warn(storj_log_options_t *options, void *handle,
     va_end(args);
 }
 
-static void log_formatter_error(storj_log_options_t *options, void *handle,
+static void log_formatter_error(genaro_log_options_t *options, void *handle,
                                 const char *format, ...)
 {
     va_list args;
@@ -575,10 +575,10 @@ static void log_formatter_error(storj_log_options_t *options, void *handle,
     va_end(args);
 }
 
-STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
-                                 storj_encrypt_options_t *encrypt_options,
-                                 storj_http_options_t *http_options,
-                                 storj_log_options_t *log_options)
+GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
+                                 genaro_encrypt_options_t *encrypt_options,
+                                 genaro_http_options_t *http_options,
+                                 genaro_log_options_t *log_options)
 {
     curl_global_init(CURL_GLOBAL_ALL);
 
@@ -587,7 +587,7 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
         return NULL;
     }
 
-    storj_env_t *env = malloc(sizeof(storj_env_t));
+    genaro_env_t *env = malloc(sizeof(genaro_env_t));
     if (!env) {
         return NULL;
     }
@@ -596,7 +596,7 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
     env->loop = loop;
 
     // deep copy bridge options
-    storj_bridge_options_t *bo = malloc(sizeof(storj_bridge_options_t));
+    genaro_bridge_options_t *bo = malloc(sizeof(genaro_bridge_options_t));
     if (!bo) {
         return NULL;
     }
@@ -676,7 +676,7 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
     env->bridge_options = bo;
 
     // deep copy encryption options
-    storj_encrypt_options_t *eo = malloc(sizeof(storj_encrypt_options_t));
+    genaro_encrypt_options_t *eo = malloc(sizeof(genaro_encrypt_options_t));
     if (!eo) {
         return NULL;
     }
@@ -737,10 +737,10 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
         stat(env->tmp_path, &sb) == 0 &&
         S_ISDIR(sb.st_mode)) {
         env->tmp_path = strdup(env->tmp_path);
-    } else if (getenv("STORJ_TEMP") &&
-               stat(getenv("STORJ_TEMP"), &sb) == 0 &&
+    } else if (getenv("GENARO_TEMP") &&
+               stat(getenv("GENARO_TEMP"), &sb) == 0 &&
                S_ISDIR(sb.st_mode)) {
-        env->tmp_path = strdup(getenv("STORJ_TEMP"));
+        env->tmp_path = strdup(getenv("GENARO_TEMP"));
 #ifdef _WIN32
     } else if (getenv("TEMP") &&
                stat(getenv("TEMP"), &sb) == 0 &&
@@ -755,7 +755,7 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
     }
 
     // deep copy the http options
-    storj_http_options_t *ho = malloc(sizeof(storj_http_options_t));
+    genaro_http_options_t *ho = malloc(sizeof(genaro_http_options_t));
     if (!ho) {
         return NULL;
     }
@@ -773,10 +773,10 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
     ho->low_speed_limit = http_options->low_speed_limit;
     ho->low_speed_time = http_options->low_speed_time;
     if (http_options->timeout == 0 ||
-        http_options->timeout >= STORJ_HTTP_TIMEOUT) {
+        http_options->timeout >= GENARO_HTTP_TIMEOUT) {
         ho->timeout = http_options->timeout;
     } else {
-        ho->timeout = STORJ_HTTP_TIMEOUT;
+        ho->timeout = GENARO_HTTP_TIMEOUT;
     }
 
     env->http_options = ho;
@@ -787,15 +787,15 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
         env->log_options->logger = default_logger;
     }
 
-    storj_log_levels_t *log = malloc(sizeof(storj_log_levels_t));
+    genaro_log_levels_t *log = malloc(sizeof(genaro_log_levels_t));
     if (!log) {
         return NULL;
     }
 
-    log->debug = (storj_logger_format_fn)noop;
-    log->info = (storj_logger_format_fn)noop;
-    log->warn = (storj_logger_format_fn)noop;
-    log->error = (storj_logger_format_fn)noop;
+    log->debug = (genaro_logger_format_fn)noop;
+    log->info = (genaro_logger_format_fn)noop;
+    log->warn = (genaro_logger_format_fn)noop;
+    log->error = (genaro_logger_format_fn)noop;
 
     switch(log_options->level) {
         case 4:
@@ -815,7 +815,7 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
     return env;
 }
 
-STORJ_API int storj_destroy_env(storj_env_t *env)
+GENARO_API int genaro_destroy_env(genaro_env_t *env)
 {
     int status = 0;
 
@@ -898,7 +898,7 @@ STORJ_API int storj_destroy_env(storj_env_t *env)
     return status;
 }
 
-STORJ_API int storj_encrypt_auth(const char *passphrase,
+GENARO_API int genaro_encrypt_auth(const char *passphrase,
                        const char *bridge_user,
                        const char *bridge_pass,
                        const char *mnemonic,
@@ -942,7 +942,7 @@ STORJ_API int storj_encrypt_auth(const char *passphrase,
     return 0;
 }
 
-STORJ_API int storj_encrypt_write_auth(const char *filepath,
+GENARO_API int genaro_encrypt_write_auth(const char *filepath,
                              const char *passphrase,
                              const char *bridge_user,
                              const char *bridge_pass,
@@ -955,7 +955,7 @@ STORJ_API int storj_encrypt_write_auth(const char *filepath,
     }
 
     char *buffer = NULL;
-    if (storj_encrypt_auth(passphrase, bridge_user,
+    if (genaro_encrypt_auth(passphrase, bridge_user,
                            bridge_pass, mnemonic, &buffer)) {
         fclose(fp);
         return 1;
@@ -970,7 +970,7 @@ STORJ_API int storj_encrypt_write_auth(const char *filepath,
     return 0;
 }
 
-STORJ_API int storj_decrypt_auth(const char *buffer,
+GENARO_API int genaro_decrypt_auth(const char *buffer,
                        const char *passphrase,
                        char **bridge_user,
                        char **bridge_pass,
@@ -1018,7 +1018,7 @@ clean_up:
     return status;
 }
 
-STORJ_API int storj_decrypt_read_auth(const char *filepath,
+GENARO_API int genaro_decrypt_read_auth(const char *filepath,
                             const char *passphrase,
                             char **bridge_user,
                             char **bridge_pass,
@@ -1054,7 +1054,7 @@ STORJ_API int storj_decrypt_read_auth(const char *filepath,
         return error;
     }
 
-    int status = storj_decrypt_auth(buffer, passphrase, bridge_user,
+    int status = genaro_decrypt_auth(buffer, passphrase, bridge_user,
                                     bridge_pass, mnemonic);
 
     free(buffer);
@@ -1063,127 +1063,127 @@ STORJ_API int storj_decrypt_read_auth(const char *filepath,
 
 }
 
-STORJ_API uint64_t storj_util_timestamp()
+GENARO_API uint64_t genaro_util_timestamp()
 {
     return get_time_milliseconds();
 }
 
-STORJ_API int storj_mnemonic_generate(int strength, char **buffer)
+GENARO_API int genaro_mnemonic_generate(int strength, char **buffer)
 {
     return mnemonic_generate(strength, buffer);
 }
 
-STORJ_API bool storj_mnemonic_check(const char *mnemonic)
+GENARO_API bool genaro_mnemonic_check(const char *mnemonic)
 {
     return mnemonic_check(mnemonic);
 }
 
-STORJ_API char *storj_strerror(int error_code)
+GENARO_API char *genaro_strerror(int error_code)
 {
     switch(error_code) {
-        case STORJ_BRIDGE_REQUEST_ERROR:
+        case GENARO_BRIDGE_REQUEST_ERROR:
             return "Bridge request error";
-        case STORJ_BRIDGE_AUTH_ERROR:
+        case GENARO_BRIDGE_AUTH_ERROR:
             return "Bridge request authorization error";
-        case STORJ_BRIDGE_TOKEN_ERROR:
+        case GENARO_BRIDGE_TOKEN_ERROR:
             return "Bridge request token error";
-        case STORJ_BRIDGE_POINTER_ERROR:
+        case GENARO_BRIDGE_POINTER_ERROR:
             return "Bridge request pointer error";
-        case STORJ_BRIDGE_REPOINTER_ERROR:
+        case GENARO_BRIDGE_REPOINTER_ERROR:
             return "Bridge request replace pointer error";
-        case STORJ_BRIDGE_TIMEOUT_ERROR:
+        case GENARO_BRIDGE_TIMEOUT_ERROR:
             return "Bridge request timeout error";
-        case STORJ_BRIDGE_INTERNAL_ERROR:
+        case GENARO_BRIDGE_INTERNAL_ERROR:
             return "Bridge request internal error";
-        case STORJ_BRIDGE_RATE_ERROR:
+        case GENARO_BRIDGE_RATE_ERROR:
             return "Bridge rate limit error";
-        case STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR:
+        case GENARO_BRIDGE_BUCKET_NOTFOUND_ERROR:
             return "Bucket is not found";
-        case STORJ_BRIDGE_FILE_NOTFOUND_ERROR:
+        case GENARO_BRIDGE_FILE_NOTFOUND_ERROR:
             return "File is not found";
-        case STORJ_BRIDGE_BUCKET_FILE_EXISTS:
+        case GENARO_BRIDGE_BUCKET_FILE_EXISTS:
             return "File already exists";
-        case STORJ_BRIDGE_OFFER_ERROR:
+        case GENARO_BRIDGE_OFFER_ERROR:
             return "Unable to receive storage offer";
-        case STORJ_BRIDGE_JSON_ERROR:
+        case GENARO_BRIDGE_JSON_ERROR:
             return "Unexpected JSON response";
-        case STORJ_BRIDGE_FILEINFO_ERROR:
+        case GENARO_BRIDGE_FILEINFO_ERROR:
             return "Bridge file info error";
-        case STORJ_FARMER_REQUEST_ERROR:
+        case GENARO_FARMER_REQUEST_ERROR:
             return "Farmer request error";
-        case STORJ_FARMER_EXHAUSTED_ERROR:
+        case GENARO_FARMER_EXHAUSTED_ERROR:
             return "Farmer exhausted error";
-        case STORJ_FARMER_TIMEOUT_ERROR:
+        case GENARO_FARMER_TIMEOUT_ERROR:
             return "Farmer request timeout error";
-        case STORJ_FARMER_AUTH_ERROR:
+        case GENARO_FARMER_AUTH_ERROR:
             return "Farmer request authorization error";
-        case STORJ_FARMER_INTEGRITY_ERROR:
+        case GENARO_FARMER_INTEGRITY_ERROR:
             return "Farmer request integrity error";
-        case STORJ_FILE_INTEGRITY_ERROR:
+        case GENARO_FILE_INTEGRITY_ERROR:
             return "File integrity error";
-        case STORJ_FILE_READ_ERROR:
+        case GENARO_FILE_READ_ERROR:
             return "File read error";
-        case STORJ_FILE_WRITE_ERROR:
+        case GENARO_FILE_WRITE_ERROR:
             return "File write error";
-        case STORJ_BRIDGE_FRAME_ERROR:
+        case GENARO_BRIDGE_FRAME_ERROR:
             return "Bridge frame request error";
-        case STORJ_FILE_ENCRYPTION_ERROR:
+        case GENARO_FILE_ENCRYPTION_ERROR:
             return "File encryption error";
-        case STORJ_FILE_SIZE_ERROR:
+        case GENARO_FILE_SIZE_ERROR:
             return "File size error";
-        case STORJ_FILE_DECRYPTION_ERROR:
+        case GENARO_FILE_DECRYPTION_ERROR:
             return "File decryption error";
-        case STORJ_FILE_GENERATE_HMAC_ERROR:
+        case GENARO_FILE_GENERATE_HMAC_ERROR:
             return "File hmac generation error";
-        case STORJ_FILE_SHARD_MISSING_ERROR:
+        case GENARO_FILE_SHARD_MISSING_ERROR:
             return "File missing shard error";
-        case STORJ_FILE_RECOVER_ERROR:
+        case GENARO_FILE_RECOVER_ERROR:
             return "File recover error";
-        case STORJ_FILE_RESIZE_ERROR:
+        case GENARO_FILE_RESIZE_ERROR:
             return "File resize error";
-        case STORJ_FILE_UNSUPPORTED_ERASURE:
+        case GENARO_FILE_UNSUPPORTED_ERASURE:
             return "File unsupported erasure code error";
-        case STORJ_FILE_PARITY_ERROR:
+        case GENARO_FILE_PARITY_ERROR:
             return "File create parity error";
-        case STORJ_META_ENCRYPTION_ERROR:
+        case GENARO_META_ENCRYPTION_ERROR:
             return "Meta encryption error";
-        case STORJ_META_DECRYPTION_ERROR:
+        case GENARO_META_DECRYPTION_ERROR:
             return "Meta decryption error";
-        case STORJ_TRANSFER_CANCELED:
+        case GENARO_TRANSFER_CANCELED:
             return "File transfer canceled";
-        case STORJ_MEMORY_ERROR:
+        case GENARO_MEMORY_ERROR:
             return "Memory error";
-        case STORJ_MAPPING_ERROR:
+        case GENARO_MAPPING_ERROR:
             return "Memory mapped file error";
-        case STORJ_UNMAPPING_ERROR:
+        case GENARO_UNMAPPING_ERROR:
             return "Memory mapped file unmap error";
-        case STORJ_QUEUE_ERROR:
+        case GENARO_QUEUE_ERROR:
             return "Queue error";
-        case STORJ_HEX_DECODE_ERROR:
+        case GENARO_HEX_DECODE_ERROR:
             return "Unable to decode hex string";
-        case STORJ_TRANSFER_OK:
+        case GENARO_TRANSFER_OK:
             return "No errors";
         default:
             return "Unknown error";
     }
 }
 
-STORJ_API int storj_bridge_get_info(storj_env_t *env, void *handle, uv_after_work_cb cb)
+GENARO_API int genaro_bridge_get_info(genaro_env_t *env, void *handle, uv_after_work_cb cb)
 {
     uv_work_t *work = json_request_work_new(env,"GET", "/", NULL,
                                             false, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb)
+GENARO_API int genaro_bridge_get_buckets(genaro_env_t *env, void *handle, uv_after_work_cb cb)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
     work->data = get_buckets_request_new(env->http_options,
                                          env->bridge_options,
@@ -1191,14 +1191,14 @@ STORJ_API int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_
                                          "GET", "/buckets",
                                          NULL, true, handle);
     if (!work->data) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work,
                          get_buckets_request_worker, cb);
 }
 
-STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
+GENARO_API void genaro_free_get_buckets_request(get_buckets_request_t *req)
 {
     json_object_put(req->response);
     if (req->buckets && req->total_buckets > 0) {
@@ -1210,14 +1210,14 @@ STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
     free(req);
 }
 
-STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
+GENARO_API int genaro_bridge_create_bucket(genaro_env_t *env,
                                const char *name,
                                void *handle,
                                uv_after_work_cb cb)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     work->data = create_bucket_request_new(env->http_options,
@@ -1226,45 +1226,45 @@ STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
                                            name,
                                            handle);
     if (!work->data) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work,
                          create_bucket_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
+GENARO_API int genaro_bridge_delete_bucket(genaro_env_t *env,
                                const char *id,
                                void *handle,
                                uv_after_work_cb cb)
 {
     char *path = str_concat_many(2, "/buckets/", id);
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = json_request_work_new(env, "DELETE", path,
                                             NULL, true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
+GENARO_API int genaro_bridge_get_bucket(genaro_env_t *env,
                                       const char *id,
                                       void *handle,
                                       uv_after_work_cb cb)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     char *path = str_concat_many(2, "/buckets/", id);
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     work->data = get_bucket_request_new(env->http_options,
@@ -1273,13 +1273,13 @@ STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
                                         "GET", path,
                                         NULL, true, handle);
     if (!work->data) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, get_bucket_request_worker, cb);
 }
 
-STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
+GENARO_API void genaro_free_get_bucket_request(get_bucket_request_t *req)
 {
     json_object_put(req->response);
     free(req->path);
@@ -1290,19 +1290,19 @@ STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
     free(req);
 }
 
-STORJ_API int storj_bridge_list_files(storj_env_t *env,
+GENARO_API int genaro_bridge_list_files(genaro_env_t *env,
                             const char *id,
                             void *handle,
                             uv_after_work_cb cb)
 {
     char *path = str_concat_many(3, "/buckets/", id, "/files");
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = uv_work_new();
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
     work->data = list_files_request_new(env->http_options,
                                         env->bridge_options,
@@ -1311,14 +1311,14 @@ STORJ_API int storj_bridge_list_files(storj_env_t *env,
                                         NULL, true, handle);
 
     if (!work->data) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work,
                          list_files_request_worker, cb);
 }
 
-STORJ_API void storj_free_list_files_request(list_files_request_t *req)
+GENARO_API void genaro_free_list_files_request(list_files_request_t *req)
 {
     json_object_put(req->response);
     free(req->path);
@@ -1331,9 +1331,9 @@ STORJ_API void storj_free_list_files_request(list_files_request_t *req)
     free(req);
 }
 
-STORJ_API int storj_bridge_create_bucket_token(storj_env_t *env,
+GENARO_API int genaro_bridge_create_bucket_token(genaro_env_t *env,
                                      const char *bucket_id,
-                                     storj_bucket_op_t operation,
+                                     genaro_bucket_op_t operation,
                                      void *handle,
                                      uv_after_work_cb cb)
 {
@@ -1344,19 +1344,19 @@ STORJ_API int storj_bridge_create_bucket_token(storj_env_t *env,
 
     char *path = str_concat_many(3, "/buckets/", bucket_id, "/tokens");
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = json_request_work_new(env, "POST", path, body,
                                             true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_get_file_pointers(storj_env_t *env,
+GENARO_API int genaro_bridge_get_file_pointers(genaro_env_t *env,
                                    const char *bucket_id,
                                    const char *file_id,
                                    void *handle,
@@ -1364,19 +1364,19 @@ STORJ_API int storj_bridge_get_file_pointers(storj_env_t *env,
 {
     char *path = str_concat_many(4, "/buckets/", bucket_id, "/files/", file_id);
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_delete_file(storj_env_t *env,
+GENARO_API int genaro_bridge_delete_file(genaro_env_t *env,
                              const char *bucket_id,
                              const char *file_id,
                              void *handle,
@@ -1384,84 +1384,84 @@ STORJ_API int storj_bridge_delete_file(storj_env_t *env,
 {
     char *path = str_concat_many(4, "/buckets/", bucket_id, "/files/", file_id);
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = json_request_work_new(env, "DELETE", path, NULL,
                                             true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_create_frame(storj_env_t *env,
+GENARO_API int genaro_bridge_create_frame(genaro_env_t *env,
                               void *handle,
                               uv_after_work_cb cb)
 {
     uv_work_t *work = json_request_work_new(env, "POST", "/frames", NULL,
                                             true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_get_frames(storj_env_t *env,
+GENARO_API int genaro_bridge_get_frames(genaro_env_t *env,
                             void *handle,
                             uv_after_work_cb cb)
 {
     uv_work_t *work = json_request_work_new(env, "GET", "/frames", NULL,
                                             true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_get_frame(storj_env_t *env,
+GENARO_API int genaro_bridge_get_frame(genaro_env_t *env,
                            const char *frame_id,
                            void *handle,
                            uv_after_work_cb cb)
 {
     char *path = str_concat_many(2, "/frames/", frame_id);
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 
 }
 
-STORJ_API int storj_bridge_delete_frame(storj_env_t *env,
+GENARO_API int genaro_bridge_delete_frame(genaro_env_t *env,
                               const char *frame_id,
                               void *handle,
                               uv_after_work_cb cb)
 {
     char *path = str_concat_many(2, "/frames/", frame_id);
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = json_request_work_new(env, "DELETE", path, NULL,
                                             true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
+GENARO_API int genaro_bridge_get_file_info(genaro_env_t *env,
                                const char *bucket_id,
                                const char *file_id,
                                void *handle,
@@ -1470,19 +1470,19 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
     char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
                                  file_id, "/info");
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_list_mirrors(storj_env_t *env,
+GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
                               const char *bucket_id,
                               const char *file_id,
                               void *handle,
@@ -1491,19 +1491,19 @@ STORJ_API int storj_bridge_list_mirrors(storj_env_t *env,
     char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
                                  file_id, "/mirrors");
     if (!path) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                            true, handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-STORJ_API int storj_bridge_register(storj_env_t *env,
+GENARO_API int genaro_bridge_register(genaro_env_t *env,
                           const char *email,
                           const char *password,
                           void *handle,
@@ -1514,7 +1514,7 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
 
     char *hex_str = hex2str(SHA256_DIGEST_SIZE, sha256_digest);
     if (!hex_str) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
 
     struct json_object *body = json_object_new_object();
@@ -1527,7 +1527,7 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
     uv_work_t *work = json_request_work_new(env, "POST", "/users", body, true,
                                             handle);
     if (!work) {
-        return STORJ_MEMORY_ERROR;
+        return GENARO_MEMORY_ERROR;
     }
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }

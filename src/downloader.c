@@ -1,6 +1,6 @@
 #include "downloader.h"
 
-static void free_exchange_report(storj_exchange_report_t *report)
+static void free_exchange_report(genaro_exchange_report_t *report)
 {
     free(report->data_hash);
     free(report->reporter_id);
@@ -9,10 +9,10 @@ static void free_exchange_report(storj_exchange_report_t *report)
     free(report);
 }
 
-static void free_download_state(storj_download_state_t *state)
+static void free_download_state(genaro_download_state_t *state)
 {
     for (int i = 0; i < state->total_pointers; i++) {
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
 
         free(pointer->token);
         free(pointer->shard_hash);
@@ -55,7 +55,7 @@ static void free_download_state(storj_download_state_t *state)
 static void request_pointers(uv_work_t *work)
 {
     json_request_download_t *req = work->data;
-    storj_download_state_t *state = req->state;
+    genaro_download_state_t *state = req->state;
 
     int status_code = 0;
     int request_status = fetch_json(req->http_options, req->options, req->method,
@@ -79,7 +79,7 @@ static void request_pointers(uv_work_t *work)
 static void request_replace_pointer(uv_work_t *work)
 {
     json_request_replace_pointer_t *req = work->data;
-    storj_download_state_t *state = req->state;
+    genaro_download_state_t *state = req->state;
 
     int status_code = 0;
 
@@ -95,7 +95,7 @@ static void request_replace_pointer(uv_work_t *work)
         strlen(req->file_id) + strlen(query_args);
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -124,13 +124,13 @@ static void request_replace_pointer(uv_work_t *work)
 
 }
 
-static void set_pointer_from_json(storj_download_state_t *state,
-                                  storj_pointer_t *p,
+static void set_pointer_from_json(genaro_download_state_t *state,
+                                  genaro_pointer_t *p,
                                   struct json_object *json,
                                   bool is_replaced)
 {
     if (!json_object_is_type(json, json_type_object)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        state->error_status = GENARO_BRIDGE_JSON_ERROR;
         return;
     }
 
@@ -142,14 +142,14 @@ static void set_pointer_from_json(storj_download_state_t *state,
 
     struct json_object *hash_value;
     if (!json_object_object_get_ex(json, "hash", &hash_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        state->error_status = GENARO_BRIDGE_JSON_ERROR;
         return;
     }
     char *hash = (char *)json_object_get_string(hash_value);
 
     struct json_object *size_value;
     if (!json_object_object_get_ex(json, "size", &size_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        state->error_status = GENARO_BRIDGE_JSON_ERROR;
         return;
     }
     uint64_t size = json_object_get_int64(size_value);
@@ -162,7 +162,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
 
     struct json_object *index_value;
     if (!json_object_object_get_ex(json, "index", &index_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        state->error_status = GENARO_BRIDGE_JSON_ERROR;
         return;
     }
     uint32_t index = json_object_get_int(index_value);
@@ -177,14 +177,14 @@ static void set_pointer_from_json(storj_download_state_t *state,
         struct json_object *address_value;
         if (!json_object_object_get_ex(farmer_value, "address",
                                        &address_value)) {
-            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            state->error_status = GENARO_BRIDGE_JSON_ERROR;
             return;
         }
         address = (char *)json_object_get_string(address_value);
 
         struct json_object *port_value;
         if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
-            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            state->error_status = GENARO_BRIDGE_JSON_ERROR;
             return;
         }
         port = json_object_get_int(port_value);
@@ -192,7 +192,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
         struct json_object *farmer_id_value;
         if (!json_object_object_get_ex(farmer_value, "nodeID",
                                        &farmer_id_value)) {
-            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            state->error_status = GENARO_BRIDGE_JSON_ERROR;
             return;
         }
         farmer_id = (char *)json_object_get_string(farmer_id_value);
@@ -253,10 +253,10 @@ static void set_pointer_from_json(storj_download_state_t *state,
         free_exchange_report(p->report);
     }
     p->report = malloc(
-        sizeof(storj_exchange_report_t));
+        sizeof(genaro_exchange_report_t));
 
     if (!p->report) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -275,8 +275,8 @@ static void set_pointer_from_json(storj_download_state_t *state,
     // these values will be changed in after_request_shard
     p->report->start = 0;
     p->report->end = 0;
-    p->report->code = STORJ_REPORT_FAILURE;
-    p->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+    p->report->code = GENARO_REPORT_FAILURE;
+    p->report->message = GENARO_REPORT_DOWNLOAD_ERROR;
 
     p->work = NULL;
 
@@ -290,7 +290,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
     };
 }
 
-static void append_pointers_to_state(storj_download_state_t *state,
+static void append_pointers_to_state(genaro_download_state_t *state,
                                      struct json_object *res)
 {
     int length = json_object_array_length(res);
@@ -307,12 +307,12 @@ static void append_pointers_to_state(storj_download_state_t *state,
 
         if (state->total_pointers > 0) {
             state->pointers = realloc(state->pointers,
-                                      total_pointers * sizeof(storj_pointer_t));
+                                      total_pointers * sizeof(genaro_pointer_t));
         } else {
-            state->pointers = malloc(length * sizeof(storj_pointer_t) * 100);
+            state->pointers = malloc(length * sizeof(genaro_pointer_t) * 100);
         }
         if (!state->pointers) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             return;
         }
 
@@ -329,7 +329,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
             set_pointer_from_json(state, &state->pointers[j], json, false);
 
             // Keep track of the number of data and parity pointers
-            storj_pointer_t *pointer = &state->pointers[j];
+            genaro_pointer_t *pointer = &state->pointers[j];
             if (pointer->parity) {
                 state->total_parity_pointers += 1;
             }
@@ -341,7 +341,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
 static void after_request_pointers(uv_work_t *work, int status)
 {
     json_request_download_t *req = work->data;
-    storj_download_state_t *state = req->state;
+    genaro_download_state_t *state = req->state;
 
     state->pending_work_count--;
     state->requesting_pointers = false;
@@ -354,15 +354,15 @@ static void after_request_pointers(uv_work_t *work, int status)
 
     if (status != 0)  {
 
-        state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        state->error_status = GENARO_BRIDGE_POINTER_ERROR;
 
     } else if (req->status_code == 429 || req->status_code == 420) {
 
-        state->error_status = STORJ_BRIDGE_RATE_ERROR;
+        state->error_status = GENARO_BRIDGE_RATE_ERROR;
 
     } else if (req->status_code != 200) {
         if (req->status_code > 0 && req->status_code < 500) {
-            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+            state->error_status = GENARO_BRIDGE_POINTER_ERROR;
         } else {
             state->pointer_fail_count += 1;
         }
@@ -371,13 +371,13 @@ static void after_request_pointers(uv_work_t *work, int status)
                           "Request pointers fail count: %i",
                           state->pointer_fail_count);
 
-        if (state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
+        if (state->pointer_fail_count >= GENARO_MAX_POINTER_TRIES) {
             state->pointer_fail_count = 0;
-            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+            state->error_status = GENARO_BRIDGE_POINTER_ERROR;
         }
 
     } else if (!json_object_is_type(req->response, json_type_array)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        state->error_status = GENARO_BRIDGE_JSON_ERROR;
     } else {
         append_pointers_to_state(state, req->response);
     }
@@ -395,7 +395,7 @@ static void after_request_pointers(uv_work_t *work, int status)
 static void after_request_replace_pointer(uv_work_t *work, int status)
 {
     json_request_replace_pointer_t *req = work->data;
-    storj_download_state_t *state = req->state;
+    genaro_download_state_t *state = req->state;
 
     state->pending_work_count--;
     state->requesting_pointers = false;
@@ -407,7 +407,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
     if (status != 0) {
 
-        state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
+        state->error_status = GENARO_BRIDGE_REPOINTER_ERROR;
 
     } else if (req->error_status) {
 
@@ -415,7 +415,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
     } else if (req->status_code == 429 || req->status_code == 420) {
 
-        state->error_status = STORJ_BRIDGE_RATE_ERROR;
+        state->error_status = GENARO_BRIDGE_RATE_ERROR;
 
     } else if (req->status_code != 200) {
 
@@ -431,14 +431,14 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
                           "Request replace pointer fail count: %i",
                           state->pointer_fail_count);
 
-        if (state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
+        if (state->pointer_fail_count >= GENARO_MAX_POINTER_TRIES) {
             // Skip retrying mark as missing
             state->pointer_fail_count = 0;
             state->pointers[req->pointer_index].status = POINTER_MISSING;
         }
 
     } else if (!json_object_is_type(req->response, json_type_array)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        state->error_status = GENARO_BRIDGE_JSON_ERROR;
     } else {
         struct json_object *json = json_object_array_get_idx(req->response, 0);
 
@@ -455,7 +455,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
                               state->pointers[req->pointer_index].index,
                               req->pointer_index);
 
-            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            state->error_status = GENARO_BRIDGE_JSON_ERROR;
         }
     }
 
@@ -466,7 +466,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     free(work);
 }
 
-static void queue_request_pointers(storj_download_state_t *state)
+static void queue_request_pointers(genaro_download_state_t *state)
 {
     if (state->requesting_pointers || state->canceled) {
         return;
@@ -475,9 +475,9 @@ static void queue_request_pointers(storj_download_state_t *state)
     // queue request to replace pointer if any pointers have failure
     for (int i = 0; i < state->total_pointers; i++) {
 
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
 
-        if (pointer->replace_count >= STORJ_DEFAULT_MIRRORS) {
+        if (pointer->replace_count >= GENARO_DEFAULT_MIRRORS) {
             state->log->warn(state->env->log_options,
                              state->handle,
                              "Unable to download shard %s at index %i",
@@ -499,7 +499,7 @@ static void queue_request_pointers(storj_download_state_t *state)
             if (!state->excluded_farmer_ids) {
                 state->excluded_farmer_ids = calloc(42, sizeof(char));
                 if (!state->excluded_farmer_ids) {
-                    state->error_status = STORJ_MEMORY_ERROR;
+                    state->error_status = GENARO_MEMORY_ERROR;
                     return;
                 }
                 strcat(state->excluded_farmer_ids, pointer->report->farmer_id);
@@ -508,7 +508,7 @@ static void queue_request_pointers(storj_download_state_t *state)
                     realloc(state->excluded_farmer_ids,
                             strlen(state->excluded_farmer_ids) + 42);
                 if (!state->excluded_farmer_ids) {
-                    state->error_status = STORJ_MEMORY_ERROR;
+                    state->error_status = GENARO_MEMORY_ERROR;
                     return;
                 }
                 strcat(state->excluded_farmer_ids, ",");
@@ -518,7 +518,7 @@ static void queue_request_pointers(storj_download_state_t *state)
             json_request_replace_pointer_t *req =
                 malloc(sizeof(json_request_replace_pointer_t));
             if (!req) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
 
@@ -536,7 +536,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
             if (!work) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
             work->data = req;
@@ -553,7 +553,7 @@ static void queue_request_pointers(storj_download_state_t *state)
                                        after_request_replace_pointer);
 
             if (status) {
-                state->error_status = STORJ_QUEUE_ERROR;
+                state->error_status = GENARO_QUEUE_ERROR;
                 return;
             }
 
@@ -573,7 +573,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
     json_request_download_t *req = malloc(sizeof(json_request_download_t));
     if (!req) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -586,7 +586,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
     strcat(path, "/buckets/");
@@ -606,7 +606,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
     uv_work_t *work = malloc(sizeof(uv_work_t));
     if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
     work->data = req;
@@ -621,7 +621,7 @@ static void queue_request_pointers(storj_download_state_t *state)
                                request_pointers, after_request_pointers);
 
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
         return;
     }
 
@@ -667,13 +667,13 @@ static void request_shard(uv_work_t *work)
         switch(status_code) {
             case 401:
             case 403:
-                req->error_status = STORJ_FARMER_AUTH_ERROR;
+                req->error_status = GENARO_FARMER_AUTH_ERROR;
                 break;
             case 504:
-                req->error_status = STORJ_FARMER_TIMEOUT_ERROR;
+                req->error_status = GENARO_FARMER_TIMEOUT_ERROR;
                 break;
             default:
-                req->error_status = STORJ_FARMER_REQUEST_ERROR;
+                req->error_status = GENARO_FARMER_REQUEST_ERROR;
         }
     } else {
         req->error_status = 0;
@@ -689,12 +689,12 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
     free(work);
 }
 
-static uint64_t calculate_data_filesize(storj_download_state_t *state)
+static uint64_t calculate_data_filesize(genaro_download_state_t *state)
 {
     uint64_t total_bytes = 0;
 
     for (int i = 0; i < state->total_pointers; i++) {
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
         if (pointer->parity) {
             continue;
         }
@@ -704,14 +704,14 @@ static uint64_t calculate_data_filesize(storj_download_state_t *state)
     return total_bytes;
 }
 
-static void report_progress(storj_download_state_t *state)
+static void report_progress(genaro_download_state_t *state)
 {
     uint64_t downloaded_bytes = 0;
     uint64_t total_bytes = 0;
 
     for (int i = 0; i < state->total_pointers; i++) {
 
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
 
         downloaded_bytes += pointer->downloaded_size;
         total_bytes += pointer->size;
@@ -741,7 +741,7 @@ static void after_request_shard(uv_work_t *work, int status)
     progress_handle->data = work;
 
     // update the pointer status
-    storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
+    genaro_pointer_t *pointer = &req->state->pointers[req->pointer_index];
 
     pointer->report->start = req->start;
     pointer->report->end = req->end;
@@ -752,17 +752,17 @@ static void after_request_shard(uv_work_t *work, int status)
                               req->state->handle,
                               "Error downloading shard: %s, reason: %s",
                               req->shard_hash,
-                              storj_strerror(req->error_status));
+                              genaro_strerror(req->error_status));
 
         pointer->status = POINTER_ERROR;
 
         switch(req->error_status) {
-            case STORJ_FARMER_INTEGRITY_ERROR:
-                pointer->report->code = STORJ_REPORT_FAILURE;
-                pointer->report->message = STORJ_REPORT_FAILED_INTEGRITY;
+            case GENARO_FARMER_INTEGRITY_ERROR:
+                pointer->report->code = GENARO_REPORT_FAILURE;
+                pointer->report->message = GENARO_REPORT_FAILED_INTEGRITY;
             default:
-                pointer->report->code = STORJ_REPORT_FAILURE;
-                pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+                pointer->report->code = GENARO_REPORT_FAILURE;
+                pointer->report->message = GENARO_REPORT_DOWNLOAD_ERROR;
         }
 
     } else {
@@ -772,8 +772,8 @@ static void after_request_shard(uv_work_t *work, int status)
                               "Finished downloading shard: %s",
                               req->shard_hash);
 
-        pointer->report->code = STORJ_REPORT_SUCCESS;
-        pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
+        pointer->report->code = GENARO_REPORT_SUCCESS;
+        pointer->report->message = GENARO_REPORT_SHARD_DOWNLOADED;
         pointer->status = POINTER_DOWNLOADED;
 
         // Make sure the downloaded size is updated
@@ -793,14 +793,14 @@ static void progress_request_shard(uv_async_t* async)
 {
     shard_download_progress_t *progress = async->data;
 
-    storj_download_state_t *state = progress->state;
+    genaro_download_state_t *state = progress->state;
 
     state->pointers[progress->pointer_index].downloaded_size = progress->bytes;
 
     report_progress(state);
 }
 
-static void queue_request_shards(storj_download_state_t *state)
+static void queue_request_shards(genaro_download_state_t *state)
 {
     if (state->canceled) {
         return;
@@ -811,12 +811,12 @@ static void queue_request_shards(storj_download_state_t *state)
     while (state->resolving_shards < state->download_max_concurrency &&
            i < state->total_pointers) {
 
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->status == POINTER_CREATED) {
             shard_request_download_t *req = malloc(sizeof(shard_request_download_t));
             if (!req) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
 
@@ -838,7 +838,7 @@ static void queue_request_shards(storj_download_state_t *state)
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
             if (!work) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
 
@@ -857,7 +857,7 @@ static void queue_request_shards(storj_download_state_t *state)
             shard_download_progress_t *progress =
                 malloc(sizeof(shard_download_progress_t));
             if (!progress) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
 
@@ -875,7 +875,7 @@ static void queue_request_shards(storj_download_state_t *state)
             int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                        request_shard, after_request_shard);
             if (status) {
-                state->error_status = STORJ_QUEUE_ERROR;
+                state->error_status = GENARO_QUEUE_ERROR;
                 return;
             }
         }
@@ -887,7 +887,7 @@ static void queue_request_shards(storj_download_state_t *state)
 static void send_exchange_report(uv_work_t *work)
 {
     shard_send_report_t *req = work->data;
-    storj_download_state_t *state = req->state;
+    genaro_download_state_t *state = req->state;
 
     struct json_object *body = json_object_new_object();
 
@@ -946,10 +946,10 @@ static void after_send_exchange_report(uv_work_t *work, int status)
     req->state->pending_work_count--;
 
     // set status so that this pointer can be replaced
-    if (req->report->send_count >= STORJ_MAX_REPORT_TRIES ||
+    if (req->report->send_count >= GENARO_MAX_REPORT_TRIES ||
         req->status_code == 201) {
 
-        storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
+        genaro_pointer_t *pointer = &req->state->pointers[req->pointer_index];
 
         if (pointer->status == POINTER_ERROR) {
             pointer->status = POINTER_ERROR_REPORTED;
@@ -970,7 +970,7 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 
 }
 
-static void queue_send_exchange_reports(storj_download_state_t *state)
+static void queue_send_exchange_reports(genaro_download_state_t *state)
 {
 
     if (state->canceled) {
@@ -979,22 +979,22 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
 
     for (int i = 0; i < state->total_pointers; i++) {
 
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->report->send_status < 1 &&
-            pointer->report->send_count < STORJ_MAX_REPORT_TRIES &&
+            pointer->report->send_count < GENARO_MAX_REPORT_TRIES &&
             pointer->report->start > 0 &&
             pointer->report->end > 0) {
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
             if (!work) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
 
             shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
             if (!req) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
 
@@ -1014,35 +1014,35 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
                                        send_exchange_report,
                                        after_send_exchange_report);
             if (status) {
-                state->error_status = STORJ_QUEUE_ERROR;
+                state->error_status = GENARO_QUEUE_ERROR;
                 return;
             }
         }
     }
 }
 
-static void determine_decryption_key_v1(storj_download_state_t *state)
+static void determine_decryption_key_v1(genaro_download_state_t *state)
 {
     uint8_t *index = NULL;
     char *file_key_as_str = NULL;
 
     file_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!file_key_as_str) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
 
     if (generate_file_key(state->env->encrypt_options->mnemonic,
                           state->bucket_id,
                           state->info->index, &file_key_as_str)) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
     file_key_as_str[DETERMINISTIC_KEY_SIZE] = '\0';
 
     uint8_t *decrypt_key = str2hex(strlen(file_key_as_str), file_key_as_str);
     if (!decrypt_key) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
 
@@ -1050,13 +1050,13 @@ static void determine_decryption_key_v1(storj_download_state_t *state)
 
     index = str2hex(strlen(state->info->index), (char *)state->info->index);
     if (!index) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
 
     uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
     if (!decrypt_ctr) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
 
@@ -1072,25 +1072,25 @@ cleanup:
     }
 }
 
-static void determine_decryption_key_v0(storj_download_state_t *state)
+static void determine_decryption_key_v0(genaro_download_state_t *state)
 {
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!file_key) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
     if (generate_file_key(state->env->encrypt_options->mnemonic,
                           state->bucket_id,
                           state->file_id, &file_key)) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
     if (!decrypt_key) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -1104,7 +1104,7 @@ static void determine_decryption_key_v0(storj_download_state_t *state)
 
     uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
     if (!file_id_hash) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
     ripemd160_of_str((uint8_t *)state->file_id,
@@ -1113,7 +1113,7 @@ static void determine_decryption_key_v0(storj_download_state_t *state)
 
     uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
     if (!decrypt_ctr) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
     memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
@@ -1123,7 +1123,7 @@ static void determine_decryption_key_v0(storj_download_state_t *state)
     state->decrypt_ctr = decrypt_ctr;
 }
 
-static void determine_decryption_key(storj_download_state_t *state)
+static void determine_decryption_key(genaro_download_state_t *state)
 {
     if (!state->env->encrypt_options ||
         !state->env->encrypt_options->mnemonic) {
@@ -1149,7 +1149,7 @@ static void after_request_info(uv_work_t *work, int status)
     req->state->requesting_info = false;
 
     if (status != 0) {
-        req->state->error_status = STORJ_BRIDGE_FILEINFO_ERROR;
+        req->state->error_status = GENARO_BRIDGE_FILEINFO_ERROR;
     } else if (req->status_code == 200 || req->status_code == 304) {
         req->state->info = req->info;
         if (req->info->erasure) {
@@ -1157,7 +1157,7 @@ static void after_request_info(uv_work_t *work, int status)
                 req->state->rs = true;
                 req->state->truncated = false;
             } else {
-                req->state->error_status = STORJ_FILE_UNSUPPORTED_ERASURE;
+                req->state->error_status = GENARO_FILE_UNSUPPORTED_ERASURE;
             }
         }
 
@@ -1166,20 +1166,20 @@ static void after_request_info(uv_work_t *work, int status)
 
     } else if (req->error_status) {
         switch(req->error_status) {
-            case STORJ_BRIDGE_REQUEST_ERROR:
-            case STORJ_BRIDGE_INTERNAL_ERROR:
+            case GENARO_BRIDGE_REQUEST_ERROR:
+            case GENARO_BRIDGE_INTERNAL_ERROR:
                 req->state->info_fail_count += 1;
                 break;
             default:
                 req->state->error_status = req->error_status;
                 break;
         }
-        if (req->state->info_fail_count >= STORJ_MAX_INFO_TRIES) {
+        if (req->state->info_fail_count >= GENARO_MAX_INFO_TRIES) {
             req->state->info_fail_count = 0;
             req->state->error_status = req->error_status;
         }
     } else {
-        req->state->error_status = STORJ_BRIDGE_FILEINFO_ERROR;
+        req->state->error_status = GENARO_BRIDGE_FILEINFO_ERROR;
     }
 
     queue_next_work(req->state);
@@ -1192,12 +1192,12 @@ static void after_request_info(uv_work_t *work, int status)
 static void request_info(uv_work_t *work)
 {
     file_info_request_t *req = work->data;
-    storj_download_state_t *state = req->state;
+    genaro_download_state_t *state = req->state;
 
     int path_len = 9 + strlen(req->bucket_id) + 7 + strlen(req->file_id) + 5;
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -1226,13 +1226,13 @@ static void request_info(uv_work_t *work)
                       json_object_to_json_string(response));
 
     if (request_status) {
-        req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+        req->error_status = GENARO_BRIDGE_REQUEST_ERROR;
         state->log->warn(state->env->log_options, state->handle,
                          "Request file info error: %i", request_status);
 
     } else if (status_code == 200 || status_code == 304) {
 
-        req->info = malloc(sizeof(storj_file_meta_t));
+        req->info = malloc(sizeof(genaro_file_meta_t));
         req->info->created = NULL;
         req->info->filename = NULL;
         req->info->mimetype = NULL;
@@ -1316,13 +1316,13 @@ static void request_info(uv_work_t *work)
         req->info->hmac = strdup(hmac);
 
     } else if (status_code == 403 || status_code == 401) {
-        req->error_status = STORJ_BRIDGE_AUTH_ERROR;
+        req->error_status = GENARO_BRIDGE_AUTH_ERROR;
     } else if (status_code == 404 || status_code == 400) {
-        req->error_status = STORJ_BRIDGE_FILE_NOTFOUND_ERROR;
+        req->error_status = GENARO_BRIDGE_FILE_NOTFOUND_ERROR;
     } else if (status_code == 500) {
-        req->error_status = STORJ_BRIDGE_INTERNAL_ERROR;
+        req->error_status = GENARO_BRIDGE_INTERNAL_ERROR;
     } else {
-        req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+        req->error_status = GENARO_BRIDGE_REQUEST_ERROR;
     }
 
 clean_up:
@@ -1332,7 +1332,7 @@ clean_up:
     free(path);
 }
 
-static void queue_request_info(storj_download_state_t *state)
+static void queue_request_info(genaro_download_state_t *state)
 {
     if (state->requesting_info || state->canceled) {
         return;
@@ -1340,7 +1340,7 @@ static void queue_request_info(storj_download_state_t *state)
 
     uv_work_t *work = malloc(sizeof(uv_work_t));
     if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
+        state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
 
@@ -1363,13 +1363,13 @@ static void queue_request_info(storj_download_state_t *state)
                                request_info,
                                after_request_info);
     if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
+        state->error_status = GENARO_QUEUE_ERROR;
         return;
     }
 
 }
 
-static int prepare_file_hmac(storj_download_state_t *state)
+static int prepare_file_hmac(genaro_download_state_t *state)
 {
     // initialize the hmac with the decrypt key
     struct hmac_sha512_ctx hmac_ctx;
@@ -1377,7 +1377,7 @@ static int prepare_file_hmac(storj_download_state_t *state)
 
     for (int i = 0; i < state->total_pointers; i++) {
 
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
 
         if (!pointer->shard_hash ||
             strlen(pointer->shard_hash) != RIPEMD160_DIGEST_SIZE * 2) {
@@ -1418,11 +1418,11 @@ static int prepare_file_hmac(storj_download_state_t *state)
     return 0;
 }
 
-static bool has_missing_shard(storj_download_state_t *state)
+static bool has_missing_shard(genaro_download_state_t *state)
 {
     bool missing = false;
     for (int i = 0; i < state->total_pointers; i++) {
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
         if (pointer->status == POINTER_MISSING) {
             missing = true;
         }
@@ -1430,13 +1430,13 @@ static bool has_missing_shard(storj_download_state_t *state)
     return missing;
 }
 
-static bool can_recover_shards(storj_download_state_t *state)
+static bool can_recover_shards(genaro_download_state_t *state)
 {
     if (state->pointers_completed) {
         uint32_t missing_pointers = 0;
 
         for (int i = 0; i < state->total_pointers; i++) {
-            storj_pointer_t *pointer = &state->pointers[i];
+            genaro_pointer_t *pointer = &state->pointers[i];
             if (pointer->status == POINTER_MISSING) {
                 missing_pointers += 1;
             }
@@ -1453,14 +1453,14 @@ static bool can_recover_shards(storj_download_state_t *state)
 static void after_recover_shards(uv_work_t *work, int status)
 {
     file_request_recover_t *req = work->data;
-    storj_download_state_t *state = req->state;
+    genaro_download_state_t *state = req->state;
 
     state->pending_work_count--;
     state->recovering_shards = false;
     state->truncated = true;
 
     if (status != 0) {
-        req->state->error_status = STORJ_QUEUE_ERROR;
+        req->state->error_status = GENARO_QUEUE_ERROR;
     } else if (req->error_status) {
         req->state->error_status = req->error_status;
     } else {
@@ -1487,7 +1487,7 @@ static void after_recover_shards(uv_work_t *work, int status)
 static void recover_shards(uv_work_t *work)
 {
     file_request_recover_t *req = work->data;
-    storj_download_state_t *state = req->state;
+    genaro_download_state_t *state = req->state;
     reed_solomon* rs = NULL;
     uint8_t *data_map = NULL;
     uint8_t **data_blocks = NULL;
@@ -1505,7 +1505,7 @@ static void recover_shards(uv_work_t *work)
 
     HANDLE prefile = (HANDLE)_get_osfhandle(req->fd);
     if (prefile == INVALID_HANDLE_VALUE) {
-        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        req->error_status = GENARO_FILE_RESIZE_ERROR;
         return;
     }
 
@@ -1514,25 +1514,25 @@ static void recover_shards(uv_work_t *work)
     presize.LowPart = (uint32_t)(req->filesize & 0xFFFFFFFFLL);
 
     if (!SetFilePointerEx(prefile, presize, 0, FILE_BEGIN)) {
-        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        req->error_status = GENARO_FILE_RESIZE_ERROR;
         return;
     }
 
     if (!SetEndOfFile(prefile)) {
-        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        req->error_status = GENARO_FILE_RESIZE_ERROR;
         return;
     }
 
 #else
     if (ftruncate(req->fd, req->filesize)) {
         // errno for more details
-        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        req->error_status = GENARO_FILE_RESIZE_ERROR;
     }
 #endif
 
     error = map_file(req->fd, req->filesize, &data_map, false);
     if (error) {
-        req->error_status = STORJ_MAPPING_ERROR;
+        req->error_status = GENARO_MAPPING_ERROR;
         goto finish;
     }
 
@@ -1544,19 +1544,19 @@ static void recover_shards(uv_work_t *work)
 
     rs = reed_solomon_new(req->data_shards, req->parity_shards);
     if (!rs) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto finish;
     }
 
     data_blocks = (uint8_t**)malloc(req->data_shards * sizeof(uint8_t *));
     if (!data_blocks) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto finish;
     }
 
     fec_blocks = (uint8_t**)malloc(req->parity_shards * sizeof(uint8_t *));
     if (!fec_blocks) {
-        req->error_status = STORJ_MEMORY_ERROR;
+        req->error_status = GENARO_MEMORY_ERROR;
         goto finish;
     }
 
@@ -1584,7 +1584,7 @@ static void recover_shards(uv_work_t *work)
                                      req->shard_size, req->data_filesize);
 
     if (error) {
-        req->error_status = STORJ_FILE_RECOVER_ERROR;
+        req->error_status = GENARO_FILE_RECOVER_ERROR;
         goto finish;
     }
 
@@ -1612,7 +1612,7 @@ finish:
     if (data_map) {
         error = unmap_file(data_map, req->filesize);
         if (error) {
-            req->error_status = STORJ_UNMAPPING_ERROR;
+            req->error_status = GENARO_UNMAPPING_ERROR;
         }
     }
 
@@ -1632,7 +1632,7 @@ finish:
 
     HANDLE file = (HANDLE)_get_osfhandle(req->fd);
     if (file == INVALID_HANDLE_VALUE) {
-        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        req->error_status = GENARO_FILE_RESIZE_ERROR;
         return;
     }
 
@@ -1641,25 +1641,25 @@ finish:
     size.LowPart = (uint32_t)(req->data_filesize & 0xFFFFFFFFLL);
 
     if (!SetFilePointerEx(file, size, 0, FILE_BEGIN)) {
-        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        req->error_status = GENARO_FILE_RESIZE_ERROR;
         return;
     }
 
     if (!SetEndOfFile(file)) {
-        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        req->error_status = GENARO_FILE_RESIZE_ERROR;
         return;
     }
 
 #else
     if (ftruncate(req->fd, req->data_filesize)) {
         // errno for more details
-        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        req->error_status = GENARO_FILE_RESIZE_ERROR;
     }
 #endif
 
 }
 
-static void queue_recover_shards(storj_download_state_t *state)
+static void queue_recover_shards(genaro_download_state_t *state)
 {
     if (!state->recovering_shards && state->pointers_completed) {
 
@@ -1670,7 +1670,7 @@ static void queue_recover_shards(storj_download_state_t *state)
         uint8_t *zilch = (uint8_t *)calloc(1, state->total_pointers);
 
         for (int i = 0; i < state->total_pointers; i++) {
-            storj_pointer_t *pointer = &state->pointers[i];
+            genaro_pointer_t *pointer = &state->pointers[i];
             if (pointer->status == POINTER_MISSING) {
                 total_missing += 1;
                 has_missing = true;
@@ -1700,13 +1700,13 @@ static void queue_recover_shards(storj_download_state_t *state)
 
         file_request_recover_t *req = malloc(sizeof(file_request_recover_t));
         if (!req) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             return;
         }
 
         uv_work_t *work = malloc(sizeof(uv_work_t));
         if (!work) {
-            state->error_status = STORJ_MEMORY_ERROR;
+            state->error_status = GENARO_MEMORY_ERROR;
             return;
         }
 
@@ -1722,12 +1722,12 @@ static void queue_recover_shards(storj_download_state_t *state)
         if (state->decrypt_key && state->decrypt_ctr) {
             req->decrypt_key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
             if (!req->decrypt_key) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
             req->decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
             if (!req->decrypt_ctr) {
-                state->error_status = STORJ_MEMORY_ERROR;
+                state->error_status = GENARO_MEMORY_ERROR;
                 return;
             }
             memcpy(req->decrypt_key, state->decrypt_key, SHA256_DIGEST_SIZE);
@@ -1749,7 +1749,7 @@ static void queue_recover_shards(storj_download_state_t *state)
                                    recover_shards, after_recover_shards);
 
         if (status) {
-            state->error_status = STORJ_QUEUE_ERROR;
+            state->error_status = GENARO_QUEUE_ERROR;
             return;
         }
 
@@ -1757,7 +1757,7 @@ static void queue_recover_shards(storj_download_state_t *state)
     }
 }
 
-static void queue_next_work(storj_download_state_t *state)
+static void queue_next_work(genaro_download_state_t *state)
 {
     // report any errors
     if (state->error_status != 0) {
@@ -1783,12 +1783,12 @@ static void queue_next_work(storj_download_state_t *state)
 
             // calculate the hmac of all shard hashes
             if (prepare_file_hmac(state)) {
-                state->error_status = STORJ_FILE_GENERATE_HMAC_ERROR;
+                state->error_status = GENARO_FILE_GENERATE_HMAC_ERROR;
             }
 
             if (state->info && state->info->hmac) {
                 if (0 != strcmp(state->info->hmac, state->hmac)) {
-                    state->error_status = STORJ_FILE_DECRYPTION_ERROR;
+                    state->error_status = GENARO_FILE_DECRYPTION_ERROR;
                 }
             } else {
                 state->log->warn(state->env->log_options,
@@ -1820,7 +1820,7 @@ static void queue_next_work(storj_download_state_t *state)
             if (can_recover_shards(state)) {
                 queue_recover_shards(state);
             } else {
-                state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+                state->error_status = GENARO_FILE_SHARD_MISSING_ERROR;
                 queue_next_work(state);
                 return;
             }
@@ -1828,7 +1828,7 @@ static void queue_next_work(storj_download_state_t *state)
             if (!has_missing_shard(state)) {
                 queue_recover_shards(state);
             } else {
-                state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+                state->error_status = GENARO_FILE_SHARD_MISSING_ERROR;
                 queue_next_work(state);
                 return;
             }
@@ -1844,20 +1844,20 @@ finish_up:
 
 }
 
-STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
+GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 {
     if (state->canceled) {
         return 0;
     }
 
     state->canceled = true;
-    state->error_status = STORJ_TRANSFER_CANCELED;
+    state->error_status = GENARO_TRANSFER_CANCELED;
 
     // loop over all pointers, and cancel any that are queued to be downloaded
     // any downloads that are in-progress will monitor the state->canceled
     // status and exit when set to true
     for (int i = 0; i < state->total_pointers; i++) {
-        storj_pointer_t *pointer = &state->pointers[i];
+        genaro_pointer_t *pointer = &state->pointers[i];
         if (pointer->status == POINTER_BEING_DOWNLOADED) {
             uv_cancel((uv_req_t *)pointer->work);
         }
@@ -1866,15 +1866,15 @@ STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
     return 0;
 }
 
-STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
+GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
                                                             FILE *destination,
                                                             void *handle,
-                                                            storj_progress_cb progress_cb,
-                                                            storj_finished_download_cb finished_cb)
+                                                            genaro_progress_cb progress_cb,
+                                                            genaro_finished_download_cb finished_cb)
 {
-    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    genaro_download_state_t *state = malloc(sizeof(genaro_download_state_t));
     if (!state) {
         return NULL;
     }
@@ -1892,7 +1892,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->finished_cb = finished_cb;
     state->finished = false;
     state->total_shards = 0;
-    state->download_max_concurrency = STORJ_DOWNLOAD_CONCURRENCY;
+    state->download_max_concurrency = GENARO_DOWNLOAD_CONCURRENCY;
     state->completed_shards = 0;
     state->resolving_shards = 0;
     state->total_pointers = 0;
@@ -1904,7 +1904,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->pointers_completed = false;
     state->pointer_fail_count = 0;
     state->requesting_pointers = false;
-    state->error_status = STORJ_TRANSFER_OK;
+    state->error_status = GENARO_TRANSFER_OK;
     state->writing = false;
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
