@@ -32,10 +32,10 @@ extern int errno;
 
 static inline void noop() {};
 
-#define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
-    "These are common Storj commands for various situations:\n\n"       \
+#define HELP_TEXT "usage: genaro [<options>] <command> [<args>]\n\n"     \
+    "These are common Genaro commands for various situations:\n\n"       \
     "setting up users profiles\n"                                       \
-    "  register                  setup a new storj bridge user\n"       \
+    "  register                  setup a new genaro bridge user\n"       \
     "  import-keys               import existing user\n"                \
     "  export-keys               export bridge user, password and "     \
     "encryption keys\n\n"                                               \
@@ -70,7 +70,7 @@ static inline void noop() {};
     "  GENARO_ENCRYPTION_KEY      file encryption key\n\n"
 
 
-#define CLI_VERSION "libstorj-2.0.0-beta"
+#define CLI_VERSION "libgenaro-2.0.0-beta"
 
 static void json_logger(const char *message, int level, void *handle)
 {
@@ -150,14 +150,14 @@ static int get_user_auth_location(char *host, char **root_dir, char **user_file)
         return 1;
     }
 
-    int len = strlen(home_dir) + strlen("/.storj/");
+    int len = strlen(home_dir) + strlen("/.genaro/");
     *root_dir = calloc(len + 1, sizeof(char));
     if (!*root_dir) {
         return 1;
     }
 
     strcpy(*root_dir, home_dir);
-    strcat(*root_dir, "/.storj/");
+    strcat(*root_dir, "/.genaro/");
 
     len = strlen(*root_dir) + strlen(host) + strlen(".json");
     *user_file = calloc(len + 1, sizeof(char));
@@ -1119,7 +1119,7 @@ int main(int argc, char **argv)
         genaro_bridge = "https://api.storj.io:443/";
     }
 
-    // Parse the host, part and proto from the storj bridge url
+    // Parse the host, part and proto from the genaro bridge url
     char proto[6];
     char host[100];
     int port = 0;
@@ -1134,7 +1134,7 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "login") == 0) {
-        printf("'login' is not a storj command. Did you mean 'import-keys'?\n\n");
+        printf("'login' is not a genaro command. Did you mean 'import-keys'?\n\n");
         return 1;
     }
 
@@ -1175,7 +1175,7 @@ int main(int argc, char **argv)
     char *secretkey = NULL;
 
     if (strcmp(command, "get-info") == 0) {
-        printf("Storj bridge: %s\n\n", genaro_bridge);
+        printf("Genaro bridge: %s\n\n", genaro_bridge);
 
         genaro_bridge_options_t options = {
             .proto = proto,
@@ -1471,7 +1471,7 @@ int main(int argc, char **argv)
             genaro_bridge_list_mirrors(env, bucket_id, file_id,
                                       NULL, list_mirrors_callback);
         } else {
-            printf("'%s' is not a storj command. See 'storj --help'\n\n",
+            printf("'%s' is not a genaro command. See 'genaro --help'\n\n",
                    command);
             status = 1;
             goto end_program;

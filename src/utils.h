@@ -1,6 +1,6 @@
 /**
  * @file utils.h
- * @brief Storj utilities.
+ * @brief Genaro utilities.
  *
  * Helper utilities
  */

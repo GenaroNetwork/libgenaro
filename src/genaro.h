@@ -1,8 +1,8 @@
 /**
  * @file genaro.h
- * @brief Storj library.
+ * @brief Genaro library.
  *
- * Implements functionality to upload and download files from the Storj
+ * Implements functionality to upload and download files from the Genaro
  * distributed network.
  */
 
@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#if defined(_WIN32) && defined(STORJDLL)
+#if defined(_WIN32) && defined(GENARODLL)
   #if defined(DLL_EXPORT)
     #define GENARO_API __declspec(dllexport)
   #else
@@ -133,7 +133,7 @@ typedef enum {
 /** @brief Bridge configuration options
  *
  * Proto can be "http" or "https", and the user/pass are used for
- * basic authentication to a Storj bridge.
+ * basic authentication to a Genaro bridge.
  */
 typedef struct {
     const char *proto;
@@ -197,7 +197,7 @@ typedef struct genaro_log_levels {
     genaro_logger_format_fn error;
 } genaro_log_levels_t;
 
-/** @brief A structure for a Storj user environment.
+/** @brief A structure for a Genaro user environment.
  *
  * This is the highest level structure and holds many commonly used options
  * and the event loop for queuing work.
@@ -545,13 +545,13 @@ typedef struct {
 } genaro_upload_state_t;
 
 /**
- * @brief Initialize a Storj environment
+ * @brief Initialize a Genaro environment
  *
  * This will setup an event loop for queueing further actions, as well
- * as define necessary configuration options for communicating with Storj
+ * as define necessary configuration options for communicating with Genaro
  * bridge, and for encrypting/decrypting files.
  *
- * @param[in] options - Storj Bridge API options
+ * @param[in] options - Genaro Bridge API options
  * @param[in] encrypt_options - File encryption options
  * @param[in] http_options - HTTP settings
  * @param[in] log_options - Logging settings
@@ -564,9 +564,9 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
 
 
 /**
- * @brief Destroy a Storj environment
+ * @brief Destroy a Genaro environment
  *
- * This will free all memory for the Storj environment and zero out any memory
+ * This will free all memory for the Genaro environment and zero out any memory
  * with sensitive information, such as passwords and encryption keys.
  *
  * The event loop must be closed before this method should be used.
@@ -685,22 +685,22 @@ GENARO_API bool genaro_mnemonic_check(const char *mnemonic);
 /**
  * @brief Get the error message for an error code
  *
- * This function will return a error message associated with a storj
+ * This function will return a error message associated with a genaro
  * error code.
  *
- * @param[in] error_code The storj error code integer
+ * @param[in] error_code The genaro error code integer
  * @return A char pointer with error message
  */
 GENARO_API char *genaro_strerror(int error_code);
 
 /**
- * @brief Get Storj bridge API information.
+ * @brief Get Genaro bridge API information.
  *
- * This function will get general information about the storj bridge api.
+ * This function will get general information about the genaro bridge api.
  * The network i/o is performed in a thread pool with a libuv loop, and the
  * response is available in the first argument to the callback function.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -712,7 +712,7 @@ GENARO_API int genaro_bridge_get_info(genaro_env_t *env,
 /**
  * @brief List available buckets for a user.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -731,7 +731,7 @@ GENARO_API void genaro_free_get_buckets_request(get_buckets_request_t *req);
 /**
  * @brief Create a bucket.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] name The name of the bucket
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
@@ -745,7 +745,7 @@ GENARO_API int genaro_bridge_create_bucket(genaro_env_t *env,
 /**
  * @brief Delete a bucket.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] id The bucket id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
@@ -759,7 +759,7 @@ GENARO_API int genaro_bridge_delete_bucket(genaro_env_t *env,
 /**
  * @brief Get a info of specific bucket.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
@@ -780,7 +780,7 @@ GENARO_API void genaro_free_get_bucket_request(get_bucket_request_t *req);
 /**
  * @brief Get a list of all files in a bucket.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] id The bucket id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
@@ -801,7 +801,7 @@ GENARO_API void genaro_free_list_files_request(list_files_request_t *req);
 /**
  * @brief Create a PUSH or PULL bucket token.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
  * @param[in] operation The type of operation PUSH or PULL
  * @param[in] handle A pointer that will be available in the callback
@@ -817,7 +817,7 @@ GENARO_API int genaro_bridge_create_bucket_token(genaro_env_t *env,
 /**
  * @brief Get pointers with locations to file shards.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
  * @param[in] file_id The bucket id
  * @param[in] handle A pointer that will be available in the callback
@@ -833,7 +833,7 @@ GENARO_API int genaro_bridge_get_file_pointers(genaro_env_t *env,
 /**
  * @brief Delete a file in a bucket.
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
  * @param[in] file_id The bucket id
  * @param[in] handle A pointer that will be available in the callback
@@ -849,7 +849,7 @@ GENARO_API int genaro_bridge_delete_file(genaro_env_t *env,
 /**
  * @brief Create a file frame
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -861,7 +861,7 @@ GENARO_API int genaro_bridge_create_frame(genaro_env_t *env,
 /**
  * @brief List available file frames
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -873,7 +873,7 @@ GENARO_API int genaro_bridge_get_frames(genaro_env_t *env,
 /**
  * @brief Get information for a file frame
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] frame_id The frame id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
@@ -887,7 +887,7 @@ GENARO_API int genaro_bridge_get_frames(genaro_env_t *env,
 /**
  * @brief Delete a file frame
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] frame_id The frame id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
@@ -901,7 +901,7 @@ GENARO_API int genaro_bridge_delete_frame(genaro_env_t *env,
 /**
  * @brief Get metadata for a file
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
  * @param[in] file_id The bucket id
  * @param[in] handle A pointer that will be available in the callback
@@ -917,7 +917,7 @@ GENARO_API int genaro_bridge_get_file_info(genaro_env_t *env,
 /**
  * @brief Get mirror data for a file
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
  * @param[in] file_id The bucket id
  * @param[in] handle A pointer that will be available in the callback
@@ -987,7 +987,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
 /**
  * @brief Register a user
  *
- * @param[in] env The storj environment struct
+ * @param[in] env The genaro environment struct
  * @param[in] email the user's email
  * @param[in] password the user's password
  * @param[in] handle A pointer that will be available in the callback

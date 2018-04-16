@@ -27,12 +27,12 @@ depends/downloads/*
 depends/sources/*
 depends/toolchain/*
 docs
-libstorj.pc
+libgenaro.pc
 libtool
 src/main
-src/storj
-src/storj.dSYM/
-src/storj.exe
+src/genaro
+src/genaro.dSYM/
+src/genaro.exe
 test/*.json.h
 test/test-suite.log
 test/testingdb/

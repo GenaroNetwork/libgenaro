@@ -1,7 +1,7 @@
 #include <microhttpd.h>
 #include <assert.h>
 
-#include "../src/storj.h"
+#include "../src/genaro.h"
 #include "../src/bip39.h"
 #include "../src/utils.h"
 #include "../src/crypto.h"
@@ -13,7 +13,7 @@
 #define KGRN  "\x1B[32m"
 #define RESET "\x1B[0m"
 
-#define USER "testuser@storj.io"
+#define USER "testuser@genaro.io"
 #define PASS "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
 #define PASSHASH "83c2db176985cb39d2885b15dc3d2afc020bd886ffee10e954a5848429c03c6d"
 

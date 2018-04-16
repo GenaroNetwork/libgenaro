@@ -1,6 +1,6 @@
 /**
  * @file crypto.h
- * @brief Storj crypto utilities.
+ * @brief Genaro crypto utilities.
  *
  * Helper crypto utilities
  */

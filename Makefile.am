@@ -3,4 +3,4 @@ SUBDIRS = src . test
 EXTRA_DIST = autogen.sh
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libstorj.pc
+pkgconfig_DATA = libgenaro.pc

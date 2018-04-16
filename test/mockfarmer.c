@@ -2,7 +2,7 @@
 #include <nettle/ctr.h>
 #include <nettle/ctr.h>
 
-#include "storjtests.h"
+#include "genarotests.h"
 #include "../src/rs.h"
 
 static int e_count = 0;

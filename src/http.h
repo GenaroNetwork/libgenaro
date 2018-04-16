@@ -1,6 +1,6 @@
 /**
  * @file http.h
- * @brief Storj HTTP utilities.
+ * @brief Genaro HTTP utilities.
  *
  * Helper methods and utilities for http requests.
  */
@@ -154,7 +154,7 @@ int fetch_shard(genaro_http_options_t *http_options,
 /**
  * @brief Make a JSON HTTP request
  *
- * @param[in] options The storj bridge options
+ * @param[in] options The genaro bridge options
  * @param[in] method The HTTP method
  * @param[in] path The path of the resource
  * @param[in] request_body A json object of the request body

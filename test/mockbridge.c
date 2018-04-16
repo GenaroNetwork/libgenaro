@@ -1,4 +1,4 @@
-#include "storjtests.h"
+#include "genarotests.h"
 
 char *get_response_string(json_object *obj, const char *key)
 {

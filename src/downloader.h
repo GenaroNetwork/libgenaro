@@ -1,6 +1,6 @@
 /**
  * @file downloader.h
- * @brief Storj download methods and definitions.
+ * @brief Genaro download methods and definitions.
  *
  * Structures and functions useful for downloading files.
  */

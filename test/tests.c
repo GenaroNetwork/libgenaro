@@ -1,39 +1,39 @@
-#include "storjtests.h"
+#include "genarotests.h"
 
 char *folder;
 int tests_ran = 0;
 int test_status = 0;
 
 // setup bridge options to point to mock server
-storj_bridge_options_t bridge_options = {
+genaro_bridge_options_t bridge_options = {
     .proto = "http",
     .host  = "localhost",
     .port  = 8091,
-    .user  = "testuser@storj.io",
+    .user  = "testuser@genaro.io",
     .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
 };
 
 // setup bridge options to point to mock server (with incorrect auth)
-storj_bridge_options_t bridge_options_bad = {
+genaro_bridge_options_t bridge_options_bad = {
     .proto = "http",
     .host  = "localhost",
     .port  = 8091,
-    .user  = "testuser@storj.io",
+    .user  = "testuser@genaro.io",
     .pass  = "bad password"
 };
 
-storj_encrypt_options_t encrypt_options = {
+genaro_encrypt_options_t encrypt_options = {
     .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 };
 
-storj_http_options_t http_options = {
-    .user_agent = "storj-test",
+genaro_http_options_t http_options = {
+    .user_agent = "genaro-test",
     .low_speed_limit = 0,
     .low_speed_time = 0,
     .timeout = 0
 };
 
-storj_log_options_t log_options = {
+genaro_log_options_t log_options = {
     .level = 0
 };
 
@@ -60,7 +60,7 @@ void check_bridge_get_info(uv_work_t *work_req, int status)
     struct json_object* value;
     int success = json_object_object_get_ex(req->response, "info", &value);
     assert(success == 1);
-    pass("storj_bridge_get_info");
+    pass("genaro_bridge_get_info");
 
     json_object_put(req->response);
     free(req);
@@ -78,9 +78,9 @@ void check_get_buckets(uv_work_t *work_req, int status)
     struct json_object* value;
     int success = json_object_object_get_ex(bucket, "id", &value);
     assert(success == 1);
-    pass("storj_bridge_get_buckets");
+    pass("genaro_bridge_get_buckets");
 
-    storj_free_get_buckets_request(req);
+    genaro_free_get_buckets_request(req);
     free(work_req);
 }
 
@@ -93,9 +93,9 @@ void check_get_bucket(uv_work_t *work_req, int status)
     assert(strcmp(req->bucket->name, "test") == 0);
     assert(req->bucket->decrypted);
 
-    pass("storj_bridge_get_bucket");
+    pass("genaro_bridge_get_bucket");
 
-    storj_free_get_bucket_request(req);
+    genaro_free_get_bucket_request(req);
     free(work_req);
 }
 
@@ -107,9 +107,9 @@ void check_get_buckets_badauth(uv_work_t *work_req, int status)
     assert(req->buckets == NULL);
     assert(req->status_code == 401);
 
-    pass("storj_bridge_get_buckets_badauth");
+    pass("genaro_bridge_get_buckets_badauth");
 
-    storj_free_get_buckets_request(req);
+    genaro_free_get_buckets_request(req);
     free(work_req);
 }
 
@@ -126,7 +126,7 @@ void check_create_bucket(uv_work_t *work_req, int status)
 
     const char* name = json_object_get_string(value);
     assert(strcmp(name, "backups") == 0);
-    pass("storj_bridge_create_bucket");
+    pass("genaro_bridge_create_bucket");
 
     json_object_put(req->response);
     free((char *)req->encrypted_bucket_name);
@@ -143,7 +143,7 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     assert(req->response == NULL);
     assert(req->status_code == 204);
 
-    pass("storj_bridge_delete_bucket");
+    pass("genaro_bridge_delete_bucket");
 
     json_object_put(req->response);
     free(req->path);
@@ -167,9 +167,9 @@ void check_list_files(uv_work_t *work_req, int status)
     const char* id = json_object_get_string(value);
     assert(strcmp(id, "f18b5ca437b1ca3daa14969f") == 0);
 
-    pass("storj_bridge_list_files");
+    pass("genaro_bridge_list_files");
 
-    storj_free_list_files_request(req);
+    genaro_free_list_files_request(req);
     free(work_req);
 }
 
@@ -182,9 +182,9 @@ void check_list_files_badauth(uv_work_t *work_req, int status)
     assert(req->files == NULL);
     assert(req->status_code == 401);
 
-    pass("storj_bridge_list_files_badauth");
+    pass("genaro_bridge_list_files_badauth");
 
-    storj_free_list_files_request(req);
+    genaro_free_list_files_request(req);
     free(work_req);
 }
 
@@ -205,7 +205,7 @@ void check_bucket_tokens(uv_work_t *work_req, int status)
 
     assert(strcmp(token, t) == 0);
 
-    pass("storj_bridge_create_bucket_token");
+    pass("genaro_bridge_create_bucket_token");
 
     json_object_put(req->body);
     json_object_put(req->response);
@@ -228,7 +228,7 @@ void check_file_pointers(uv_work_t *work_req, int status)
     int success = json_object_object_get_ex(bucket, "farmer", &value);
     assert(success == 1);
 
-    pass("storj_bridge_get_file_pointers");
+    pass("genaro_bridge_get_file_pointers");
 
     json_object_put(req->response);
     free(req->path);
@@ -243,7 +243,7 @@ void check_resolve_file_progress(double progress,
 {
     assert(handle == NULL);
     if (progress == (double)1) {
-        pass("storj_bridge_resolve_file (progress finished)");
+        pass("genaro_bridge_resolve_file (progress finished)");
     }
 
     // TODO check error case
@@ -254,10 +254,10 @@ void check_resolve_file(int status, FILE *fd, void *handle)
     fclose(fd);
     assert(handle == NULL);
     if (status) {
-        fail("storj_bridge_resolve_file");
-        printf("Download failed: %s\n", storj_strerror(status));
+        fail("genaro_bridge_resolve_file");
+        printf("Download failed: %s\n", genaro_strerror(status));
     } else {
-        pass("storj_bridge_resolve_file");
+        pass("genaro_bridge_resolve_file");
     }
 }
 
@@ -265,10 +265,10 @@ void check_resolve_file_cancel(int status, FILE *fd, void *handle)
 {
     fclose(fd);
     assert(handle == NULL);
-    if (status == STORJ_TRANSFER_CANCELED) {
-        pass("storj_bridge_resolve_file_cancel");
+    if (status == GENARO_TRANSFER_CANCELED) {
+        pass("genaro_bridge_resolve_file_cancel");
     } else {
-        fail("storj_bridge_resolve_file_cancel");
+        fail("genaro_bridge_resolve_file_cancel");
     }
 }
 
@@ -279,7 +279,7 @@ void check_store_file_progress(double progress,
 {
     assert(handle == NULL);
     if (progress == (double)1) {
-        pass("storj_bridge_store_file (progress finished)");
+        pass("genaro_bridge_store_file (progress finished)");
     }
 }
 
@@ -288,13 +288,13 @@ void check_store_file(int error_code, char *file_id, void *handle)
     assert(handle == NULL);
     if (error_code == 0) {
         if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
-            pass("storj_bridge_store_file");
+            pass("genaro_bridge_store_file");
         } else {
-            fail("storj_bridge_store_file(0)");
+            fail("genaro_bridge_store_file(0)");
         }
     } else {
-        fail("storj_bridge_store_file(1)");
-        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
+        fail("genaro_bridge_store_file(1)");
+        printf("\t\tERROR:   %s\n", genaro_strerror(error_code));
     }
 
     free(file_id);
@@ -303,11 +303,11 @@ void check_store_file(int error_code, char *file_id, void *handle)
 void check_store_file_cancel(int error_code, char *file_id, void *handle)
 {
     assert(handle == NULL);
-    if (error_code == STORJ_TRANSFER_CANCELED) {
-        pass("storj_bridge_store_file_cancel");
+    if (error_code == GENARO_TRANSFER_CANCELED) {
+        pass("genaro_bridge_store_file_cancel");
     } else {
-        fail("storj_bridge_store_file_cancel");
-        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
+        fail("genaro_bridge_store_file_cancel");
+        printf("\t\tERROR:   %s\n", genaro_strerror(error_code));
     }
 
     free(file_id);
@@ -321,7 +321,7 @@ void check_delete_file(uv_work_t *work_req, int status)
     assert(req->response == NULL);
     assert(req->status_code == 200);
 
-    pass("storj_bridge_delete_file");
+    pass("genaro_bridge_delete_file");
 
     free(req->path);
     free(req);
@@ -342,7 +342,7 @@ void check_create_frame(uv_work_t *work_req, int status)
     const char* id = json_object_get_string(value);
 
     assert(strcmp(id, "d6367831f7f1b117ffdd0015") == 0);
-    pass("storj_bridge_create_frame");
+    pass("genaro_bridge_create_frame");
 
     json_object_put(req->response);
     free(req);
@@ -364,7 +364,7 @@ void check_get_frames(uv_work_t *work_req, int status)
     const char* id = json_object_get_string(value);
     assert(strcmp(id, "52b8cc8dfd47bb057d8c8a17") == 0);
 
-    pass("storj_bridge_get_frames");
+    pass("genaro_bridge_get_frames");
 
     json_object_put(req->response);
     free(req);
@@ -385,7 +385,7 @@ void check_get_frame(uv_work_t *work_req, int status)
     const char* id = json_object_get_string(value);
 
     assert(strcmp(id, "192f90792f42875a7533340b") == 0);
-    pass("storj_bridge_get_frame");
+    pass("genaro_bridge_get_frame");
 
     json_object_put(req->response);
     free(req->path);
@@ -401,7 +401,7 @@ void check_delete_frame(uv_work_t *work_req, int status)
     assert(req->response == NULL);
     assert(req->status_code == 200);
 
-    pass("storj_bridge_delete_frame");
+    pass("genaro_bridge_delete_frame");
 
     json_object_put(req->response);
     free(req->path);
@@ -423,7 +423,7 @@ void check_file_info(uv_work_t *work_req, int status)
     const char* mimetype = json_object_get_string(value);
 
     assert(strcmp(mimetype, "video/ogg") == 0);
-    pass("storj_bridge_get_file_info");
+    pass("genaro_bridge_get_file_info");
 
     json_object_put(req->response);
     free(req->path);
@@ -447,7 +447,7 @@ void check_list_mirrors(uv_work_t *work_req, int status)
     assert(json_object_is_type(established, json_type_array) == 1);
     assert(json_object_is_type(established, json_type_array) == 1);
 
-    pass("storj_bridge_list_mirrors");
+    pass("genaro_bridge_list_mirrors");
 
     json_object_put(req->response);
     free(req->path);
@@ -470,7 +470,7 @@ void check_register(uv_work_t *work_req, int status)
     const char *email = json_object_get_string(value);
 
     assert(strcmp(email, "test@test.com") == 0);
-    pass("storj_bridge_register");
+    pass("genaro_bridge_register");
 
     json_object_put(req->body);
     json_object_put(req->response);
@@ -505,13 +505,13 @@ int test_upload()
 {
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options,
+    genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
                                       &log_options);
     assert(env != NULL);
 
-    char *file_name = "storj-test-upload.data";
+    char *file_name = "genaro-test-upload.data";
     int len = strlen(folder) + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
@@ -521,7 +521,7 @@ int test_upload()
     create_test_upload_file(file);
 
     // upload file
-    storj_upload_opts_t upload_opts = {
+    genaro_upload_opts_t upload_opts = {
         .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
         .bucket_id = "368be0816766b28fd5f43af5",
         .file_name = file_name,
@@ -529,7 +529,7 @@ int test_upload()
         .rs = true
     };
 
-    storj_upload_state_t *state = storj_bridge_store_file(env,
+    genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
                                                           NULL,
                                                           check_store_file_progress,
@@ -544,7 +544,7 @@ int test_upload()
     }
 
     free(file);
-    storj_destroy_env(env);
+    genaro_destroy_env(env);
 
     return 0;
 }
@@ -553,13 +553,13 @@ int test_upload_cancel()
 {
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options,
+    genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
                                       &log_options);
     assert(env != NULL);
 
-    char *file_name = "storj-test-upload.data";
+    char *file_name = "genaro-test-upload.data";
     int len = strlen(folder) + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
@@ -569,14 +569,14 @@ int test_upload_cancel()
     create_test_upload_file(file);
 
     // upload file
-    storj_upload_opts_t upload_opts = {
+    genaro_upload_opts_t upload_opts = {
         .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
         .bucket_id = "368be0816766b28fd5f43af5",
         .file_name = file_name,
         .fd = fopen(file, "r")
     };
 
-    storj_upload_state_t *state = storj_bridge_store_file(env,
+    genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
                                                           NULL,
                                                           check_store_file_progress,
@@ -602,14 +602,14 @@ int test_upload_cancel()
         count++;
 
         if (count == 100) {
-            status = storj_bridge_store_file_cancel(state);
+            status = genaro_bridge_store_file_cancel(state);
             assert(status == 0);
         }
 
     } while (more == true);
 
     free(file);
-    storj_destroy_env(env);
+    genaro_destroy_env(env);
 
     return 0;
 }
@@ -618,7 +618,7 @@ int test_download()
 {
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options,
+    genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
                                       &log_options);
@@ -627,13 +627,13 @@ int test_download()
     // resolve file
     char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
     strcpy(download_file, folder);
-    strcat(download_file, "storj-test-download.data");
+    strcat(download_file, "genaro-test-download.data");
     FILE *download_fp = fopen(download_file, "w+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
 
-    storj_download_state_t *state = storj_bridge_resolve_file(env,
+    genaro_download_state_t *state = genaro_bridge_resolve_file(env,
                                                               bucket_id,
                                                               file_id,
                                                               download_fp,
@@ -651,7 +651,7 @@ int test_download()
         return 1;
     }
 
-    storj_destroy_env(env);
+    genaro_destroy_env(env);
 
     return 0;
 }
@@ -660,7 +660,7 @@ int test_download_cancel()
 {
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options,
+    genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
                                       &log_options);
@@ -669,13 +669,13 @@ int test_download_cancel()
     // resolve file
     char *download_file = calloc(strlen(folder) + 33 + 1, sizeof(char));
     strcpy(download_file, folder);
-    strcat(download_file, "storj-test-download-canceled.data");
+    strcat(download_file, "genaro-test-download-canceled.data");
     FILE *download_fp = fopen(download_file, "w+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
 
-    storj_download_state_t *state = storj_bridge_resolve_file(env,
+    genaro_download_state_t *state = genaro_bridge_resolve_file(env,
                                                               bucket_id,
                                                               file_id,
                                                               download_fp,
@@ -704,7 +704,7 @@ int test_download_cancel()
         count++;
 
         if (count == 100) {
-            status = storj_bridge_resolve_file_cancel(state);
+            status = genaro_bridge_resolve_file_cancel(state);
             assert(status == 0);
         }
 
@@ -712,7 +712,7 @@ int test_download_cancel()
 
 
     free(download_file);
-    storj_destroy_env(env);
+    genaro_destroy_env(env);
 
     return 0;
 }
@@ -720,7 +720,7 @@ int test_download_cancel()
 int test_api_badauth()
 {
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options_bad,
+    genaro_env_t *env = genaro_init_env(&bridge_options_bad,
                                       &encrypt_options,
                                       &http_options,
                                       &log_options);
@@ -730,13 +730,13 @@ int test_api_badauth()
     int status = 0;
 
     // get buckets
-    status = storj_bridge_get_buckets(env, NULL, check_get_buckets_badauth);
+    status = genaro_bridge_get_buckets(env, NULL, check_get_buckets_badauth);
     assert(status == 0);
 
     char *bucket_id = "368be0816766b28fd5f43af5";
 
     // list files in a bucket
-    status = storj_bridge_list_files(env, bucket_id, NULL,
+    status = genaro_bridge_list_files(env, bucket_id, NULL,
                                      check_list_files_badauth);
     assert(status == 0);
 
@@ -745,7 +745,7 @@ int test_api_badauth()
         return 1;
     }
 
-    storj_destroy_env(env);
+    genaro_destroy_env(env);
 
     return 0;
 }
@@ -753,7 +753,7 @@ int test_api_badauth()
 int test_api()
 {
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options,
+    genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
                                       &log_options);
@@ -762,37 +762,37 @@ int test_api()
     int status;
 
     // get general api info
-    status = storj_bridge_get_info(env, NULL, check_bridge_get_info);
+    status = genaro_bridge_get_info(env, NULL, check_bridge_get_info);
     assert(status == 0);
 
     // get buckets
-    status = storj_bridge_get_buckets(env, NULL, check_get_buckets);
+    status = genaro_bridge_get_buckets(env, NULL, check_get_buckets);
     assert(status == 0);
 
     char *bucket_id = "368be0816766b28fd5f43af5";
 
     // get bucket
-    status = storj_bridge_get_bucket(env, bucket_id, NULL, check_get_bucket);
+    status = genaro_bridge_get_bucket(env, bucket_id, NULL, check_get_bucket);
     assert(status == 0);
 
     // create a new bucket with a name
-    status = storj_bridge_create_bucket(env, "backups", NULL,
+    status = genaro_bridge_create_bucket(env, "backups", NULL,
                                         check_create_bucket);
     assert(status == 0);
 
     // delete a bucket
     // TODO check for successful status code, response has object
-    status = storj_bridge_delete_bucket(env, bucket_id, NULL,
+    status = genaro_bridge_delete_bucket(env, bucket_id, NULL,
                                         check_delete_bucket);
     assert(status == 0);
 
     // list files in a bucket
-    status = storj_bridge_list_files(env, bucket_id, NULL,
+    status = genaro_bridge_list_files(env, bucket_id, NULL,
                                      check_list_files);
     assert(status == 0);
 
     // create bucket tokens
-    status = storj_bridge_create_bucket_token(env,
+    status = genaro_bridge_create_bucket_token(env,
                                               bucket_id,
                                               BUCKET_PUSH,
                                               NULL,
@@ -802,7 +802,7 @@ int test_api()
     char *file_id = "998960317b6725a3f8080c2b";
 
     // delete a file in a bucket
-    status = storj_bridge_delete_file(env,
+    status = genaro_bridge_delete_file(env,
                                       bucket_id,
                                       file_id,
                                       NULL,
@@ -810,40 +810,40 @@ int test_api()
     assert(status == 0);
 
     // create a file frame
-    status = storj_bridge_create_frame(env, NULL, check_create_frame);
+    status = genaro_bridge_create_frame(env, NULL, check_create_frame);
     assert(status == 0);
 
     // get frames
-    status = storj_bridge_get_frames(env, NULL, check_get_frames);
+    status = genaro_bridge_get_frames(env, NULL, check_get_frames);
     assert(status == 0);
 
     char *frame_id = "d4af71ab00e15b0c1a7b6ab2";
 
     // get frame
-    status = storj_bridge_get_frame(env, frame_id, NULL, check_get_frame);
+    status = genaro_bridge_get_frame(env, frame_id, NULL, check_get_frame);
     assert(status == 0);
 
     // delete frame
-    status = storj_bridge_delete_frame(env, frame_id, NULL, check_delete_frame);
+    status = genaro_bridge_delete_frame(env, frame_id, NULL, check_delete_frame);
     assert(status == 0);
 
     // get file information
-    status = storj_bridge_get_file_info(env, bucket_id,
+    status = genaro_bridge_get_file_info(env, bucket_id,
                                         file_id, NULL, check_file_info);
     assert(status == 0);
 
     // get file pointers
-    status = storj_bridge_get_file_pointers(env, bucket_id,
+    status = genaro_bridge_get_file_pointers(env, bucket_id,
                                             file_id, NULL, check_file_pointers);
     assert(status == 0);
 
     // get mirrors
-    status = storj_bridge_list_mirrors(env, bucket_id, file_id, NULL,
+    status = genaro_bridge_list_mirrors(env, bucket_id, file_id, NULL,
                                        check_list_mirrors);
     assert(status == 0);
 
     // register a user
-    status = storj_bridge_register(env, "testuser@test.com", "asdf", NULL,
+    status = genaro_bridge_register(env, "testuser@test.com", "asdf", NULL,
                                    check_register);
     assert(status == 0);
 
@@ -852,7 +852,7 @@ int test_api()
         return 1;
     }
 
-    storj_destroy_env(env);
+    genaro_destroy_env(env);
 
     return 0;
 }
@@ -945,7 +945,7 @@ int test_mnemonic_check()
     m = vectors_ok;
     while (*m) {
         r = mnemonic_check(*m);
-        r2 = storj_mnemonic_check(*m);
+        r2 = genaro_mnemonic_check(*m);
         assert(r == 1);
         assert(r2 == 1);
         m++;
@@ -964,13 +964,13 @@ int test_mnemonic_check()
     return 0;
 }
 
-int test_storj_mnemonic_generate_256()
+int test_genaro_mnemonic_generate_256()
 {
     int status;
     int stren = 256;
     char *mnemonic = NULL;
-    storj_mnemonic_generate(stren, &mnemonic);
-    status = storj_mnemonic_check(mnemonic);
+    genaro_mnemonic_generate(stren, &mnemonic);
+    status = genaro_mnemonic_check(mnemonic);
 
     if (status != 1) {
         fail("test_mnemonic_generate");
@@ -981,18 +981,18 @@ int test_storj_mnemonic_generate_256()
     }
     free(mnemonic);
 
-    pass("test_storj_mnemonic_check_256");
+    pass("test_genaro_mnemonic_check_256");
 
     return 0;
 }
 
-int test_storj_mnemonic_generate()
+int test_genaro_mnemonic_generate()
 {
     int status;
     int stren = 128;
     char *mnemonic = NULL;
-    storj_mnemonic_generate(stren, &mnemonic);
-    status = storj_mnemonic_check(mnemonic);
+    genaro_mnemonic_generate(stren, &mnemonic);
+    status = genaro_mnemonic_check(mnemonic);
 
     if (status != 1) {
         fail("test_mnemonic_generate");
@@ -1003,7 +1003,7 @@ int test_storj_mnemonic_generate()
     }
     free(mnemonic);
 
-    pass("test_storj_mnemonic_check");
+    pass("test_genaro_mnemonic_check");
 
     return 0;
 }
@@ -1344,37 +1344,37 @@ int test_read_write_encrypted_file()
     // it should create file passed in if it does not exist
     char test_file[1024];
     strcpy(test_file, folder);
-    strcat(test_file, "storj-test-user.json");
+    strcat(test_file, "genaro-test-user.json");
     if (access(test_file, F_OK) != -1) {
         unlink(test_file);
     }
 
     // it should successfully encrypt and decrypt a file with the provided key and salt
     char *expected_mnemonic = "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless";
-    storj_encrypt_write_auth(test_file, "testpass",
-                             "testuser@storj.io", "bridgepass", expected_mnemonic);
+    genaro_encrypt_write_auth(test_file, "testpass",
+                             "testuser@genaro.io", "bridgepass", expected_mnemonic);
 
     char *bridge_user = NULL;
     char *bridge_pass = NULL;
     char *mnemonic = NULL;
-    if (storj_decrypt_read_auth(test_file, "testpass",
+    if (genaro_decrypt_read_auth(test_file, "testpass",
                                 &bridge_user, &bridge_pass, &mnemonic)) {
-        fail("test_storj_write_read_auth(0)");
+        fail("test_genaro_write_read_auth(0)");
         return 1;
     }
 
-    if (strcmp(bridge_user, "testuser@storj.io") != 0) {
-        fail("test_storj_write_read_auth(1)");
+    if (strcmp(bridge_user, "testuser@genaro.io") != 0) {
+        fail("test_genaro_write_read_auth(1)");
         return 1;
     }
 
     if (strcmp(bridge_pass, "bridgepass") != 0) {
-        fail("test_storj_write_read_auth(2)");
+        fail("test_genaro_write_read_auth(2)");
         return 1;
     }
 
     if (strcmp(mnemonic, expected_mnemonic) != 0) {
-        fail("test_storj_write_read_auth(3)");
+        fail("test_genaro_write_read_auth(3)");
         return 1;
     }
 
@@ -1383,16 +1383,16 @@ int test_read_write_encrypted_file()
     free(mnemonic);
 
     // it should fail to decrypt if the wrong password
-    if (!storj_decrypt_read_auth(test_file, "wrongpass",
+    if (!genaro_decrypt_read_auth(test_file, "wrongpass",
                                  &bridge_user, &bridge_pass, &mnemonic)) {
-        fail("test_storj_write_read_auth(4)");
+        fail("test_genaro_write_read_auth(4)");
         return 1;
     }
 
     free(bridge_user);
     free(bridge_pass);
 
-    pass("test_storj_write_read_auth");
+    pass("test_genaro_write_read_auth");
 
     return 0;
 }
@@ -1445,7 +1445,7 @@ int test_meta_encryption()
 int test_memory_mapping()
 {
 
-    char *file_name = "storj-memory-map.data";
+    char *file_name = "genaro-memory-map.data";
     int len = strlen(folder) + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
@@ -1575,8 +1575,8 @@ int main(void)
     printf("Test Suite: BIP39\n");
     test_mnemonic_check();
     test_mnemonic_generate();
-    test_storj_mnemonic_generate();
-    test_storj_mnemonic_generate_256();
+    test_genaro_mnemonic_generate();
+    test_genaro_mnemonic_generate_256();
     test_generate_seed();
     test_generate_seed_256();
     test_generate_seed_256_trezor();

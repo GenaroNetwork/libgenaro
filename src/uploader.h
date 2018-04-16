@@ -1,6 +1,6 @@
 /**
  * @file uploader.h
- * @brief Storj upload methods and definitions.
+ * @brief Genaro upload methods and definitions.
  *
  * Structures and functions useful for uploading files.
  */
