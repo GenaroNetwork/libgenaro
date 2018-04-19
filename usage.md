@@ -1,4 +1,5 @@
 调用方法  
+
 0. 引用头文件
 ```
 #include "genaro.h"
