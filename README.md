@@ -1,6 +1,6 @@
 libgenaro  
-document: [usage](./usage.md)  
 =======
+document: [usage](./usage.md)  
 
 [![Build Status](https://travis-ci.org/GenaroNetwork/libgenaro.svg?branch=master)](https://travis-ci.org/GenaroNetwork/libgenaro)
 
