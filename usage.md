@@ -1,13 +1,13 @@
-More use methods please see [genaro.h](./src/genaro.h)   
+For detailed method/struct description, please see [genaro.h](./src/genaro.h)   
 
-调用方法  
+usage example  
 
-0. 引用头文件
+0. include header file
 ```
 #include "genaro.h"
 ```
 
-1. 生成 env 
+1. first of all make an env object which will be used through most actions.
 ```
 genaro_bridge_options_t bridge_options = {
     const char *proto       = "http",
@@ -39,10 +39,10 @@ genaro_log_options_t log_options = {
 
 env = genaro_init_env(&bridge_options, &encrypt_options, &http_options, &log_options);
 ```
-其中，除注册以外，调用其他方法是所使用的 env， 【user + pass】 与 【apikey + secretkey】 仅需提供其一
 
+note: there are 2 ways to make an env object. Either provide username plus password or provide apikey plus secretkey.
 
-2. 注册
+2. register
 ```
 char *user = "account@example.com";
 char *pass = "password";
@@ -62,42 +62,42 @@ struct {
 genaro_bridge_register(env, user, pass, &user_opts, register_callback);
 ```
 
-3. 新建 bucket
+3. create bucket
 ```
 char *bucket_name = "new bucket";
 genaro_bridge_create_bucket(env, bucket_name, NULL, create_bucket_callback);
 ```
 
-4. 获取 bucket 列表
+4. get bucket list
 ```
 genaro_bridge_get_buckets(env, NULL, get_buckets_callback);
 ```
 
-5. 删除 bucket
+5. delete bucket
 ```
-char *bucket_id = "abcd..."; // genaro_bridge_get_buckets 回调
+char *bucket_id = "abcd...";
 genaro_bridge_delete_bucket(env, bucket_id, NULL, delete_bucket_callback);
 ```
 
-6. 获取 bucket 下的文件
+6. list files in a bucket
 ```
-char *bucket_id = "abcd..."; // genaro_bridge_get_buckets 回调
+char *bucket_id = "abcd...";
 genaro_bridge_list_files(env, bucket_id, NULL, list_files_callback);
 ```
 
-7. 删除文件
+7. delete file
 ```
-char *bucket_id = "abcd..."; // genaro_bridge_get_buckets 回调
-char *file_id = "abcd..."; // genaro_bridge_list_files 回调
+char *bucket_id = "abcd...";
+char *file_id = "abcd...";
 
 genaro_bridge_delete_file(env, bucket_id, file_id, NULL, delete_file_callback);
 ```
 
-8. 下载文件
+8. download
 ```
-char *bucket_id = "abcd..."; // genaro_bridge_get_buckets 回调
-char *file_id = "abcd..."; // genaro_bridge_list_files 回调
-char *path = "/usr/user/download/download.file"; // 文件下载路径 （需指定文件名）
+char *bucket_id = "abcd..."; 
+char *file_id = "abcd...";
+char *path = "/usr/user/download/download.file"; // file full path including file name
 
 FILE *fd = NULL;
 fd = fopen(path, "w+");
@@ -107,15 +107,15 @@ genaro_bridge_resolve_file(env, bucket_id, file_id, fd, NULL,
                             download_file_complete_callback);
 ```
 
-9. 上传文件
+9. upload
 ```
-char *bucket_id = "abcd..."; // genaro_bridge_get_buckets 回调
-char *file_id = "abcd..."; // genaro_bridge_list_files 回调
-char *path = "/usr/user/download/upload.file"; // 文件路径
+char *bucket_id = "abcd...";
+char *file_id = "abcd...";
+char *path = "/usr/user/download/upload.file"; // file full path
 
 FILE *fd = NULL;
 fd = fopen(path, "r");
-const char *file_name = "upload.file"; // 上传后的文件名
+const char *file_name = "upload.file"; // file name in bucket
 
 char *prepare_frame_limit = getenv("GENARO_PREPARE_FRAME_LIMIT");
 char *push_frame_limit = getenv("GENARO_PUSH_FRAME_LIMIT");
@@ -135,7 +135,7 @@ genaro_bridge_store_file(env, &upload_opts, NULL,
                             upload_file_complete_callback);
 ```
 
-10. 获取信息
+10. get basic information
 ```
 genaro_bridge_get_info(env, NULL, get_info_callback);
 ```
