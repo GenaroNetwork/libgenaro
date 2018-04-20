@@ -1,3 +1,5 @@
+More use methods please see [genaro.h](./src/genaro.h)   
+
 调用方法  
 0. 引用头文件
 ```
