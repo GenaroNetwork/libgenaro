@@ -5,6 +5,9 @@ document: [usage](./usage.md)
 [![Build Status](https://travis-ci.org/GenaroNetwork/libgenaro.svg?branch=master)](https://travis-ci.org/GenaroNetwork/libgenaro)
 
 Asynchronous multi-platform C library and CLI for encrypted file transfer on the Genaro network.
+Forked from libstorj with additional functions added.
+
+For usage, see usage.md for examples, and see genaro.h for api.
 
 ## Feature Highlights
 
