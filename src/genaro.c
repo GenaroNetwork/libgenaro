@@ -607,12 +607,12 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
     if (options->apikey) {
         bo->apikey = strdup(options->apikey);
     } else {
-        bo->user = NULL;
+        bo->apikey = NULL;
     }
     if (options->secretkey) {
         bo->secretkey = strdup(options->secretkey);
     } else {
-        bo->user = NULL;
+        bo->secretkey = NULL;
     }
     if (options->user) {
         bo->user = strdup(options->user);
