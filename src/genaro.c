@@ -604,21 +604,6 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
     bo->proto = strdup(options->proto);
     bo->host = strdup(options->host);
     bo->port = options->port;
-    if (options->apikey) {
-        bo->apikey = strdup(options->apikey);
-    } else {
-        bo->apikey = NULL;
-    }
-    if (options->secretkey) {
-        bo->secretkey = strdup(options->secretkey);
-    } else {
-        bo->secretkey = NULL;
-    }
-    if (options->user) {
-        bo->user = strdup(options->user);
-    } else {
-        bo->user = NULL;
-    }
 
 #ifdef _POSIX_MEMLOCK
     int page_size = sysconf(_SC_PAGESIZE);
@@ -627,51 +612,6 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
     GetSystemInfo (&si);
     uintptr_t page_size = si.dwPageSize;
 #endif
-
-    if (options->pass) {
-        // prevent bridge password from being swapped unencrypted to disk
-#ifdef _POSIX_MEMLOCK
-        int pass_len = strlen(options->pass);
-        if (pass_len >= page_size) {
-            return NULL;
-        }
-
-#ifdef HAVE_ALIGNED_ALLOC
-        bo->pass = aligned_alloc(page_size, page_size);
-#elif HAVE_POSIX_MEMALIGN
-        bo->pass = NULL;
-        if (posix_memalign((void *)&bo->pass, page_size, page_size)) {
-            return NULL;
-        }
-#else
-        bo->pass = malloc(page_size);
-#endif
-
-        if (bo->pass == NULL) {
-            return NULL;
-        }
-        memset((char *)bo->pass, 0, page_size);
-        memcpy((char *)bo->pass, options->pass, pass_len);
-        if (mlock(bo->pass, pass_len)) {
-            return NULL;
-        }
-#elif _WIN32
-        int pass_len = strlen(options->pass);
-        bo->pass = VirtualAlloc(NULL, page_size,  MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-        if (bo->pass == NULL) {
-            return NULL;
-        }
-        memset((char *)bo->pass, 0, page_size);
-        memcpy((char *)bo->pass, options->pass, pass_len);
-        if (!VirtualLock((char *)bo->pass, pass_len)) {
-            return NULL;
-        }
-#else
-        bo->pass = strdup(options->pass);
-#endif
-    } else {
-        bo->pass = NULL;
-    }
 
     env->bridge_options = bo;
 
@@ -822,29 +762,6 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
     // free and destroy all bridge options
     free((char *)env->bridge_options->proto);
     free((char *)env->bridge_options->host);
-    free((char *)env->bridge_options->user);
-
-    // zero out password before freeing
-    if (env->bridge_options->pass) {
-        unsigned int pass_len = strlen(env->bridge_options->pass);
-        if (pass_len > 0) {
-            memset_zero((char *)env->bridge_options->pass, pass_len);
-        }
-#ifdef _POSIX_MEMLOCK
-        status = munlock(env->bridge_options->pass, pass_len);
-#elif _WIN32
-        if (!VirtualUnlock((char *)env->bridge_options->pass, pass_len)) {
-            status = 1;
-        }
-#endif
-
-#ifdef _WIN32
-        VirtualFree((char *)env->bridge_options, pass_len, MEM_RELEASE);
-#else
-        free((char *)env->bridge_options->pass);
-#endif
-
-    }
 
     free(env->bridge_options);
 

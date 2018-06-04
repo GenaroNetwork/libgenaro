@@ -139,10 +139,6 @@ typedef struct {
     const char *proto;
     const char *host;
     int port;
-    const char *user;
-    const char *pass;
-    const char *apikey;
-    const char *secretkey;
 } genaro_bridge_options_t;
 
 /** @brief File encryption options
