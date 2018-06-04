@@ -35,7 +35,6 @@ static inline void noop() {};
 #define HELP_TEXT "usage: genaro [<options>] <command> [<args>]\n\n"     \
     "These are common Genaro commands for various situations:\n\n"       \
     "setting up users profiles\n"                                       \
-    "  register                  setup a new genaro bridge user\n"       \
     "  import-keys               import existing user\n"                \
     "  export-keys               export bridge user, password and "     \
     "encryption keys\n\n"                                               \
@@ -63,10 +62,6 @@ static inline void noop() {};
     "  GENARO_KEYPASS             imported user settings passphrase\n"   \
     "  GENARO_BRIDGE              the bridge host "                      \
     "(e.g. https://api.storj.io)\n"                                     \
-    "  GENARO_BRIDGE_USER         bridge username\n"                     \
-    "  GENARO_APIKEY                 bridge api key\n"                  \
-    "  GENARO_SECRETKEY              bridge secret key\n"               \
-    "  GENARO_BRIDGE_PASS         bridge password\n"                     \
     "  GENARO_ENCRYPTION_KEY      file encryption key\n\n"
 
 
@@ -1011,7 +1006,7 @@ static int export_keys(char *host)
         get_password(key, '*');
         printf("\n\n");
 
-        if (genaro_decrypt_read_auth(user_file, key, &user, &pass, &mnemonic)) {
+        if (genaro_decrypt_read_auth(user_file, key, &mnemonic)) {
             printf("Unable to read user file.\n");
             status = 1;
             goto clear_variables;
@@ -1168,11 +1163,7 @@ int main(int argc, char **argv)
         http_options.proxy_url = NULL;
     }
 
-    char *user = NULL;
-    char *pass = NULL;
     char *mnemonic = NULL;
-    char *apikey = NULL;
-    char *secretkey = NULL;
 
     if (strcmp(command, "get-info") == 0) {
         printf("Genaro bridge: %s\n\n", genaro_bridge);
@@ -1181,10 +1172,6 @@ int main(int argc, char **argv)
             .proto = proto,
             .host  = host,
             .port  = port,
-            .user  = NULL,
-            .pass  = NULL,
-            .apikey = NULL,
-            .secretkey = NULL
         };
 
         env = genaro_init_env(&options, NULL, &http_options, &log_options);
@@ -1193,47 +1180,8 @@ int main(int argc, char **argv)
         }
 
         genaro_bridge_get_info(env, NULL, get_info_callback);
-
-    } else if(strcmp(command, "register") == 0) {
-        genaro_bridge_options_t options = {
-            .proto = proto,
-            .host  = host,
-            .port  = port,
-            .user  = NULL,
-            .pass  = NULL,
-            .apikey = NULL,
-            .secretkey = NULL
-        };
-
-        env = genaro_init_env(&options, NULL, &http_options, &log_options);
-        if (!env) {
-            return 1;
-        }
-
-        user = calloc(BUFSIZ, sizeof(char));
-        if (!user) {
-            return 1;
-        }
-        printf("Bridge username (email): ");
-        get_input(user);
-
-        printf("Bridge password: ");
-        pass = calloc(BUFSIZ, sizeof(char));
-        if (!pass) {
-            return 1;
-        }
-        get_password(pass, '*');
-        printf("\n");
-
-        user_options_t user_opts = {strdup(user), strdup(pass), strdup(host), NULL, NULL};
-
-        if (!user_opts.user || !user_opts.host || !user_opts.pass) {
-            return 1;
-        }
-
-        genaro_bridge_register(env, user, pass, &user_opts, register_callback);
     } else {
-
+        
         char *user_file = NULL;
         char *root_dir = NULL;
         if (get_user_auth_location(host, &root_dir, &user_file)) {
@@ -1245,25 +1193,13 @@ int main(int argc, char **argv)
         free(root_dir);
 
         // First, get auth from environment variables
-        user = getenv("GENARO_BRIDGE_USER") ?
-            strdup(getenv("GENARO_BRIDGE_USER")) : NULL;
-
-        pass = getenv("GENARO_BRIDGE_PASS") ?
-            strdup(getenv("GENARO_BRIDGE_PASS")) : NULL;
-
         mnemonic = getenv("GENARO_ENCRYPTION_KEY") ?
             strdup(getenv("GENARO_ENCRYPTION_KEY")) : NULL;
-        
-        apikey = getenv("GENARO_APIKEY") ?
-            strdup(getenv("GENARO_APIKEY")) : NULL;
-        
-        secretkey = getenv("GENARO_SECRETKEY") ?
-            strdup(getenv("GENARO_SECRETKEY")) : NULL;
 
         char *keypass = getenv("GENARO_KEYPASS");
 
         // Second, try to get from encrypted user file
-        if (( ((!user || !pass) && (!apikey || !secretkey)) || !mnemonic) && access(user_file, F_OK) != -1) {
+        if ((!mnemonic) && access(user_file, F_OK) != -1) {
 
             char *key = NULL;
             if (keypass) {
@@ -1281,34 +1217,17 @@ int main(int argc, char **argv)
                 get_password(key, '*');
                 printf("\n");
             }
-            char *file_user = NULL;
-            char *file_pass = NULL;
             char *file_mnemonic = NULL;
-            if (genaro_decrypt_read_auth(user_file, key, &file_user,
-                                        &file_pass, &file_mnemonic)) {
+            if (genaro_decrypt_read_auth(user_file, key, &file_mnemonic)) {
                 printf("Unable to read user file. Invalid keypass or path.\n");
                 free(key);
                 free(user_file);
-                free(file_user);
-                free(file_pass);
                 free(file_mnemonic);
                 goto end_program;
             }
             free(key);
             free(user_file);
-
-            if (!user && file_user) {
-                user = file_user;
-            } else if (file_user) {
-                free(file_user);
-            }
-
-            if (!pass && file_pass) {
-                pass = file_pass;
-            } else if (file_pass) {
-                free(file_pass);
-            }
-
+            
             if (!mnemonic && file_mnemonic) {
                 mnemonic = file_mnemonic;
             } else if (file_mnemonic) {
@@ -1318,32 +1237,6 @@ int main(int argc, char **argv)
         }
 
         // Third, ask for authentication
-        if (!user && (!apikey || !secretkey)) {
-            char *user_input = malloc(BUFSIZ);
-            if (user_input == NULL) {
-                return 1;
-            }
-            printf("Bridge username (email): ");
-            get_input(user_input);
-            int num_chars = strlen(user_input);
-            user = calloc(num_chars + 1, sizeof(char));
-            if (!user) {
-                return 1;
-            }
-            memcpy(user, user_input, num_chars);
-            free(user_input);
-        }
-
-        if (!pass && (!apikey || !secretkey)) {
-            printf("Bridge password: ");
-            pass = calloc(BUFSIZ, sizeof(char));
-            if (!pass) {
-                return 1;
-            }
-            get_password(pass, '*');
-            printf("\n");
-        }
-
         if (!mnemonic) {
             printf("Encryption key: ");
             char *mnemonic_input = malloc(BUFSIZ);
@@ -1365,10 +1258,6 @@ int main(int argc, char **argv)
             .proto = proto,
             .host  = host,
             .port  = port,
-            .user  = user,
-            .pass  = pass,
-            .apikey = apikey,
-            .secretkey = secretkey
         };
 
         genaro_encrypt_options_t encrypt_options = {
@@ -1493,12 +1382,6 @@ int main(int argc, char **argv)
 end_program:
     if (env) {
         genaro_destroy_env(env);
-    }
-    if (user) {
-        free(user);
-    }
-    if (pass) {
-        free(pass);
     }
     if (mnemonic) {
         free(mnemonic);

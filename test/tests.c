@@ -9,8 +9,6 @@ genaro_bridge_options_t bridge_options = {
     .proto = "http",
     .host  = "localhost",
     .port  = 8091,
-    .user  = "testuser@genaro.io",
-    .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
 };
 
 // setup bridge options to point to mock server (with incorrect auth)
@@ -18,8 +16,6 @@ genaro_bridge_options_t bridge_options_bad = {
     .proto = "http",
     .host  = "localhost",
     .port  = 8091,
-    .user  = "testuser@genaro.io",
-    .pass  = "bad password"
 };
 
 genaro_encrypt_options_t encrypt_options = {
@@ -1357,8 +1353,7 @@ int test_read_write_encrypted_file()
     char *bridge_user = NULL;
     char *bridge_pass = NULL;
     char *mnemonic = NULL;
-    if (genaro_decrypt_read_auth(test_file, "testpass",
-                                &bridge_user, &bridge_pass, &mnemonic)) {
+    if (genaro_decrypt_read_auth(test_file, "testpass", &mnemonic)) {
         fail("test_genaro_write_read_auth(0)");
         return 1;
     }
@@ -1383,8 +1378,7 @@ int test_read_write_encrypted_file()
     free(mnemonic);
 
     // it should fail to decrypt if the wrong password
-    if (!genaro_decrypt_read_auth(test_file, "wrongpass",
-                                 &bridge_user, &bridge_pass, &mnemonic)) {
+    if (!genaro_decrypt_read_auth(test_file, "wrongpass", &mnemonic)) {
         fail("test_genaro_write_read_auth(4)");
         return 1;
     }

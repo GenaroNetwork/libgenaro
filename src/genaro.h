@@ -618,15 +618,11 @@ GENARO_API int genaro_encrypt_auth(const char *passhrase,
  *
  * @param[in] filepath - The file path to read the options
  * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] bridge_user - The bridge username
- * @param[out] bridge_pass - The bridge password
  * @param[out] mnemonic - The file encryption mnemonic
  * @return A non-zero value on error, zero on success.
  */
  GENARO_API int genaro_decrypt_read_auth(const char *filepath,
                                        const char *passphrase,
-                                       char **bridge_user,
-                                       char **bridge_pass,
                                        char **mnemonic);
 
 /**
@@ -637,15 +633,11 @@ GENARO_API int genaro_encrypt_auth(const char *passhrase,
  *
  * @param[in] buffer - The encrypted buffer
  * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] bridge_user - The bridge username
- * @param[out] bridge_pass - The bridge password
  * @param[out] mnemonic - The file encryption mnemonic
  * @return A non-zero value on error, zero on success.
  */
 GENARO_API int genaro_decrypt_auth(const char *buffer,
                                  const char *passphrase,
-                                 char **bridge_user,
-                                 char **bridge_pass,
                                  char **mnemonic);
 
 /**

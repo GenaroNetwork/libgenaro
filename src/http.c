@@ -577,92 +577,11 @@ int fetch_json(genaro_http_options_t *http_options,
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
 
     // Include authentication headers if info is provided
-    if (auth && options->user && options->pass) {
-
-        // Hash password
-        uint8_t *pass_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
-        if (!pass_hash) {
-            return 1;
-        }
-        char *pass = calloc(SHA256_DIGEST_SIZE * 2 + 1, sizeof(char));
-        if (!pass) {
-            return 1;
-        }
-        struct sha256_ctx ctx;
-        sha256_init(&ctx);
-        sha256_update(&ctx, strlen(options->pass), (uint8_t *)options->pass);
-        sha256_digest(&ctx, SHA256_DIGEST_SIZE, pass_hash);
-        for (unsigned i = 0; i < SHA256_DIGEST_SIZE; i++) {
-            sprintf(&pass[i*2], "%02x", pass_hash[i]);
-        }
-
-        free(pass_hash);
-
-        int user_pass_len = strlen(options->user) + 1 + strlen(pass);
-        user_pass = calloc(user_pass_len + 1, sizeof(char));
-        if (!user_pass) {
-            return 1;
-        }
-        strcat(user_pass, options->user);
-        strcat(user_pass, ":");
-        strcat(user_pass, pass);
-
-        free(pass);
-
-        curl_easy_setopt(curl, CURLOPT_USERPWD, user_pass);
-
+    if (auth) {
     }
 
     struct curl_slist *header_list = NULL;
     
-    // If there are apikeys, put them in to curl
-    if (options->apikey && options->secretkey)
-    {
-        struct timeval tv;
-        long t;
-        char ts[14];
-        char *beforehash;
-        uint8_t apihash_uint8[SHA256_DIGEST_SIZE];
-        
-        gettimeofday(&tv, NULL);
-        t = tv.tv_sec*1000 + (long) tv.tv_usec/1000;
-        sprintf(ts, "%ld", t);
-        
-        beforehash = (char *) malloc(strlen(path)+strlen(ts)+strlen(options->secretkey)+1);
-        strcat(beforehash, path);
-        strcat(beforehash, ts);
-        strcat(beforehash, options->secretkey);
-        
-        sha256_of_str((uint8_t *)beforehash, strlen(beforehash), apihash_uint8);
-        
-        char *apihash = hex2str(SHA256_DIGEST_SIZE, apihash_uint8);
-        char *h_key;
-        char *h_ts;
-        char *h_hash;
-        h_key = (char *) malloc(strlen("genaro-apikey: ") + strlen(options->apikey) + 1);
-        h_ts = (char *) malloc(strlen("genaro-apits: ") + strlen(ts) + 1);
-        h_hash = (char *) malloc(strlen("genaro-apihash: ") + strlen(apihash) + 1);
-        
-        strcat(h_key, "genaro-apikey: ");
-        strcat(h_key, options->apikey);
-        
-        strcat(h_ts, "genaro-apits: ");
-        strcat(h_ts, ts);
-        
-        strcat(h_hash, "genaro-apihash: ");
-        strcat(h_hash, apihash);
-        
-        header_list = curl_slist_append(header_list, h_key);
-        header_list = curl_slist_append(header_list, h_ts);
-        header_list = curl_slist_append(header_list, h_hash);
-        
-        free(beforehash);
-        free(h_key);
-        free(h_ts);
-        free(h_hash);
-    }
-
-
     // Include body if request body json is provided
     http_body_send_t *post_body = NULL;
     const char *req_buf = NULL;

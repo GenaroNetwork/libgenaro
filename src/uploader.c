@@ -846,9 +846,10 @@ static void queue_push_shard(genaro_upload_state_t *state, int index)
     // setup the exchange report
     genaro_exchange_report_t *report = state->shard[index].report;
     report->data_hash = state->shard[index].meta->hash;
-    report->reporter_id = (char *)state->env->bridge_options->user ? (char *)state->env->bridge_options->user : (char *)state->env->bridge_options->apikey;
+    // TODO: reporter_id and client_id is temporary
+    report->reporter_id = "";
     report->farmer_id = state->shard[index].pointer->farmer_node_id;
-    report->client_id = (char *)state->env->bridge_options->user ? (char *)state->env->bridge_options->user : (char *)state->env->bridge_options->apikey;
+    report->client_id = "";
     report->pointer_index = index;
     report->start = 0;
     report->end = 0;

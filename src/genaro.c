@@ -889,8 +889,6 @@ GENARO_API int genaro_encrypt_write_auth(const char *filepath,
 
 GENARO_API int genaro_decrypt_auth(const char *buffer,
                        const char *passphrase,
-                       char **bridge_user,
-                       char **bridge_pass,
                        char **mnemonic)
 {
     int status = 0;
@@ -903,14 +901,11 @@ GENARO_API int genaro_decrypt_auth(const char *buffer,
         goto clean_up;
     }
 
-    *bridge_user = strdup((char *)json_object_get_string(user_value));
-
     struct json_object *pass_value;
     if (!json_object_object_get_ex(body, "pass", &pass_value)) {
         status = 1;
         goto clean_up;
     }
-    char *pass_enc = (char *)json_object_get_string(pass_value);
 
     struct json_object *mnemonic_value;
     if (!json_object_object_get_ex(body, "mnemonic", &mnemonic_value)) {
@@ -919,12 +914,8 @@ GENARO_API int genaro_decrypt_auth(const char *buffer,
     }
     char *mnemonic_enc = (char *)json_object_get_string(mnemonic_value);
 
-    if (decrypt_data(passphrase, *bridge_user, pass_enc, bridge_pass)) {
-        status = 1;
-        goto clean_up;
-    }
-
-    if (decrypt_data(passphrase, *bridge_user, mnemonic_enc, mnemonic)) {
+    // TODO: "salt" is temporary
+    if (decrypt_data(passphrase, "salt", mnemonic_enc, mnemonic)) {
         status = 1;
         goto clean_up;
     }
@@ -937,8 +928,6 @@ clean_up:
 
 GENARO_API int genaro_decrypt_read_auth(const char *filepath,
                             const char *passphrase,
-                            char **bridge_user,
-                            char **bridge_pass,
                             char **mnemonic)
 {
     FILE *fp;
@@ -971,8 +960,7 @@ GENARO_API int genaro_decrypt_read_auth(const char *filepath,
         return error;
     }
 
-    int status = genaro_decrypt_auth(buffer, passphrase, bridge_user,
-                                    bridge_pass, mnemonic);
+    int status = genaro_decrypt_auth(buffer, passphrase, mnemonic);
 
     free(buffer);
 
