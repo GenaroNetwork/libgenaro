@@ -817,53 +817,23 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
 
 GENARO_API int genaro_encrypt_auth(const char *passphrase,
                        const char *bridge_user,
-                       const char *bridge_pass,
-                       const char *mnemonic,
+                       const char *key_str,
                        char **buffer)
 {
-    char *pass_encrypted;
-    int pass_length = strlen(bridge_pass);
+    char *key_encrypted;
 
-    if (encrypt_data(passphrase, bridge_user, bridge_pass,
-                     &pass_encrypted)) {
+    if (encrypt_data(passphrase, bridge_user, key_str, &key_encrypted)) {
         return 1;
     }
 
-    char *mnemonic_encrypted;
-    int mnemonic_length = strlen(mnemonic);
-
-    if (encrypt_data(passphrase, bridge_user, mnemonic,
-                     &mnemonic_encrypted)) {
-        return 1;
-    }
-
-    struct json_object *body = json_object_new_object();
-    json_object *user_str = json_object_new_string(bridge_user);
-
-    json_object *pass_str = json_object_new_string(pass_encrypted);
-    json_object *mnemonic_str = json_object_new_string(mnemonic_encrypted);
-
-    json_object_object_add(body, "user", user_str);
-    json_object_object_add(body, "pass", pass_str);
-    json_object_object_add(body, "mnemonic", mnemonic_str);
-
-    const char *body_str = json_object_to_json_string(body);
-
-    *buffer = calloc(strlen(body_str) + 1, sizeof(char));
-    memcpy(*buffer, body_str, strlen(body_str) + 1);
-
-    json_object_put(body);
-    free(mnemonic_encrypted);
-    free(pass_encrypted);
+    *buffer = calloc(strlen(key_encrypted) + 1, sizeof(char));
+    memcpy(*buffer, key_encrypted, strlen(key_encrypted) + 1);
+    free(key_encrypted);
 
     return 0;
 }
 
-GENARO_API int genaro_encrypt_write_auth(const char *filepath,
-                             const char *passphrase,
-                             const char *bridge_user,
-                             const char *bridge_pass,
-                             const char *mnemonic)
+GENARO_API int genaro_encrypt_write_auth(const char *filepath, char *passphrase, json_object *key_json_obj)
 {
     FILE *fp;
     fp = fopen(filepath, "w");
@@ -872,8 +842,10 @@ GENARO_API int genaro_encrypt_write_auth(const char *filepath,
     }
 
     char *buffer = NULL;
-    if (genaro_encrypt_auth(passphrase, bridge_user,
-                           bridge_pass, mnemonic, &buffer)) {
+    const char *key_json_str = json_object_to_json_string(key_json_obj);
+    uint8_t sha256_key[32 + 1];
+    sha256_of_str(key_json_str, strlen(key_json_str), sha256_key);
+    if (genaro_encrypt_auth(passphrase, sha256_key, key_json_str, &buffer)) {
         fclose(fp);
         return 1;
     }

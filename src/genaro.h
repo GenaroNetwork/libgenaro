@@ -584,11 +584,7 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env);
  * @param[in] mnemonic - The file encryption mnemonic
  * @return A non-zero value on error, zero on success.
  */
-GENARO_API int genaro_encrypt_write_auth(const char *filepath,
-                                       const char *passhrase,
-                                       const char *bridge_user,
-                                       const char *bridge_pass,
-                                       const char *mnemonic);
+GENARO_API int genaro_encrypt_write_auth(const char *filepath, char *passphrase, json_object *key_json_obj);
 
 
 /**
@@ -606,8 +602,7 @@ GENARO_API int genaro_encrypt_write_auth(const char *filepath,
  */
 GENARO_API int genaro_encrypt_auth(const char *passhrase,
                                  const char *bridge_user,
-                                 const char *bridge_pass,
-                                 const char *mnemonic,
+                                 const char *key_str,
                                  char **buffer);
 
 /**

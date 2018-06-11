@@ -15,16 +15,9 @@
 #endif
 
 #include "genaro.h"
+#include "key_file.h"
 
 #define GENARO_THREADPOOL_SIZE "64"
-
-typedef struct {
-    char *user;
-    char *pass;
-    char *host;
-    char *mnemonic;
-    char *key;
-} user_options_t;
 
 #ifndef errno
 extern int errno;
@@ -35,8 +28,8 @@ static inline void noop() {};
 #define HELP_TEXT "usage: genaro [<options>] <command> [<args>]\n\n"     \
     "These are common Genaro commands for various situations:\n\n"       \
     "setting up users profiles\n"                                       \
-    "  import-keys               import existing user\n"                \
-    "  export-keys               export bridge user, password and "     \
+    "  import-keys [<file-path>]      import existing user\n"                \
+    "  export-keys                    export bridge user, password and "     \
     "encryption keys\n\n"                                               \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
@@ -184,43 +177,6 @@ static void get_input(char *line)
             }
         }
     }
-}
-
-static int generate_mnemonic(char **mnemonic)
-{
-    char *strength_str = NULL;
-    int strength = 0;
-    int status = 0;
-
-    printf("We now need to create an secret key used for encrypting " \
-           "files.\nPlease choose strength from: 128, 160, 192, 224, 256\n\n");
-
-    while (strength % 32 || strength < 128 || strength > 256) {
-        strength_str = calloc(BUFSIZ, sizeof(char));
-        printf("Strength: ");
-        get_input(strength_str);
-
-        if (strength_str != NULL) {
-            strength = atoi(strength_str);
-        }
-
-        free(strength_str);
-    }
-
-    if (*mnemonic) {
-        free(*mnemonic);
-    }
-
-    *mnemonic = NULL;
-
-    int generate_code = genaro_mnemonic_generate(strength, mnemonic);
-    if (*mnemonic == NULL || generate_code == 0) {
-        printf("Failed to generate encryption key.\n");
-        status = 1;
-        status = generate_mnemonic(mnemonic);
-    }
-
-    return status;
 }
 
 static int get_password(char *password, int mask)
@@ -556,8 +512,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
         shard = json_object_array_get_idx(req->response, i);
         json_object_object_get_ex(shard, "established",
                                  &established);
-        int num_established =
-            json_object_array_length(established);
+        int num_established = json_object_array_length(established);
         for (int j = 0; j < num_established; j++) {
             item = json_object_array_get_idx(established, j);
             if (j == 0) {
@@ -580,18 +535,13 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-static int import_keys(user_options_t *options)
+static int import_keys(char *host, char *key_file_path)
 {
     int status = 0;
-    char *host = options->host ? strdup(options->host) : NULL;
-    char *user = options->user ? strdup(options->user) : NULL;
-    char *pass = options->pass ? strdup(options->pass) : NULL;
-    char *key = options->key ? strdup(options->key) : NULL;
-    char *mnemonic = options->mnemonic ? strdup(options->mnemonic): NULL;
-    char *mnemonic_input = NULL;
     char *user_file = NULL;
     char *root_dir = NULL;
-    int num_chars;
+    char *key = NULL;
+    key_file_result_t *key_file_result = NULL;
 
     char *user_input = calloc(BUFSIZ, sizeof(char));
     if (user_input == NULL) {
@@ -606,7 +556,29 @@ static int import_keys(user_options_t *options)
         goto clear_variables;
     }
 
+    // get key file path
     struct stat st;
+    int key_file_path_parsed = 0;
+    while (1) {
+        if (key_file_path_parsed == 0 && key_file_path != NULL) {
+            strcpy(user_input, key_file_path);
+            key_file_path_parsed = 1;
+        } else {
+            printf("Please specify the private key file path (empty to quit): ");
+            get_input(user_input);
+        }
+        if (strlen(user_input) == 0) {
+            printf("Bye!\n");
+            goto clear_variables;
+        }
+        if (stat(user_input, &st) != 0) {
+            printf("File not found.\n");
+            continue;
+        }
+        if ((key_file_result = parse_key_file(user_input)) != KEY_FILE_ERR_POINTER) break;
+        printf("Bad file format.\n");
+    }
+
     if (stat(user_file, &st) == 0) {
         printf("Would you like to overwrite the current settings?: [y/n] ");
         get_input(user_input);
@@ -618,69 +590,6 @@ static int import_keys(user_options_t *options)
 
         if (strcmp(user_input, "n") == 0) {
             printf("\nCanceled overwriting of stored credentials.\n");
-            status = 1;
-            goto clear_variables;
-        }
-    }
-
-    if (!user) {
-        printf("Bridge username (email): ");
-        get_input(user_input);
-        num_chars = strlen(user_input);
-        user = calloc(num_chars + 1, sizeof(char));
-        if (!user) {
-            status = 1;
-            goto clear_variables;
-        }
-        memcpy(user, user_input, num_chars * sizeof(char));
-    }
-
-    if (!pass) {
-        printf("Bridge password: ");
-        pass = calloc(BUFSIZ, sizeof(char));
-        if (!pass) {
-            status = 1;
-            goto clear_variables;
-        }
-        get_password(pass, '*');
-        printf("\n");
-    }
-
-    if (!mnemonic) {
-        mnemonic_input = calloc(BUFSIZ, sizeof(char));
-        if (!mnemonic_input) {
-            status = 1;
-            goto clear_variables;
-        }
-
-        printf("\nIf you've previously uploaded files, please enter your" \
-               " existing encryption key (12 to 24 words). \nOtherwise leave" \
-               " the field blank to generate a new key.\n\n");
-
-        printf("Encryption key: ");
-        get_input(mnemonic_input);
-        num_chars = strlen(mnemonic_input);
-
-        if (num_chars == 0) {
-            printf("\n");
-            generate_mnemonic(&mnemonic);
-            printf("\n");
-
-            printf("Encryption key: %s\n", mnemonic);
-            printf("\n");
-            printf("Please make sure to backup this key in a safe location. " \
-                   "If the key is lost, the data uploaded will also be lost.\n\n");
-        } else {
-            mnemonic = calloc(num_chars + 1, sizeof(char));
-            if (!mnemonic) {
-                status = 1;
-                goto clear_variables;
-            }
-            memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
-        }
-
-        if (!genaro_mnemonic_check(mnemonic)) {
-            printf("Encryption key integrity check failed.\n");
             status = 1;
             goto clear_variables;
         }
@@ -703,7 +612,7 @@ static int import_keys(user_options_t *options)
         goto clear_variables;
     }
 
-    if (genaro_encrypt_write_auth(user_file, key, user, pass, mnemonic)) {
+    if (genaro_encrypt_write_auth(user_file, key, key_file_result->json_obj)) {
         status = 1;
         printf("Failed to write to disk\n");
         goto clear_variables;
@@ -714,23 +623,8 @@ static int import_keys(user_options_t *options)
            user_file);
 
 clear_variables:
-    if (user) {
-        free(user);
-    }
     if (user_input) {
         free(user_input);
-    }
-    if (pass) {
-        free(pass);
-    }
-    if (mnemonic) {
-        free(mnemonic);
-    }
-    if (mnemonic_input) {
-        free(mnemonic_input);
-    }
-    if (key) {
-        free(key);
     }
     if (root_dir) {
         free(root_dir);
@@ -738,70 +632,10 @@ clear_variables:
     if (user_file) {
         free(user_file);
     }
-    if (host) {
-        free(host);
+    if (key_file_result) {
+        key_file_result_put(key_file_result);
     }
-
     return status;
-}
-
-static void register_callback(uv_work_t *work_req, int status)
-{
-    assert(status == 0);
-    json_request_t *req = work_req->data;
-
-    if (req->status_code != 201) {
-        printf("Request failed with status code: %i\n",
-               req->status_code);
-        struct json_object *error;
-        json_object_object_get_ex(req->response, "error", &error);
-        printf("Error: %s\n", json_object_get_string(error));
-
-        user_options_t *handle = (user_options_t *) req->handle;
-        free(handle->user);
-        free(handle->host);
-        free(handle->pass);
-    } else {
-        struct json_object *email;
-        json_object_object_get_ex(req->response, "email", &email);
-        printf("\n");
-        printf("Successfully registered %s, please check your email "\
-               "to confirm.\n", json_object_get_string(email));
-
-        // save credentials
-        char *mnemonic = NULL;
-        printf("\n");
-        generate_mnemonic(&mnemonic);
-        printf("\n");
-
-        printf("Encryption key: %s\n", mnemonic);
-        printf("\n");
-        printf("Please make sure to backup this key in a safe location. " \
-               "If the key is lost, the data uploaded will also be lost.\n\n");
-
-        user_options_t *user_opts = req->handle;
-
-        user_opts->mnemonic = mnemonic;
-        import_keys(user_opts);
-
-        if (mnemonic) {
-            free(mnemonic);
-        }
-        if (user_opts->pass) {
-            free(user_opts->pass);
-        }
-        if (user_opts->user) {
-            free(user_opts->user);
-        }
-        if (user_opts->host) {
-            free(user_opts->host);
-        }
-    }
-
-    json_object_put(req->response);
-    json_object_put(req->body);
-    free(req);
-    free(work_req);
 }
 
 static void list_files_callback(uv_work_t *work_req, int status)
@@ -984,15 +818,13 @@ static void get_info_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+// TODO: 
 static int export_keys(char *host)
 {
     int status = 0;
     char *user_file = NULL;
     char *root_dir = NULL;
-    char *user = NULL;
-    char *pass = NULL;
     char *mnemonic = NULL;
-    char *key = NULL;
 
     if (get_user_auth_location(host, &root_dir, &user_file)) {
         printf("Unable to determine user auth filepath.\n");
@@ -1000,29 +832,7 @@ static int export_keys(char *host)
         goto clear_variables;
     }
 
-    if (access(user_file, F_OK) != -1) {
-        key = calloc(BUFSIZ, sizeof(char));
-        printf("Unlock passphrase: ");
-        get_password(key, '*');
-        printf("\n\n");
-
-        if (genaro_decrypt_read_auth(user_file, key, &mnemonic)) {
-            printf("Unable to read user file.\n");
-            status = 1;
-            goto clear_variables;
-        }
-
-        printf("Username:\t%s\nPassword:\t%s\nEncryption key:\t%s\n",
-               user, pass, mnemonic);
-    }
-
 clear_variables:
-    if (user) {
-        free(user);
-    }
-    if (pass) {
-        free(pass);
-    }
     if (mnemonic) {
         free(mnemonic);
     }
@@ -1031,9 +841,6 @@ clear_variables:
     }
     if (user_file) {
         free(user_file);
-    }
-    if (key) {
-        free(key);
     }
     return status;
 }
@@ -1134,8 +941,8 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "import-keys") == 0) {
-        user_options_t user_options = {NULL, NULL, host, NULL, NULL};
-        return import_keys(&user_options);
+        char *filepath = argv[command_index + 1];
+        return import_keys(host, filepath);
     }
 
     if (strcmp(command, "export-keys") == 0) {
