@@ -192,7 +192,7 @@ key_obj_t *get_key_obj(json_object *key_json_obj) {
  */
 
 int extract_key(char *passphrase, key_obj_t *key_obj, char **buf) {
-    int status = KEY_FILE_ERR_UNKNOWN;
+    int status = KEY_FILE_SUCCESS;
     uint8_t *buf_mac = NULL;
     uint8_t *buf_mac_sha3 = NULL;
     uint8_t *buf_ciphertext = NULL;
@@ -204,7 +204,6 @@ int extract_key(char *passphrase, key_obj_t *key_obj, char **buf) {
         status = KEY_FILE_ERR_DATA;
         goto clean_variable;
     }
-    // TODO: buf length
     size_t buf_len = (size_t) kdfparams_obj->dklen;
     *buf = malloc(buf_len);
     char *salt = kdfparams_obj->salt;
@@ -218,7 +217,7 @@ int extract_key(char *passphrase, key_obj_t *key_obj, char **buf) {
                                buf_len
     );
     if (err != 0) {
-        status = KEY_FILE_ERR_VALID;
+        status = KEY_FILE_ERR_UNKNOWN;
         goto clean_variable;
     }
 
@@ -236,15 +235,16 @@ int extract_key(char *passphrase, key_obj_t *key_obj, char **buf) {
     memcpy(buf_mac, *buf + left_len, left_len);
     memcpy(buf_mac + left_len, buf_ciphertext, buf_ciphertext_len);
 
-    printf("%s\n%s\n", hex2str(buf_mac_len, buf_mac), ciphertext);
-
-    buf_mac_sha3 = malloc(SHA3_256_DIGEST_SIZE);
+    buf_mac_sha3 = malloc(CRYPTO_SHA3_DIGEST_SIZE);
     sha3_256_of_str(buf_mac, (int) buf_mac_len, buf_mac_sha3);
 
-    char *str_mac_sha3 = hex2str(SHA3_256_DIGEST_SIZE, buf_mac_sha3);
-    printf("%s\n", str_mac_sha3);
+    char *str_mac_sha3 = hex2str(CRYPTO_SHA3_DIGEST_SIZE, buf_mac_sha3);
+    if (strcmp(str_mac_sha3, key_obj->crypto->mac) != 0) {
+        status = KEY_FILE_ERR_VALID;
+        goto clean_variable;
+    }
 
-    clean_variable:
+clean_variable:
     if (buf_mac) {
         free(buf_mac);
     }

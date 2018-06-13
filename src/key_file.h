@@ -6,6 +6,7 @@
 
 #define KEY_FILE_ERR_NUM (-1)
 #define KEY_FILE_ERR_POINTER NULL
+#define KEY_FILE_SUCCESS (0)
 #define KEY_FILE_ERR_FORMAT (-1)
 #define KEY_FILE_ERR_DATA (-2)
 #define KEY_FILE_ERR_VALID (-3)

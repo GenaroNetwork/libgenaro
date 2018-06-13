@@ -12,7 +12,6 @@
 #include <nettle/hmac.h>
 #include <nettle/pbkdf2.h>
 #include <nettle/sha.h>
-#include <nettle/sha3.h>
 #include <nettle/ctr.h>
 #include <nettle/gcm.h>
 #include <nettle/base64.h>
@@ -23,6 +22,7 @@
 #define DETERMINISTIC_KEY_SIZE 64
 #define DETERMINISTIC_KEY_HEX_SIZE 32
 #define BUCKET_NAME_MAGIC "398734aab3c4c30c9f22590e83a95f7e43556a45fc2b3060e0c39fde31f50272"
+#define CRYPTO_SHA3_DIGEST_SIZE 32
 
 static const uint8_t BUCKET_META_MAGIC[32] = {66,150,71,16,50,114,88,160,163,35,154,65,162,213,226,215,70,138,57,61,52,19,210,170,38,164,162,200,86,201,2,81};
 
@@ -47,7 +47,7 @@ void pbkdf2_hmac_sha512(unsigned key_length,
                         unsigned salt_length, const uint8_t *salt,
                         unsigned length, uint8_t *dst);
 
-void sha3_256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
+void sha3_256_of_str(const uint8_t *str, size_t str_len, uint8_t *digest);
 
 /**
  * @brief Generate a bucket's key

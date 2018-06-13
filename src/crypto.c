@@ -1,4 +1,5 @@
 #include "crypto.h"
+#include "libkeccak.h"
 
 int ripemd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
 {
@@ -230,11 +231,14 @@ void pbkdf2_hmac_sha512 (
     SHA512_DIGEST_SIZE, iterations, salt_length, salt, length, dst);
 }
 
-void sha3_256_of_str(const uint8_t *str, int str_len, uint8_t *digest) {
-    struct sha3_256_ctx ctx;
-    sha3_256_init(&ctx);
-    sha3_256_update(&ctx, str_len, str);
-    sha3_256_digest(&ctx, SHA3_256_DIGEST_SIZE, digest);
+void sha3_256_of_str(const uint8_t *str, size_t str_len, uint8_t *digest) {
+    libkeccak_spec_t spec;
+    libkeccak_state_t state;
+
+    libkeccak_spec_sha3(&spec, 256);
+    libkeccak_state_initialise(&state, &spec);
+    libkeccak_fast_digest(&state, (char *)str, str_len, 0, "", (char *)digest);
+    libkeccak_state_destroy(&state);
 }
 
 int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position)

@@ -583,17 +583,25 @@ static int import_keys(char *host, char *key_file_path)
     while (1) {
         printf("Please input the passphrase of the private key(empty to quit): ");
         get_password(user_input, 0);
-        printf("\nVerifying...\n");
+        printf("\nChecking... ");
         if (strlen(user_input) == 0) {
             printf("Bye!\n");
             goto clear_variables;
         }
         int err = extract_key(user_input, key_file_result->key_obj, &key_key);
-        if (err == KEY_FILE_ERR_DATA) {
+        if (err == KEY_FILE_SUCCESS) {
+            printf("\n\n");
+            break;
+        } else if (err == KEY_FILE_ERR_DATA) {
             printf("File corrupted.\n");
             continue;
+        } else if (err == KEY_FILE_ERR_VALID) {
+            printf("Password incorrect.\n");
+            continue;
+        } else {
+            printf("Error unknown.\n");
+            continue;
         }
-        break;
     }
     memset(user_input, 0, BUFSIZ);
 
