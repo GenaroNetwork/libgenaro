@@ -12,6 +12,7 @@
 #include <nettle/hmac.h>
 #include <nettle/pbkdf2.h>
 #include <nettle/sha.h>
+#include <nettle/sha3.h>
 #include <nettle/ctr.h>
 #include <nettle/gcm.h>
 #include <nettle/base64.h>
@@ -45,6 +46,8 @@ void pbkdf2_hmac_sha512(unsigned key_length,
                         unsigned iterations,
                         unsigned salt_length, const uint8_t *salt,
                         unsigned length, uint8_t *dst);
+
+void sha3_256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
 /**
  * @brief Generate a bucket's key

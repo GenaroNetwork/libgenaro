@@ -1,4 +1,7 @@
 #include "key_file.h"
+#include "libscrypt.h"
+#include "crypto.h"
+#include "utils.h"
 
 /*
  * free memory of key_obj_t
@@ -85,17 +88,16 @@ int64_t get_json_num_value(json_object *json_obj, const char *key) {
 kdfparams_obj_t *get_cipher_kdfparams(json_object *kdfparams_json_obj) {
     kdfparams_obj_t *kdfparams_obj = calloc(sizeof(kdfparams_obj_t), 1);
 
-    if ((kdfparams_obj->dklen = get_json_num_value(kdfparams_json_obj, "dklen") == KEY_FILE_ERR_NUM) ||
-        (kdfparams_obj->n = get_json_num_value(kdfparams_json_obj, "n") == KEY_FILE_ERR_NUM) ||
-        (kdfparams_obj->p = get_json_num_value(kdfparams_json_obj, "p") == KEY_FILE_ERR_NUM) ||
-        (kdfparams_obj->r = get_json_num_value(kdfparams_json_obj, "r") == KEY_FILE_ERR_NUM) ||
-        (kdfparams_obj->salt = get_json_string_value(kdfparams_json_obj, "salt")) == KEY_FILE_ERR_POINTER) {
+    if ((kdfparams_obj->dklen = get_json_num_value(kdfparams_json_obj, "dklen")) != KEY_FILE_ERR_NUM &&
+        (kdfparams_obj->n = get_json_num_value(kdfparams_json_obj, "n")) != KEY_FILE_ERR_NUM &&
+        (kdfparams_obj->p = get_json_num_value(kdfparams_json_obj, "p")) != KEY_FILE_ERR_NUM &&
+        (kdfparams_obj->r = get_json_num_value(kdfparams_json_obj, "r")) != KEY_FILE_ERR_NUM &&
+        (kdfparams_obj->salt = get_json_string_value(kdfparams_json_obj, "salt")) != KEY_FILE_ERR_POINTER) {
 
-        kdfparams_obj_put(kdfparams_obj);
-        return KEY_FILE_ERR_POINTER;
+        return kdfparams_obj;
     }
-
-    return kdfparams_obj;
+    kdfparams_obj_put(kdfparams_obj);
+    return KEY_FILE_ERR_POINTER;
 }
 
 cipherparams_obj_t *get_cipher_cipherparams(json_object *cipherparams_json_obj) {
@@ -130,21 +132,21 @@ crypto_obj_t *get_crypto_obj(json_object *crypto_json_obj) {
     crypto_obj_t *crypto_obj = calloc(sizeof(crypto_obj_t), 1);
 
     json_object *tmp_json_obj;
-    if ((crypto_obj->cipher = get_crypto_cipher(crypto_json_obj)) == KEY_FILE_ERR_POINTER ||
-        (crypto_obj->ciphertext = get_crypto_ciphertext(crypto_json_obj)) == KEY_FILE_ERR_POINTER ||
-        (crypto_obj->kdf = get_crypto_kdf(crypto_json_obj)) == KEY_FILE_ERR_POINTER ||
-        (crypto_obj->mac = get_crypto_mac(crypto_json_obj)) == KEY_FILE_ERR_POINTER ||
+    if ((crypto_obj->cipher = get_crypto_cipher(crypto_json_obj)) != KEY_FILE_ERR_POINTER &&
+        (crypto_obj->ciphertext = get_crypto_ciphertext(crypto_json_obj)) != KEY_FILE_ERR_POINTER &&
+        (crypto_obj->kdf = get_crypto_kdf(crypto_json_obj)) != KEY_FILE_ERR_POINTER &&
+        (crypto_obj->mac = get_crypto_mac(crypto_json_obj)) != KEY_FILE_ERR_POINTER &&
 
-        (tmp_json_obj = get_json_object_value(crypto_json_obj, "cipherparams")) == KEY_FILE_ERR_POINTER ||
-        (crypto_obj->cipherparams = get_cipher_cipherparams(tmp_json_obj)) == KEY_FILE_ERR_POINTER ||
+        (tmp_json_obj = get_json_object_value(crypto_json_obj, "cipherparams")) != KEY_FILE_ERR_POINTER &&
+        (crypto_obj->cipherparams = get_cipher_cipherparams(tmp_json_obj)) != KEY_FILE_ERR_POINTER &&
 
-        (tmp_json_obj = get_json_object_value(crypto_json_obj, "kdfparams")) == KEY_FILE_ERR_POINTER ||
-        (crypto_obj->kdfparams = get_cipher_kdfparams(tmp_json_obj)) == KEY_FILE_ERR_POINTER) {
+        (tmp_json_obj = get_json_object_value(crypto_json_obj, "kdfparams")) != KEY_FILE_ERR_POINTER &&
+        (crypto_obj->kdfparams = get_cipher_kdfparams(tmp_json_obj)) != KEY_FILE_ERR_POINTER) {
 
-        crypto_obj_put(crypto_obj);
-        return KEY_FILE_ERR_POINTER;
+        return crypto_obj;
     }
-    return crypto_obj;
+    crypto_obj_put(crypto_obj);
+    return KEY_FILE_ERR_POINTER;
 }
 
 char *get_key_address(json_object *key_json_obj) {
@@ -171,23 +173,89 @@ key_obj_t *get_key_obj(json_object *key_json_obj) {
     key_obj_t *key_obj = calloc(sizeof(key_obj_t), 1);
 
     json_object *crypto_json_obj;
-    if ((key_obj->version = get_key_version(key_json_obj)) == KEY_FILE_ERR_NUM ||
-        (key_obj->id = get_key_id(key_json_obj)) == KEY_FILE_ERR_POINTER ||
-        (key_obj->address = get_key_address(key_json_obj)) == KEY_FILE_ERR_POINTER ||
+    if ((key_obj->version = get_key_version(key_json_obj)) != KEY_FILE_ERR_NUM &&
+        (key_obj->id = get_key_id(key_json_obj)) != KEY_FILE_ERR_POINTER &&
+        (key_obj->address = get_key_address(key_json_obj)) != KEY_FILE_ERR_POINTER &&
 
-        (crypto_json_obj = get_json_object_value(key_json_obj, "crypto")) == KEY_FILE_ERR_POINTER ||
-        (key_obj->crypto = get_crypto_obj(crypto_json_obj)) == KEY_FILE_ERR_POINTER) {
+        (crypto_json_obj = get_json_object_value(key_json_obj, "crypto")) != KEY_FILE_ERR_POINTER &&
+        (key_obj->crypto = get_crypto_obj(crypto_json_obj)) != KEY_FILE_ERR_POINTER) {
 
-        key_obj_put(key_obj);
-        return KEY_FILE_ERR_POINTER;
+        return key_obj;
     }
-    return key_obj;
+    key_obj_put(key_obj);
+    return KEY_FILE_ERR_POINTER;
 }
 
 /*
  * others
  * ***********************************************************
  */
+
+int extract_key(char *passphrase, key_obj_t *key_obj, char **buf) {
+    int status = KEY_FILE_ERR_UNKNOWN;
+    uint8_t *buf_mac = NULL;
+    uint8_t *buf_mac_sha3 = NULL;
+    uint8_t *buf_ciphertext = NULL;
+    uint8_t *salt_hex;
+
+    kdfparams_obj_t *kdfparams_obj = key_obj->crypto->kdfparams;
+    size_t max = (uint64_t)(1) << 30;
+    if (kdfparams_obj->r * kdfparams_obj->p >= max) {
+        status = KEY_FILE_ERR_DATA;
+        goto clean_variable;
+    }
+    // TODO: buf length
+    size_t buf_len = (size_t) kdfparams_obj->dklen;
+    *buf = malloc(buf_len);
+    char *salt = kdfparams_obj->salt;
+    salt_hex = str2hex(strlen(salt), salt);
+    int err = libscrypt_scrypt((uint8_t *) passphrase, strlen(passphrase),
+                               salt_hex, strlen(salt)/2,
+                               (uint64_t) kdfparams_obj->n,
+                               (uint32_t) kdfparams_obj->r,
+                               (uint32_t) kdfparams_obj->p,
+                               (uint8_t *) *buf,
+                               buf_len
+    );
+    if (err != 0) {
+        status = KEY_FILE_ERR_VALID;
+        goto clean_variable;
+    }
+
+    // check derived key
+    char *ciphertext = key_obj->crypto->ciphertext;
+    size_t ciphertext_len = strlen(ciphertext);
+
+    buf_ciphertext = str2hex(ciphertext_len, ciphertext);
+    size_t buf_ciphertext_len = ciphertext_len / 2;
+
+    size_t left_len = buf_len / 2;
+    size_t buf_mac_len = left_len  + buf_ciphertext_len;
+    buf_mac = malloc(buf_mac_len);
+
+    memcpy(buf_mac, *buf + left_len, left_len);
+    memcpy(buf_mac + left_len, buf_ciphertext, buf_ciphertext_len);
+
+    printf("%s\n%s\n", hex2str(buf_mac_len, buf_mac), ciphertext);
+
+    buf_mac_sha3 = malloc(SHA3_256_DIGEST_SIZE);
+    sha3_256_of_str(buf_mac, (int) buf_mac_len, buf_mac_sha3);
+
+    char *str_mac_sha3 = hex2str(SHA3_256_DIGEST_SIZE, buf_mac_sha3);
+    printf("%s\n", str_mac_sha3);
+
+    clean_variable:
+    if (buf_mac) {
+        free(buf_mac);
+    }
+    if (buf_mac_sha3) {
+        free(buf_mac_sha3);
+    }
+    if (buf_ciphertext) {
+        free(buf_ciphertext);
+    }
+    return status;
+}
 
 key_file_result_t *parse_key_file(char *path) {
     FILE *fp = NULL;

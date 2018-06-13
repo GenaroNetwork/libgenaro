@@ -540,7 +540,8 @@ static int import_keys(char *host, char *key_file_path)
     int status = 0;
     char *user_file = NULL;
     char *root_dir = NULL;
-    char *key = NULL;
+    char *key = NULL; // key to encrypt the file
+    char *key_key = NULL; // key of the private key
     key_file_result_t *key_file_result = NULL;
 
     char *user_input = calloc(BUFSIZ, sizeof(char));
@@ -578,6 +579,23 @@ static int import_keys(char *host, char *key_file_path)
         if ((key_file_result = parse_key_file(user_input)) != KEY_FILE_ERR_POINTER) break;
         printf("Bad file format.\n");
     }
+
+    while (1) {
+        printf("Please input the passphrase of the private key(empty to quit): ");
+        get_password(user_input, 0);
+        printf("\nVerifying...\n");
+        if (strlen(user_input) == 0) {
+            printf("Bye!\n");
+            goto clear_variables;
+        }
+        int err = extract_key(user_input, key_file_result->key_obj, &key_key);
+        if (err == KEY_FILE_ERR_DATA) {
+            printf("File corrupted.\n");
+            continue;
+        }
+        break;
+    }
+    memset(user_input, 0, BUFSIZ);
 
     if (stat(user_file, &st) == 0) {
         printf("Would you like to overwrite the current settings?: [y/n] ");
@@ -634,6 +652,12 @@ clear_variables:
     }
     if (key_file_result) {
         key_file_result_put(key_file_result);
+    }
+    if (key) {
+        free(key);
+    }
+    if (key_key) {
+        free(key_key);
     }
     return status;
 }

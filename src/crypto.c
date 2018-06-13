@@ -230,6 +230,13 @@ void pbkdf2_hmac_sha512 (
     SHA512_DIGEST_SIZE, iterations, salt_length, salt, length, dst);
 }
 
+void sha3_256_of_str(const uint8_t *str, int str_len, uint8_t *digest) {
+    struct sha3_256_ctx ctx;
+    sha3_256_init(&ctx);
+    sha3_256_update(&ctx, str_len, str);
+    sha3_256_digest(&ctx, SHA3_256_DIGEST_SIZE, digest);
+}
+
 int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position)
 {
     if (bytes_position % AES_BLOCK_SIZE != 0) {

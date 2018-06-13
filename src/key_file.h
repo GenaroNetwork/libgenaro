@@ -6,6 +6,10 @@
 
 #define KEY_FILE_ERR_NUM (-1)
 #define KEY_FILE_ERR_POINTER NULL
+#define KEY_FILE_ERR_FORMAT (-1)
+#define KEY_FILE_ERR_DATA (-2)
+#define KEY_FILE_ERR_VALID (-3)
+#define KEY_FILE_ERR_UNKNOWN (-4)
 
 typedef struct {
     int64_t dklen;
@@ -52,3 +56,4 @@ key_obj_t *get_key_obj(json_object *key_json_obj);
 key_file_result_t *parse_key_file(char *path);
 
 void key_file_result_put(key_file_result_t *key_file_result);
+int extract_key(char *passphrase, key_obj_t *key_obj, char **buf);
