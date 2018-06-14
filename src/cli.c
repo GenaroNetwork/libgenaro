@@ -541,7 +541,7 @@ static int import_keys(char *host, char *key_file_path)
     char *user_file = NULL;
     char *root_dir = NULL;
     char *key = NULL; // key to encrypt the file
-    char *key_key = NULL; // key of the private key
+    key_result_t key_result = {0}; // key of the private key
     key_file_result_t *key_file_result = NULL;
 
     char *user_input = calloc(BUFSIZ, sizeof(char));
@@ -588,7 +588,7 @@ static int import_keys(char *host, char *key_file_path)
             printf("Bye!\n");
             goto clear_variables;
         }
-        int err = extract_key(user_input, key_file_result->key_obj, &key_key);
+        int err = extract_key(user_input, key_file_result->key_obj, &key_result);
         if (err == KEY_FILE_SUCCESS) {
             printf("\n\n");
             break;
@@ -664,8 +664,11 @@ clear_variables:
     if (key) {
         free(key);
     }
-    if (key_key) {
-        free(key_key);
+    if (key_result.dec_key) {
+        free(key_result.dec_key);
+    }
+    if (key_result.priv_key) {
+        free(key_result.priv_key);
     }
     return status;
 }

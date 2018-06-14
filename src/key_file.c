@@ -191,21 +191,26 @@ key_obj_t *get_key_obj(json_object *key_json_obj) {
  * ***********************************************************
  */
 
-int extract_key(char *passphrase, key_obj_t *key_obj, char **buf) {
+int extract_key(char *passphrase, key_obj_t *key_obj, key_result_t *key_result) {
     int status = KEY_FILE_SUCCESS;
     uint8_t *buf_mac = NULL;
     uint8_t *buf_mac_sha3 = NULL;
-    uint8_t *buf_ciphertext = NULL;
+    uint8_t *ciphertext_raw = NULL;
     uint8_t *salt_hex;
 
-    kdfparams_obj_t *kdfparams_obj = key_obj->crypto->kdfparams;
-    size_t max = (uint64_t)(1) << 30;
+    crypto_obj_t *crypto_obj = key_obj->crypto;
+
+    // check params range
+    kdfparams_obj_t *kdfparams_obj = crypto_obj->kdfparams;
+    size_t max = 1 << 30;
     if (kdfparams_obj->r * kdfparams_obj->p >= max) {
         status = KEY_FILE_ERR_DATA;
         goto clean_variable;
     }
-    size_t buf_len = (size_t) kdfparams_obj->dklen;
-    *buf = malloc(buf_len);
+
+    // key derivation
+    size_t dec_key_len = (size_t) kdfparams_obj->dklen;
+    key_result->dec_key = malloc(dec_key_len);
     char *salt = kdfparams_obj->salt;
     salt_hex = str2hex(strlen(salt), salt);
     int err = libscrypt_scrypt((uint8_t *) passphrase, strlen(passphrase),
@@ -213,8 +218,8 @@ int extract_key(char *passphrase, key_obj_t *key_obj, char **buf) {
                                (uint64_t) kdfparams_obj->n,
                                (uint32_t) kdfparams_obj->r,
                                (uint32_t) kdfparams_obj->p,
-                               (uint8_t *) *buf,
-                               buf_len
+                               key_result->dec_key,
+                               dec_key_len
     );
     if (err != 0) {
         status = KEY_FILE_ERR_UNKNOWN;
@@ -222,27 +227,39 @@ int extract_key(char *passphrase, key_obj_t *key_obj, char **buf) {
     }
 
     // check derived key
-    char *ciphertext = key_obj->crypto->ciphertext;
-    size_t ciphertext_len = strlen(ciphertext);
+    char *ciphertext_str = crypto_obj->ciphertext;
+    size_t ciphertext_len = strlen(ciphertext_str);
 
-    buf_ciphertext = str2hex(ciphertext_len, ciphertext);
+    ciphertext_raw = str2hex(ciphertext_len, ciphertext_str);
     size_t buf_ciphertext_len = ciphertext_len / 2;
 
-    size_t left_len = buf_len / 2;
+    size_t left_len = dec_key_len / 2;
     size_t buf_mac_len = left_len  + buf_ciphertext_len;
     buf_mac = malloc(buf_mac_len);
 
-    memcpy(buf_mac, *buf + left_len, left_len);
-    memcpy(buf_mac + left_len, buf_ciphertext, buf_ciphertext_len);
+    memcpy(buf_mac, key_result->dec_key + left_len, left_len);
+    memcpy(buf_mac + left_len, ciphertext_raw, buf_ciphertext_len);
 
     buf_mac_sha3 = malloc(CRYPTO_SHA3_DIGEST_SIZE);
     sha3_256_of_str(buf_mac, (int) buf_mac_len, buf_mac_sha3);
 
     char *str_mac_sha3 = hex2str(CRYPTO_SHA3_DIGEST_SIZE, buf_mac_sha3);
-    if (strcmp(str_mac_sha3, key_obj->crypto->mac) != 0) {
+    if (strcmp(str_mac_sha3, crypto_obj->mac) != 0) {
         status = KEY_FILE_ERR_VALID;
         goto clean_variable;
     }
+
+    // get private key
+    key_result->priv_key = malloc(dec_key_len);
+
+    char *iv_str = crypto_obj->cipherparams->iv;
+    // TODO: must be AES_BLOCK_SIZE=16 bytes
+    uint8_t *iv_raw = str2hex(strlen(iv_str), iv_str);
+
+    struct CTR_CTX(struct aes128_ctx, AES_BLOCK_SIZE) ctx;
+    CTR_SET_COUNTER(&ctx, iv_raw);
+    aes128_set_encrypt_key(&ctx.ctx, key_result->dec_key);
+    CTR_CRYPT(&ctx, aes128_encrypt, dec_key_len, key_result->priv_key, ciphertext_raw);
 
 clean_variable:
     if (buf_mac) {
@@ -251,8 +268,8 @@ clean_variable:
     if (buf_mac_sha3) {
         free(buf_mac_sha3);
     }
-    if (buf_ciphertext) {
-        free(buf_ciphertext);
+    if (ciphertext_raw) {
+        free(ciphertext_raw);
     }
     return status;
 }
