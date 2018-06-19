@@ -1,6 +1,8 @@
 /**
  * key file parser
  */
+#ifndef KEY_FILE_H
+#define KEY_FILE_H
 
 #include "genaro.h"
 
@@ -40,27 +42,26 @@ typedef struct {
     char *id;
     char *address;
     crypto_obj_t *crypto;
-} key_obj_t;
-
-typedef struct {
-    json_object *json_obj;
-    key_obj_t *key_obj;
-} key_file_result_t;
+} key_file_obj_t;
+void key_file_obj_put(key_file_obj_t *key_obj);
 
 
 typedef struct {
     uint8_t *dec_key;
     uint8_t *priv_key;
 } key_result_t;
-
-key_obj_t *get_key_obj(json_object *key_json_obj);
+void key_result_put(key_result_t *key_result);
 
 /**
- * @brief whether key file is valid
+ * @brief get json object from file
  * @param path
- * @return 1: err, 0: valid
+ * @return
  */
-key_file_result_t *parse_key_file(char *path);
+// file -> json_object
+json_object *parse_key_file(char *path);
+// json_object -> key_file_obj_t
+key_file_obj_t *get_key_obj(json_object *key_json_obj);
+// passphrase -> key_file_obj_t -> key_result_t
+int extract_key_file_obj(char *passphrase, key_file_obj_t *key_obj, key_result_t **key_result);
 
-void key_file_result_put(key_file_result_t *key_file_result);
-int extract_key(char *passphrase, key_obj_t *key_obj, key_result_t *key_result);
+#endif

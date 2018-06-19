@@ -262,8 +262,8 @@ int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position)
 
 uint8_t *key_from_passphrase(const char *passphrase, const char *salt)
 {
-    uint8_t passphrase_len = strlen(passphrase);
-    uint8_t salt_len = strlen(salt);
+    size_t passphrase_len = strlen(passphrase);
+    size_t salt_len = strlen(salt);
     uint8_t *key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
     if (!key) {
         return NULL;
@@ -285,13 +285,13 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
     }
 
     // Convert from hex string
-    int len = strlen(data);
+    size_t len = strlen(data);
     if (len / 2 < GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1) {
         free(key);
         return 1;
     }
-    int enc_len = len / 2;
-    int data_size = enc_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
+    size_t enc_len = len / 2;
+    size_t data_size = enc_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
     uint8_t *enc = str2hex(len, (char *)data);
     if (!enc) {
         free(key);
@@ -318,7 +318,7 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
     int pos = 0;
     size_t remain = data_size;
     while (pos < data_size) {
-        int len = AES_BLOCK_SIZE;
+        size_t len = AES_BLOCK_SIZE;
         if (remain < AES_BLOCK_SIZE) {
             len = remain;
         }
@@ -347,7 +347,7 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
         return 1;
     }
 
-    uint8_t data_size = strlen(data);
+    size_t data_size = strlen(data);
     if (data_size <= 0) {
         return 1;
     }
@@ -369,7 +369,7 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
     size_t remain = data_size;
     uint8_t cipher_text[data_size];
     while (pos < data_size) {
-        int len = AES_BLOCK_SIZE;
+        size_t len = AES_BLOCK_SIZE;
         if (remain < AES_BLOCK_SIZE) {
             len = remain;
         }
@@ -385,7 +385,7 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
 
 
     // Copy the digest, iv and cipher text to a buffer
-    int buffer_size = GCM_DIGEST_SIZE + (SHA512_DIGEST_SIZE / 2) + data_size;
+    size_t buffer_size = GCM_DIGEST_SIZE + (SHA512_DIGEST_SIZE / 2) + data_size;
     uint8_t *buffer = calloc(buffer_size, sizeof(char));
     if (!buffer) {
         return 1;

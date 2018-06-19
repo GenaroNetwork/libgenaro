@@ -11,6 +11,7 @@
 void kdfparams_obj_put(kdfparams_obj_t *kdfparams_obj) {
     if (kdfparams_obj == NULL) return;
 
+    // do not free char * fields, because it's managed by json_object.
     free(kdfparams_obj);
 }
 
@@ -30,20 +31,26 @@ void crypto_obj_put(crypto_obj_t *crypto_obj) {
 }
 
 // free memory of key_obj
-void key_obj_put(key_obj_t *key_obj) {
-    if (key_obj == NULL) return;
+void key_file_obj_put(key_file_obj_t *key_file_obj) {
+    if (key_file_obj == NULL) return;
 
-    crypto_obj_put(key_obj->crypto);
+    crypto_obj_put(key_file_obj->crypto);
 
-    free(key_obj);
+    free(key_file_obj);
 }
 
-void key_file_result_put(key_file_result_t *key_file_result) {
-    json_object_put(key_file_result->json_obj);
-    key_obj_put(key_file_result->key_obj);
+void key_result_put(key_result_t *key_result) {
+    if (key_result == NULL) return;
 
-    free(key_file_result);
+    if (key_result->dec_key) {
+        free(key_result->dec_key);
+    }
+    if (key_result->priv_key) {
+        free(key_result->priv_key);
+    }
+    free(key_result);
 }
+
 /*
  * get value from json_object
  * ***********************************************************
@@ -169,8 +176,8 @@ int64_t get_key_version(json_object *key_json_obj) {
     return ver;
 }
 
-key_obj_t *get_key_obj(json_object *key_json_obj) {
-    key_obj_t *key_obj = calloc(sizeof(key_obj_t), 1);
+key_file_obj_t *get_key_obj(json_object *key_json_obj) {
+    key_file_obj_t *key_obj = calloc(sizeof(key_file_obj_t), 1);
 
     json_object *crypto_json_obj;
     if ((key_obj->version = get_key_version(key_json_obj)) != KEY_FILE_ERR_NUM &&
@@ -182,7 +189,7 @@ key_obj_t *get_key_obj(json_object *key_json_obj) {
 
         return key_obj;
     }
-    key_obj_put(key_obj);
+    key_file_obj_put(key_obj);
     return KEY_FILE_ERR_POINTER;
 }
 
@@ -191,14 +198,15 @@ key_obj_t *get_key_obj(json_object *key_json_obj) {
  * ***********************************************************
  */
 
-int extract_key(char *passphrase, key_obj_t *key_obj, key_result_t *key_result) {
+int extract_key_file_obj(char *passphrase, key_file_obj_t *key_file_obj, key_result_t **ptr_key_result) {
     int status = KEY_FILE_SUCCESS;
     uint8_t *buf_mac = NULL;
     uint8_t *buf_mac_sha3 = NULL;
     uint8_t *ciphertext_raw = NULL;
     uint8_t *salt_hex;
+    key_result_t *key_result = *ptr_key_result = calloc(sizeof(key_result_t), 1);
 
-    crypto_obj_t *crypto_obj = key_obj->crypto;
+    crypto_obj_t *crypto_obj = key_file_obj->crypto;
 
     // check params range
     kdfparams_obj_t *kdfparams_obj = crypto_obj->kdfparams;
@@ -271,13 +279,17 @@ clean_variable:
     if (ciphertext_raw) {
         free(ciphertext_raw);
     }
+    if (status != KEY_FILE_SUCCESS) {
+        key_result_put(key_result);
+        *ptr_key_result = NULL;
+    }
     return status;
 }
 
-key_file_result_t *parse_key_file(char *path) {
+json_object *parse_key_file(char *path) {
     FILE *fp = NULL;
     char *buff = NULL;
-    key_obj_t *key_obj = NULL;
+    key_file_obj_t *key_file_obj = NULL;
 
     // check in case of over-sized
     fp = fopen(path, "r");
@@ -301,14 +313,11 @@ key_file_result_t *parse_key_file(char *path) {
     }
 
     // parse json as struct
-    if ((key_obj = get_key_obj(key_json_obj)) == NULL) {
+    if ((key_file_obj = get_key_obj(key_json_obj)) == NULL) {
         goto clean_variable;
     }
 
-    key_file_result_t *key_file_result = malloc(sizeof(key_file_result_t));
-    key_file_result->json_obj = key_json_obj;
-    key_file_result->key_obj = key_obj;
-    return key_file_result;
+    return key_json_obj;
 
 clean_variable:
     if (fp) {
@@ -320,6 +329,6 @@ clean_variable:
     if (key_json_obj) {
         json_object_put(key_json_obj);
     }
-    key_obj_put(key_obj);
+    key_file_obj_put(key_file_obj);
     return KEY_FILE_ERR_POINTER;
 }

@@ -50,12 +50,7 @@ static inline void noop() {};
     "  -p, --proxy <url>         set the socks proxy "                  \
     "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
     "  -l, --log <level>         set the log level (default 0)\n"       \
-    "  -d, --debug               set the debug log level\n\n"           \
-    "environment variables:\n"                                          \
-    "  GENARO_KEYPASS             imported user settings passphrase\n"   \
-    "  GENARO_BRIDGE              the bridge host "                      \
-    "(e.g. https://api.storj.io)\n"                                     \
-    "  GENARO_ENCRYPTION_KEY      file encryption key\n\n"
+    "  -d, --debug               set the debug log level\n\n"
 
 
 #define CLI_VERSION "libgenaro-2.0.0-beta"
@@ -535,14 +530,48 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+
+key_result_t *do_extract_key_file_obj(key_file_obj_t *key_file_obj)
+{
+    char *user_input = calloc(BUFSIZ, sizeof(char));
+    key_result_t *key_result = NULL;
+    while (1) {
+        printf("Please input the passphrase of the private key(empty to quit): ");
+        get_password(user_input, 0);
+        if (strlen(user_input) == 0) {
+            printf("Bye!\n");
+            goto extract_fail;
+        }
+        printf("\nChecking... ");
+        int err = extract_key_file_obj(user_input, key_file_obj, &key_result);
+        if (err == KEY_FILE_SUCCESS) {
+            printf("\n");
+            break;
+        } else if (err == KEY_FILE_ERR_DATA) {
+            printf("File corrupted.\n");
+            continue;
+        } else if (err == KEY_FILE_ERR_VALID) {
+            printf("Password incorrect.\n");
+            continue;
+        } else {
+            printf("Error unknown.\n");
+            continue;
+        }
+    }
+extract_fail:
+    free(user_input);
+    return key_result;
+}
+
 static int import_keys(char *host, char *key_file_path)
 {
     int status = 0;
     char *user_file = NULL;
     char *root_dir = NULL;
     char *key = NULL; // key to encrypt the file
-    key_result_t key_result = {0}; // key of the private key
-    key_file_result_t *key_file_result = NULL;
+    json_object *key_file_json_obj = NULL;
+    key_file_obj_t *key_file_obj = NULL;
+    key_result_t *key_result = NULL; // key of the private key
 
     char *user_input = calloc(BUFSIZ, sizeof(char));
     if (user_input == NULL) {
@@ -576,32 +605,12 @@ static int import_keys(char *host, char *key_file_path)
             printf("File not found.\n");
             continue;
         }
-        if ((key_file_result = parse_key_file(user_input)) != KEY_FILE_ERR_POINTER) break;
-        printf("Bad file format.\n");
-    }
-
-    while (1) {
-        printf("Please input the passphrase of the private key(empty to quit): ");
-        get_password(user_input, 0);
-        printf("\nChecking... ");
-        if (strlen(user_input) == 0) {
-            printf("Bye!\n");
-            goto clear_variables;
-        }
-        int err = extract_key(user_input, key_file_result->key_obj, &key_result);
-        if (err == KEY_FILE_SUCCESS) {
-            printf("\n\n");
+        if ((key_file_json_obj = parse_key_file(user_input)) != KEY_FILE_ERR_POINTER &&
+            (key_file_obj = get_key_obj(key_file_json_obj)) != KEY_FILE_ERR_POINTER)
             break;
-        } else if (err == KEY_FILE_ERR_DATA) {
-            printf("File corrupted.\n");
-            continue;
-        } else if (err == KEY_FILE_ERR_VALID) {
-            printf("Password incorrect.\n");
-            continue;
-        } else {
-            printf("Error unknown.\n");
-            continue;
-        }
+        printf("Bad file format.\n");
+        if ((key_result = do_extract_key_file_obj(key_file_obj)) == KEY_FILE_SUCCESS) break;
+        goto clear_variables;
     }
     memset(user_input, 0, BUFSIZ);
 
@@ -638,7 +647,7 @@ static int import_keys(char *host, char *key_file_path)
         goto clear_variables;
     }
 
-    if (genaro_encrypt_write_auth(user_file, key, key_file_result->json_obj)) {
+    if (genaro_encrypt_write_auth(user_file, key, key_file_json_obj)) {
         status = 1;
         printf("Failed to write to disk\n");
         goto clear_variables;
@@ -649,26 +658,26 @@ static int import_keys(char *host, char *key_file_path)
            user_file);
 
 clear_variables:
-    if (user_input) {
-        free(user_input);
+    if (user_file) {
+        free(user_file);
     }
     if (root_dir) {
         free(root_dir);
     }
-    if (user_file) {
-        free(user_file);
-    }
-    if (key_file_result) {
-        key_file_result_put(key_file_result);
-    }
     if (key) {
         free(key);
     }
-    if (key_result.dec_key) {
-        free(key_result.dec_key);
+    if (key_file_json_obj) {
+        json_object_put(key_file_json_obj);
     }
-    if (key_result.priv_key) {
-        free(key_result.priv_key);
+    if (key_file_obj) {
+        key_file_obj_put(key_file_obj);
+    }
+    if (key_result) {
+        key_result_put(key_result);
+    }
+    if (user_input) {
+        free(user_input);
     }
     return status;
 }
@@ -986,6 +995,9 @@ int main(int argc, char **argv)
 
     // initialize event loop and environment
     genaro_env_t *env = NULL;
+    key_result_t *key_result = NULL; // parsing result for private key file
+    key_file_obj_t *key_file_obj = NULL;
+    json_object *key_json_obj = NULL;
 
     genaro_http_options_t http_options = {
         .user_agent = CLI_VERSION,
@@ -1004,8 +1016,6 @@ int main(int argc, char **argv)
     } else {
         http_options.proxy_url = NULL;
     }
-
-    char *mnemonic = NULL;
 
     if (strcmp(command, "get-info") == 0) {
         printf("Genaro bridge: %s\n\n", genaro_bridge);
@@ -1034,76 +1044,44 @@ int main(int argc, char **argv)
         // We aren't using root dir so free it
         free(root_dir);
 
-        // First, get auth from environment variables
-        mnemonic = getenv("GENARO_ENCRYPTION_KEY") ?
-            strdup(getenv("GENARO_ENCRYPTION_KEY")) : NULL;
-
-        char *keypass = getenv("GENARO_KEYPASS");
-
-        // Second, try to get from encrypted user file
-        if ((!mnemonic) && access(user_file, F_OK) != -1) {
-
+        // try to get private key from encrypted user file
+        if (access(user_file, F_OK) != -1) {
+            // get file unlock key
             char *key = NULL;
-            if (keypass) {
-                key = calloc(strlen(keypass) + 1, sizeof(char));
-                if (!key) {
-                    return 1;
-                }
-                strcpy(key, keypass);
-            } else {
-                key = calloc(BUFSIZ, sizeof(char));
-                if (!key) {
-                    return 1;
-                }
-                printf("Unlock passphrase: ");
-                get_password(key, '*');
-                printf("\n");
+            key = calloc(BUFSIZ, sizeof(char));
+            if (!key) {
+                return 1;
             }
-            char *file_mnemonic = NULL;
-            if (genaro_decrypt_read_auth(user_file, key, &file_mnemonic)) {
-                printf("Unable to read user file. Invalid keypass or path.\n");
-                free(key);
-                free(user_file);
-                free(file_mnemonic);
-                goto end_program;
-            }
+            printf("Unlock passphrase: ");
+            get_password(key, '*');
+            printf("\n");
+
+            // read key_json_obj from file
+            int ret_read_auth = genaro_decrypt_read_auth(user_file, key, &key_json_obj);
             free(key);
             free(user_file);
-            
-            if (!mnemonic && file_mnemonic) {
-                mnemonic = file_mnemonic;
-            } else if (file_mnemonic) {
-                free(file_mnemonic);
+            if (ret_read_auth) {
+                printf("Unable to read user file. Invalid keypass or path.\n");
+                goto end_program;
             }
-
-        }
-
-        // Third, ask for authentication
-        if (!mnemonic) {
-            printf("Encryption key: ");
-            char *mnemonic_input = malloc(BUFSIZ);
-            if (mnemonic_input == NULL) {
-                return 1;
+            // extract key from json
+            key_file_obj = get_key_obj(key_json_obj);
+            if (key_file_obj == KEY_FILE_ERR_POINTER) {
+                goto end_program;
             }
-            get_input(mnemonic_input);
-            int num_chars = strlen(mnemonic_input);
-            mnemonic = calloc(num_chars + 1, sizeof(char));
-            if (!mnemonic) {
-                return 1;
+            key_result = do_extract_key_file_obj(key_file_obj);
+            if (key_result == KEY_FILE_ERR_POINTER) {
+                goto end_program;
             }
-            memcpy(mnemonic, mnemonic_input, num_chars);
-            free(mnemonic_input);
-            printf("\n");
         }
 
         genaro_bridge_options_t options = {
-            .proto = proto,
-            .host  = host,
-            .port  = port,
+                .proto = proto,
+                .host  = host,
+                .port  = port,
         };
-
         genaro_encrypt_options_t encrypt_options = {
-            .mnemonic = mnemonic
+                .priv_key = key_result->priv_key,
         };
 
         env = genaro_init_env(&options, &encrypt_options,
@@ -1225,8 +1203,14 @@ end_program:
     if (env) {
         genaro_destroy_env(env);
     }
-    if (mnemonic) {
-        free(mnemonic);
+    if (key_json_obj) {
+        json_object_put(key_json_obj);
+    }
+    if (key_file_obj) {
+        key_file_obj_put(key_file_obj);
+    }
+    if (key_result) {
+        key_result_put(key_result);
     }
     return status;
 }

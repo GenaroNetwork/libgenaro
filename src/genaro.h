@@ -42,6 +42,8 @@ extern "C" {
 #ifndef _WIN32
 #include <sys/mman.h>
 #include <unistd.h>
+#include "key_file.h"
+
 #endif
 
 // File transfer success
@@ -147,7 +149,8 @@ typedef struct {
  * encryption and decryption.
  */
 typedef struct genaro_encrypt_options {
-    const char *mnemonic;
+    char *mnemonic;
+    uint8_t *priv_key;
 } genaro_encrypt_options_t;
 
 
@@ -581,10 +584,12 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env);
  * @param[in] passphrase - Used to encrypt options to disk
  * @param[in] bridge_user - The bridge username
  * @param[in] bridge_pass - The bridge password
- * @param[in] mnemonic - The file encryption mnemonic
+ * @param[in] key_json_obj - json object of the private key
  * @return A non-zero value on error, zero on success.
  */
-GENARO_API int genaro_encrypt_write_auth(const char *filepath, char *passphrase, json_object *key_json_obj);
+GENARO_API int genaro_encrypt_write_auth(const char *filepath,
+                                         char *passphrase,
+                                         json_object *key_json_obj);
 
 
 /**
@@ -613,12 +618,12 @@ GENARO_API int genaro_encrypt_auth(const char *passhrase,
  *
  * @param[in] filepath - The file path to read the options
  * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] mnemonic - The file encryption mnemonic
+ * @param[out] key_json_obj - json object of the private key
  * @return A non-zero value on error, zero on success.
  */
  GENARO_API int genaro_decrypt_read_auth(const char *filepath,
-                                       const char *passphrase,
-                                       char **mnemonic);
+                                         const char *passphrase,
+                                         json_object **key_json_obj);
 
 /**
  * @brief Will decrypt options
@@ -628,12 +633,12 @@ GENARO_API int genaro_encrypt_auth(const char *passhrase,
  *
  * @param[in] buffer - The encrypted buffer
  * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] mnemonic - The file encryption mnemonic
+ * @param[out] key_json_obj - json object of the private key
  * @return A non-zero value on error, zero on success.
  */
 GENARO_API int genaro_decrypt_auth(const char *buffer,
                                  const char *passphrase,
-                                 char **mnemonic);
+                                 json_object **key_json_obj);
 
 /**
  * @brief Will get the current unix timestamp in milliseconds

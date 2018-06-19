@@ -2,6 +2,7 @@
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
+#include "key_file.h"
 
 static inline void noop() {};
 
@@ -816,20 +817,20 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
 }
 
 GENARO_API int genaro_encrypt_auth(const char *passphrase,
-                       const char *bridge_user,
-                       const char *key_str,
+                       const char *salt,
+                       const char *text,
                        char **buffer)
 {
-    char *key_encrypted;
+    char *encrypted = NULL;
 
-    if (encrypt_data(passphrase, bridge_user, key_str, &key_encrypted)) {
+    if (encrypt_data(passphrase, salt, text, &encrypted)) {
+        if (encrypted) {
+            free(encrypted);
+        }
         return 1;
     }
 
-    *buffer = calloc(strlen(key_encrypted) + 1, sizeof(char));
-    memcpy(*buffer, key_encrypted, strlen(key_encrypted) + 1);
-    free(key_encrypted);
-
+    *buffer = encrypted;
     return 0;
 }
 
@@ -843,9 +844,7 @@ GENARO_API int genaro_encrypt_write_auth(const char *filepath, char *passphrase,
 
     char *buffer = NULL;
     const char *key_json_str = json_object_to_json_string(key_json_obj);
-    uint8_t sha256_key[32 + 1];
-    sha256_of_str(key_json_str, strlen(key_json_str), sha256_key);
-    if (genaro_encrypt_auth(passphrase, sha256_key, key_json_str, &buffer)) {
+    if (genaro_encrypt_auth(passphrase, passphrase, key_json_str, &buffer)) {
         fclose(fp);
         return 1;
     }
@@ -861,46 +860,39 @@ GENARO_API int genaro_encrypt_write_auth(const char *filepath, char *passphrase,
 
 GENARO_API int genaro_decrypt_auth(const char *buffer,
                        const char *passphrase,
-                       char **mnemonic)
+                       json_object **key_json_obj)
 {
     int status = 0;
-
-    json_object *body = json_tokener_parse(buffer);
-
-    struct json_object *user_value;
-    if (!json_object_object_get_ex(body, "user", &user_value)) {
-        status = 1;
-        goto clean_up;
-    }
-
-    struct json_object *pass_value;
-    if (!json_object_object_get_ex(body, "pass", &pass_value)) {
-        status = 1;
-        goto clean_up;
-    }
-
-    struct json_object *mnemonic_value;
-    if (!json_object_object_get_ex(body, "mnemonic", &mnemonic_value)) {
-        status = 1;
-        goto clean_up;
-    }
-    char *mnemonic_enc = (char *)json_object_get_string(mnemonic_value);
+    char *decrypted = NULL;
 
     // TODO: "salt" is temporary
-    if (decrypt_data(passphrase, "salt", mnemonic_enc, mnemonic)) {
+    if (decrypt_data(passphrase, passphrase, buffer, &decrypted)) {
         status = 1;
-        goto clean_up;
+        goto clean;
     }
 
-clean_up:
-    json_object_put(body);
-
+    *key_json_obj = json_tokener_parse(decrypted);
+    if (*key_json_obj == NULL) {
+        status = 1;
+        goto clean;
+    }
+clean:
+    if (decrypted) {
+        free(decrypted);
+    }
     return status;
 }
 
+/**
+ *
+ * @param filepath
+ * @param passphrase
+ * @param key_json_obj
+ * @return 0: success, 1: fail
+ */
 GENARO_API int genaro_decrypt_read_auth(const char *filepath,
-                            const char *passphrase,
-                            char **mnemonic)
+                                        const char *passphrase,
+                                        json_object **key_json_obj)
 {
     FILE *fp;
     fp = fopen(filepath, "r");
@@ -909,7 +901,7 @@ GENARO_API int genaro_decrypt_read_auth(const char *filepath,
     }
 
     fseek(fp, 0, SEEK_END);
-    int fsize = ftell(fp);
+    size_t fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
     char *buffer = calloc(fsize + 1, sizeof(char));
@@ -917,7 +909,7 @@ GENARO_API int genaro_decrypt_read_auth(const char *filepath,
         return 1;
     }
 
-    int read_blocks = 0;
+    size_t read_blocks = 0;
     while ((!feof(fp)) && (!ferror(fp))) {
         read_blocks = fread(buffer + read_blocks, 1, fsize, fp);
         if (read_blocks <= 0) {
@@ -932,7 +924,7 @@ GENARO_API int genaro_decrypt_read_auth(const char *filepath,
         return error;
     }
 
-    int status = genaro_decrypt_auth(buffer, passphrase, mnemonic);
+    int status = genaro_decrypt_auth(buffer, passphrase, key_json_obj);
 
     free(buffer);
 
