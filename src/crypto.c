@@ -90,7 +90,7 @@ int double_ripemd160sha256_as_string(uint8_t *data, uint64_t data_size,
     return 0;
 }
 
-int generate_bucket_key(const char *mnemonic, const char *bucket_id,
+int generate_bucket_key(uint8_t *priv_key, size_t key_len, const char *bucket_id,
                         char **bucket_key)
 {
     int status = 0;
@@ -99,7 +99,7 @@ int generate_bucket_key(const char *mnemonic, const char *bucket_id,
         status = 1;
         goto cleanup;
     }
-    mnemonic_to_seed(mnemonic, "", &seed);
+    mnemonic_to_seed(priv_key, key_len, "", &seed);
     seed[128] = '\0';
 
     status = get_deterministic_key(seed, 128, bucket_id, bucket_key);
@@ -114,7 +114,7 @@ cleanup:
     return status;
 }
 
-int generate_file_key(const char *mnemonic, const char *bucket_id,
+int generate_file_key(uint8_t *priv_key, size_t key_len, const char *bucket_id,
                       const char *index, char **file_key)
 {
     int status = 0;
@@ -124,7 +124,7 @@ int generate_file_key(const char *mnemonic, const char *bucket_id,
         goto cleanup;
     }
 
-    status = generate_bucket_key(mnemonic, bucket_id, &bucket_key);
+    status = generate_bucket_key(priv_key, key_len, bucket_id, &bucket_key);
     if (status) {
         goto cleanup;
     }

@@ -25,7 +25,8 @@ static void create_bucket_request_worker(uv_work_t *work)
 
     // Derive a key based on the master seed and bucket name magic number
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
+    generate_bucket_key(req->encrypt_options->priv_key,
+                        req->encrypt_options->key_len,
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
@@ -107,7 +108,8 @@ static void get_buckets_request_worker(uv_work_t *work)
 
     // Derive a key based on the master seed
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
+    generate_bucket_key(req->encrypt_options->priv_key,
+                        req->encrypt_options->key_len,
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
@@ -185,7 +187,8 @@ static void get_bucket_request_worker(uv_work_t *work)
 
     // Derive a key based on the master seed
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
+    generate_bucket_key(req->encrypt_options->priv_key,
+                        req->encrypt_options->key_len,
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
@@ -263,7 +266,8 @@ static void list_files_request_worker(uv_work_t *work)
 
     // Get the bucket key to encrypt the filename from bucket id
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
+    generate_bucket_key(req->encrypt_options->priv_key,
+                        req->encrypt_options->key_len,
                         req->bucket_id,
                         &bucket_key_as_str);
 
@@ -607,7 +611,7 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
     bo->port = options->port;
 
 #ifdef _POSIX_MEMLOCK
-    int page_size = sysconf(_SC_PAGESIZE);
+    size_t page_size = sysconf(_SC_PAGESIZE);
 #elif _WIN32
     SYSTEM_INFO si;
     GetSystemInfo (&si);
@@ -622,51 +626,52 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
         return NULL;
     }
 
-    if (encrypt_options && encrypt_options->mnemonic) {
+    if (encrypt_options && encrypt_options->priv_key) {
 
-        // prevent file encryption mnemonic from being swapped unencrypted to disk
+        // prevent private key from being swapped unencrypted to disk
 #ifdef _POSIX_MEMLOCK
-        int mnemonic_len = strlen(encrypt_options->mnemonic);
-        if (mnemonic_len >= page_size) {
+        if (encrypt_options->key_len >= page_size) {
             return NULL;
         }
 
 #ifdef HAVE_ALIGNED_ALLOC
-        eo->mnemonic = aligned_alloc(page_size, page_size);
+        eo->priv_key = aligned_alloc(page_size, page_size);
 #elif HAVE_POSIX_MEMALIGN
-        eo->mnemonic = NULL;
+        eo->priv_key = NULL;
         if (posix_memalign((void *)&eo->mnemonic, page_size, page_size)) {
             return NULL;
         }
 #else
-        eo->mnemonic = malloc(page_size);
+        eo->priv_key = malloc(page_size);
 #endif
 
-        if (eo->mnemonic == NULL) {
+        if (eo->priv_key == NULL) {
             return NULL;
         }
 
-        memset((char *)eo->mnemonic, 0, page_size);
-        memcpy((char *)eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
-        if (mlock(eo->mnemonic, mnemonic_len)) {
+        memset((char *)eo->priv_key, 0, page_size);
+        memcpy((char *)eo->priv_key, encrypt_options->priv_key, encrypt_options->key_len);
+        eo->key_len = encrypt_options->key_len;
+        if (mlock(eo->priv_key, eo->key_len)) {
             return NULL;
         }
 #elif _WIN32
-        int mnemonic_len = strlen(encrypt_options->mnemonic);
-        eo->mnemonic = VirtualAlloc(NULL, page_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-        if (eo->mnemonic == NULL) {
+        eo->priv_key = VirtualAlloc(NULL, page_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        if (eo->priv_key == NULL) {
             return NULL;
         }
-        memset((char *)eo->mnemonic, 0, page_size);
-        memcpy((char *)eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
-        if (!VirtualLock((char *)eo->mnemonic, mnemonic_len)) {
+        memset((char *)eo->priv_key, 0, page_size);
+        memcpy((char *)eo->priv_key, encrypt_options->priv_key, encrypt_options->key_len);
+        eo->key_len = encrypt_options->key_len;
+        if (!VirtualLock((char *)eo->priv_key, eo->key_len)) {
             return NULL;
         }
 #else
-        eo->mnemonic = strdup(encrypt_options->mnemonic);
+        memcpy((char *)eo->priv_key, encrypt_options->priv_key, encrypt_options->key_len);
+        eo->key_len = encrypt_options->key_len;
 #endif
     } else {
-        eo->mnemonic = NULL;
+        eo->priv_key = NULL;
     }
 
     env->encrypt_options = eo;
@@ -767,25 +772,24 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
     free(env->bridge_options);
 
     // free and destroy all encryption options
-    if (env->encrypt_options && env->encrypt_options->mnemonic) {
-        unsigned int mnemonic_len = strlen(env->encrypt_options->mnemonic);
-
+    if (env->encrypt_options && env->encrypt_options->priv_key) {
+        size_t key_len = env->encrypt_options->key_len;
         // zero out file encryption mnemonic before freeing
-        if (mnemonic_len > 0) {
-            memset_zero((char *)env->encrypt_options->mnemonic, mnemonic_len);
+        if (key_len > 0) {
+            memset_zero((char *)env->encrypt_options->priv_key, key_len);
         }
 #ifdef _POSIX_MEMLOCK
-        status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
+        status = munlock(env->encrypt_options->priv_key, key_len);
 #elif _WIN32
-        if (!VirtualUnlock((char *)env->encrypt_options->mnemonic, mnemonic_len)) {
+        if (!VirtualUnlock((char *)env->encrypt_options->priv_key, key_len)) {
             status = 1;
         }
 #endif
 
 #ifdef _WIN32
-        VirtualFree((char *)env->bridge_options, mnemonic_len, MEM_RELEASE);
+        VirtualFree((char *)env->bridge_options, key_len, MEM_RELEASE);
 #else
-        free((char *)env->encrypt_options->mnemonic);
+        free((char *)env->encrypt_options->priv_key);
 #endif
     }
 

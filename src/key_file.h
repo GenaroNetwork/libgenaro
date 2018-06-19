@@ -49,6 +49,7 @@ void key_file_obj_put(key_file_obj_t *key_obj);
 typedef struct {
     uint8_t *dec_key;
     uint8_t *priv_key;
+    size_t key_len;
 } key_result_t;
 void key_result_put(key_result_t *key_result);
 

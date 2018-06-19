@@ -51,12 +51,13 @@ bool mnemonic_check(const char *mnemonic);
 /**
  * @brief Generate seed from Mnemonic
  *
- * @param[in] mnemonic Character array of the mnemonic
+ * @param[in] priv_key private key
+ * @param[in] key_len length of priv_key
  * @param[in] passphrase Optional password added as salt for hashing
  * @param[out] buffer Character array of sha512 hash of the mnemonic
  * @return A non-zero error value on failure and 0 on success.
  */
-int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
+int mnemonic_to_seed(uint8_t *priv_key, size_t key_len, const char *passphrase,
                      char **buffer);
 
 const char * const *mnemonic_wordlist(void);

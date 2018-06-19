@@ -1,4 +1,5 @@
 #include "uploader.h"
+#include "genaro.h"
 
 static void print_shard_info(genaro_upload_state_t *state, int index) {
     shard_tracker_t *shard = &state->shard[index];
@@ -2463,7 +2464,8 @@ static void prepare_upload_state(uv_work_t *work)
 
     // Get the bucket key to encrypt the filename
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(state->env->encrypt_options->mnemonic,
+    generate_bucket_key(state->env->encrypt_options->priv_key,
+                        state->env->encrypt_options->key_len,
                         state->bucket_id,
                         &bucket_key_as_str);
 
@@ -2533,7 +2535,8 @@ static void prepare_upload_state(uv_work_t *work)
         goto cleanup;
     }
 
-    int key_status = generate_file_key(state->env->encrypt_options->mnemonic,
+    int key_status = generate_file_key(state->env->encrypt_options->priv_key,
+                                       state->env->encrypt_options->key_len,
                                        state->bucket_id,
                                        index_as_str,
                                        &key_as_str);

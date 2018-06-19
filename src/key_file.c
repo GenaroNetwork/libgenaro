@@ -268,6 +268,7 @@ int extract_key_file_obj(char *passphrase, key_file_obj_t *key_file_obj, key_res
     CTR_SET_COUNTER(&ctx, iv_raw);
     aes128_set_encrypt_key(&ctx.ctx, key_result->dec_key);
     CTR_CRYPT(&ctx, aes128_encrypt, dec_key_len, key_result->priv_key, ciphertext_raw);
+    key_result->key_len = dec_key_len;
 
 clean_variable:
     if (buf_mac) {

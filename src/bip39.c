@@ -187,7 +187,7 @@ bool mnemonic_check(const char *mnemonic)
 
 }
 
-int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
+int mnemonic_to_seed(uint8_t *priv_key, size_t key_len, const char *passphrase,
                      char **buffer)
 {
     int passphraselen = strlen(passphrase);
@@ -203,8 +203,8 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
     memcpy(salt + 8, passphrase, passphraselen);
 
     pbkdf2_hmac_sha512 (
-        strlen(mnemonic),
-        (uint8_t *)mnemonic,
+        key_len,
+        priv_key,
         BIP39_PBKDF2_ROUNDS,
         strlen((char *)salt), salt,
         SHA512_DIGEST_SIZE, seed);

@@ -1,4 +1,5 @@
 #include "downloader.h"
+#include "genaro.h"
 
 static void free_exchange_report(genaro_exchange_report_t *report)
 {
@@ -1033,7 +1034,8 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
         goto cleanup;
     }
 
-    if (generate_file_key(state->env->encrypt_options->mnemonic,
+    if (generate_file_key(state->env->encrypt_options->priv_key,
+                          state->env->encrypt_options->key_len,
                           state->bucket_id,
                           state->info->index, &file_key_as_str)) {
         state->error_status = GENARO_MEMORY_ERROR;
@@ -1081,7 +1083,8 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
         return;
     }
 
-    if (generate_file_key(state->env->encrypt_options->mnemonic,
+    if (generate_file_key(state->env->encrypt_options->priv_key,
+                          state->env->encrypt_options->key_len,
                           state->bucket_id,
                           state->file_id, &file_key)) {
         state->error_status = GENARO_MEMORY_ERROR;
@@ -1127,7 +1130,7 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
 static void determine_decryption_key(genaro_download_state_t *state)
 {
     if (!state->env->encrypt_options ||
-        !state->env->encrypt_options->mnemonic) {
+        !state->env->encrypt_options->priv_key) {
 
         state->decrypt_key = NULL;
         state->decrypt_ctr = NULL;

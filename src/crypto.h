@@ -52,24 +52,27 @@ void sha3_256_of_str(const uint8_t *str, size_t str_len, uint8_t *digest);
 /**
  * @brief Generate a bucket's key
  *
- * @param[in] Character array of the mnemonic
+ * @param[in] priv_key
+ * @param[in] key_len length of priv_key
  * @param[in] bucket_id Character array of bucket id
  * @param[out] bucket_key 64 byte character array that is the bucket's key
  * @return A non-zero error value on failure and 0 on success.
  */
-int generate_bucket_key(const char *mnemonic, const char *bucket_id,
+int generate_bucket_key(uint8_t *priv_key, size_t key_len, const char *bucket_id,
                         char **bucket_key);
 
 /**
  * @brief Generate a file's key
  *
- * @param[in] Character array of the mnemonic
+ * @param[in] priv_key private key
+ * @param[in] key_len length of private key
  * @param[in] bucket_id Character array of bucket id
  * @param[in] index Character array of index
  * @param[out] file_key 64 byte character array that is the bucket's key
  * @return A non-zero error value on failure and 0 on success.
  */
-int generate_file_key(const char *mnemonic,
+int generate_file_key(uint8_t *priv_key,
+                      size_t key_len,
                       const char *bucket_id,
                       const char *index,
                       char **file_key);

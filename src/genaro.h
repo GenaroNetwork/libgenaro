@@ -149,8 +149,8 @@ typedef struct {
  * encryption and decryption.
  */
 typedef struct genaro_encrypt_options {
-    char *mnemonic;
     uint8_t *priv_key;
+    size_t key_len;
 } genaro_encrypt_options_t;
 
 

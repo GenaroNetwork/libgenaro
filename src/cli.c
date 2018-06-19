@@ -783,7 +783,6 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
                bucket->created, bucket->name);
     }
 
-    json_object_put(req->response);
     genaro_free_get_buckets_request(req);
     free(work_req);
 }
@@ -1082,6 +1081,7 @@ int main(int argc, char **argv)
         };
         genaro_encrypt_options_t encrypt_options = {
                 .priv_key = key_result->priv_key,
+                .key_len = key_result->key_len,
         };
 
         env = genaro_init_env(&options, &encrypt_options,
