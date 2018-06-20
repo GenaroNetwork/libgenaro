@@ -98,6 +98,7 @@ typedef struct {
 typedef struct {
     uint32_t pointer_index;
     genaro_http_options_t *http_options;
+    genaro_encrypt_options_t *encrypt_options;
     genaro_bridge_options_t *options;
     int status_code;
     genaro_exchange_report_t *report;
@@ -107,6 +108,7 @@ typedef struct {
 
 typedef struct {
     genaro_http_options_t *http_options;
+    genaro_encrypt_options_t *encrypt_options;
     genaro_bridge_options_t *options;
     int status_code;
     const char *bucket_id;
@@ -122,6 +124,7 @@ typedef struct {
  */
 typedef struct {
     genaro_http_options_t *http_options;
+    genaro_encrypt_options_t *encrypt_options;
     genaro_bridge_options_t *options;
     uint32_t pointer_index;
     const char *bucket_id;
@@ -139,6 +142,7 @@ typedef struct {
  */
 typedef struct {
     genaro_http_options_t *http_options;
+    genaro_encrypt_options_t *encrypt_options;
     genaro_bridge_options_t *options;
     char *method;
     char *path;

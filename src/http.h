@@ -10,6 +10,7 @@
 #include <curl/curl.h>
 #include <nettle/sha.h>
 #include <nettle/ripemd160.h>
+#include "secp256k1.h"
 
 #ifdef _WIN32
 #include <signal.h>
@@ -163,6 +164,7 @@ int fetch_shard(genaro_http_options_t *http_options,
  * @return A non-zero error value on failure and 0 on success.
  */
 int fetch_json(genaro_http_options_t *http_options,
+               genaro_encrypt_options_t *encrypt_options,
                genaro_bridge_options_t *options,
                char *method,
                char *path,

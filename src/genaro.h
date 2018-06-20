@@ -215,6 +215,7 @@ typedef struct genaro_env {
  */
 typedef struct {
     genaro_http_options_t *http_options;
+    genaro_encrypt_options_t *encrypt_options;
     genaro_bridge_options_t *options;
     char *method;
     char *path;
@@ -409,7 +410,7 @@ typedef struct {
  * thread should not modify this structure directly, but should pass a
  * reference to it, so that once the work is complete the state can be updated.
  */
-typedef struct {
+typedef struct genaro_download_state {
     uint64_t total_bytes;
     genaro_file_meta_t *info;
     bool requesting_info;
@@ -480,7 +481,7 @@ typedef struct {
     uv_work_t *work;
 } shard_tracker_t;
 
-typedef struct {
+typedef struct genaro_upload_state {
     genaro_env_t *env;
     uint32_t shard_concurrency;
     const char *index;

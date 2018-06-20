@@ -62,6 +62,7 @@ static uv_work_t *frame_work_new(int *index, genaro_upload_state_t *state)
     }
 
     req->http_options = state->env->http_options;
+    req->encrypt_options = state->env->encrypt_options;
     req->options = state->env->bridge_options;
     req->upload_state = state;
     req->error_status = 0;
@@ -435,6 +436,7 @@ static void create_bucket_entry(uv_work_t *work)
 
     int status_code;
     int request_status = fetch_json(req->http_options,
+                                    req->encrypt_options,
                                     req->options,
                                     "POST",
                                     path,
@@ -528,6 +530,7 @@ static void queue_create_bucket_entry(genaro_upload_state_t *state)
     }
 
     req->http_options = state->env->http_options;
+    req->encrypt_options = state->env->encrypt_options;
     req->options = state->env->bridge_options;
     req->upload_state = state;
     req->response = NULL;
@@ -1066,6 +1069,7 @@ static void push_frame(uv_work_t *work)
     int status_code;
     struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
+                                    req->encrypt_options,
                                     req->options,
                                     "PUT",
                                     resource,
@@ -1708,6 +1712,7 @@ static void request_frame_id(uv_work_t *work)
     int status_code;
     struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
+                                    req->encrypt_options,
                                     req->options,
                                     "POST",
                                     "/frames",
@@ -2048,6 +2053,7 @@ static void send_exchange_report(uv_work_t *work)
     // there should be an empty object in response
     struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
+                                    req->encrypt_options,
                                     req->options, "POST",
                                     "/reports/exchanges", body,
                                     true, &response, &status_code);
@@ -2194,7 +2200,7 @@ static void verify_file_name(uv_work_t *work)
     state->log->info(state->env->log_options, state->handle,
                      "Checking if file name [%s] already exists...", state->file_name);
 
-    req->error_code = fetch_json(req->http_options,
+    req->error_code = fetch_json(req->http_options, req->encrypt_options,
                                  req->options, req->method, req->path, req->body,
                                  req->auth, &req->response, &status_code);
 

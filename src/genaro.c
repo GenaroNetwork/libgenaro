@@ -11,7 +11,7 @@ static void json_request_worker(uv_work_t *work)
     json_request_t *req = work->data;
     int status_code = 0;
 
-    req->error_code = fetch_json(req->http_options,
+    req->error_code = fetch_json(req->http_options, NULL,
                                  req->options, req->method, req->path, req->body,
                                  req->auth, &req->response, &status_code);
 
@@ -64,7 +64,7 @@ static void create_bucket_request_worker(uv_work_t *work)
     json_object *name = json_object_new_string(req->encrypted_bucket_name);
     json_object_object_add(body, "name", name);
 
-    req->error_code = fetch_json(req->http_options,
+    req->error_code = fetch_json(req->http_options, req->encrypt_options,
                                  req->bridge_options, "POST", "/buckets", body,
                                  true, &req->response, &status_code);
 
@@ -89,7 +89,7 @@ static void get_buckets_request_worker(uv_work_t *work)
     get_buckets_request_t *req = work->data;
     int status_code = 0;
 
-    req->error_code = fetch_json(req->http_options,
+    req->error_code = fetch_json(req->http_options, req->encrypt_options,
                                  req->options, req->method, req->path, req->body,
                                  req->auth, &req->response, &status_code);
 
@@ -174,7 +174,7 @@ static void get_bucket_request_worker(uv_work_t *work)
     get_bucket_request_t *req = work->data;
     int status_code = 0;
 
-    req->error_code = fetch_json(req->http_options,
+    req->error_code = fetch_json(req->http_options, req->encrypt_options,
                                  req->options, req->method, req->path, req->body,
                                  req->auth, &req->response, &status_code);
 
@@ -247,7 +247,7 @@ static void list_files_request_worker(uv_work_t *work)
     list_files_request_t *req = work->data;
     int status_code = 0;
 
-    req->error_code = fetch_json(req->http_options,
+    req->error_code = fetch_json(req->http_options, req->encrypt_options,
                                  req->options, req->method, req->path, req->body,
                                  req->auth, &req->response, &status_code);
 

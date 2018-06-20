@@ -59,7 +59,8 @@ static void request_pointers(uv_work_t *work)
     genaro_download_state_t *state = req->state;
 
     int status_code = 0;
-    int request_status = fetch_json(req->http_options, req->options, req->method,
+    int request_status = fetch_json(req->http_options, req->encrypt_options,
+                                    req->options, req->method,
                                     req->path, req->body, req->auth,
                                     &req->response, &status_code);
 
@@ -106,7 +107,9 @@ static void request_replace_pointer(uv_work_t *work)
     strcat(path, req->file_id);
     strcat(path, query_args);
 
-    int request_status = fetch_json(req->http_options, req->options, "GET",
+    int request_status = fetch_json(req->http_options,
+                                    req->encrypt_options,
+                                    req->options, "GET",
                                     path, NULL, true,
                                     &req->response, &status_code);
 
@@ -527,6 +530,7 @@ static void queue_request_pointers(genaro_download_state_t *state)
             req->pointer_index = i;
 
             req->http_options = state->env->http_options;
+            req->encrypt_options = state->env->encrypt_options;
             req->options = state->env->bridge_options;
             req->bucket_id = state->bucket_id;
             req->file_id = state->file_id;
@@ -598,6 +602,7 @@ static void queue_request_pointers(genaro_download_state_t *state)
     strcat(path, query_args);
 
     req->http_options = state->env->http_options;
+    req->encrypt_options = state->env->encrypt_options;
     req->options = state->env->bridge_options;
     req->method = "GET";
     req->path = path;
@@ -922,6 +927,7 @@ static void send_exchange_report(uv_work_t *work)
     // there should be an empty object in response
     struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
+                                    req->encrypt_options,
                                     req->options, "POST",
                                     "/reports/exchanges", body,
                                     true, &response, &status_code);
@@ -1001,6 +1007,7 @@ static void queue_send_exchange_reports(genaro_download_state_t *state)
             }
 
             req->http_options = state->env->http_options;
+            req->encrypt_options = state->env->encrypt_options;
             req->options = state->env->bridge_options;
             req->status_code = 0;
             req->report = pointer->report;
@@ -1214,6 +1221,7 @@ static void request_info(uv_work_t *work)
     int status_code = 0;
     struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
+                                    req->encrypt_options,
                                     req->options,
                                     "GET",
                                     path,
@@ -1352,6 +1360,7 @@ static void queue_request_info(genaro_download_state_t *state)
 
     file_info_request_t *req = malloc(sizeof(file_info_request_t));
     req->http_options = state->env->http_options;
+    req->encrypt_options = state->env->encrypt_options;
     req->options = state->env->bridge_options;
     req->status_code = 0;
     req->bucket_id = state->bucket_id;

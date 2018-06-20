@@ -1,3 +1,4 @@
+#include <secp256k1.h>
 #include "http.h"
 
 static size_t body_ignore_receive(void *buffer, size_t size, size_t nmemb,
@@ -506,6 +507,7 @@ static size_t body_json_receive(void *buffer, size_t size, size_t nmemb,
 }
 
 int fetch_json(genaro_http_options_t *http_options,
+               genaro_encrypt_options_t *encrypt_options,
                genaro_bridge_options_t *options,
                char *method,
                char *path,
@@ -514,17 +516,16 @@ int fetch_json(genaro_http_options_t *http_options,
                struct json_object **response,
                int *status_code)
 {
+    int ret = 0;
+
     CURL *curl = curl_easy_init();
     if (!curl) {
         return 1;
     }
 
     // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-
-    char *user_pass = NULL;
-
     // Set the url
-    int url_len = strlen(options->proto) + 3 + strlen(options->host) +
+    size_t url_len = strlen(options->proto) + 3 + strlen(options->host) +
         1 + 10 + strlen(path);
     char *url = calloc(url_len + 1, sizeof(char));
     if (!url) {
@@ -576,18 +577,50 @@ int fetch_json(genaro_http_options_t *http_options,
     body->length = 0;
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
 
-    // Include authentication headers if info is provided
-    if (auth) {
-    }
-
-    struct curl_slist *header_list = NULL;
-    
-    // Include body if request body json is provided
-    http_body_send_t *post_body = NULL;
+    // get request body as string
     const char *req_buf = NULL;
     if (request_body) {
         req_buf = json_object_to_json_string(request_body);
+    }
 
+    struct curl_slist *header_list = NULL;
+    // Include authentication headers if info is provided
+    if (auth) {
+        if (encrypt_options == NULL) {
+            ret = 1;
+            goto cleanup;
+        }
+        // method -> url -> body -> str
+        size_t str_len = strlen(url) + (req_buf == NULL ? 0 : strlen(req_buf)) + 1;
+        char *str = malloc(str_len);
+        sprintf(str, "", method, req_buf == NULL ? "" : req_buf, '\0');
+
+        // str -> hash
+        uint8_t str_hash[SHA256_DIGEST_SIZE + 1];
+        sha256_of_str((uint8_t *)str, str_len, &str_hash);
+
+        // hash -> signature
+        secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
+        secp256k1_ecdsa_signature sig;
+        secp256k1_ecdsa_sign(ctx, &sig, &str_hash, encrypt_options->priv_key, NULL, NULL);
+        // append signature to http header.
+        int sig_len = 64;
+        char *sig_str = hex2str(sig_len, sig.data);
+
+        char h_sig[200];
+        sprintf(&h_sig, "x-signature: %s", sig_str, '\0');
+        header_list = curl_slist_append(header_list, (char *)&h_sig);
+        char h_pub[200];
+        sprintf(&h_pub, "x-pubkey: %s", "0203023090", '\0');
+        header_list = curl_slist_append(header_list, (char *)&h_pub);
+
+        // free
+        free(sig_str);
+    }
+
+    // Include body if request body json is provided
+    http_body_send_t *post_body = NULL;
+    if (request_body) {
         header_list = curl_slist_append(header_list,
                                        "Content-Type: application/json");
 
@@ -609,7 +642,6 @@ int fetch_json(genaro_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
     }
 
-    int ret = 0;
     int req = curl_easy_perform(curl);
 
     free(url);
@@ -620,10 +652,6 @@ int fetch_json(genaro_http_options_t *http_options,
 
     if (post_body) {
         free(post_body);
-    }
-
-    if (user_pass) {
-        free(user_pass);
     }
 
     *response = NULL;
