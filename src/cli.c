@@ -1064,14 +1064,14 @@ int main(int argc, char **argv)
                 goto end_program;
             }
             // extract key from json
-            key_file_obj = get_key_obj(key_json_obj);
-            if (key_file_obj == KEY_FILE_ERR_POINTER) {
+            if ((key_file_obj = get_key_obj(key_json_obj)) == KEY_FILE_ERR_POINTER ||
+                (key_result = do_extract_key_file_obj(key_file_obj)) == KEY_FILE_ERR_POINTER) {
+                printf("Imported key file is broken.\n");
                 goto end_program;
             }
-            key_result = do_extract_key_file_obj(key_file_obj);
-            if (key_result == KEY_FILE_ERR_POINTER) {
-                goto end_program;
-            }
+        } else {
+            printf("Please import key first.\n");
+            goto end_program;
         }
 
         genaro_bridge_options_t options = {
