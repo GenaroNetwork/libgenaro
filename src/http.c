@@ -590,32 +590,51 @@ int fetch_json(genaro_http_options_t *http_options,
             ret = 1;
             goto cleanup;
         }
-        // method -> url -> body -> str
-        size_t str_len = strlen(url) + (req_buf == NULL ? 0 : strlen(req_buf)) + 1;
-        char *str = malloc(str_len);
-        sprintf(str, "", method, req_buf == NULL ? "" : req_buf, '\0');
+        // method -> path -> body -> str
+        size_t hash_msg_len = strlen(method) + strlen(path) + (req_buf == NULL ? 0 : strlen(req_buf)) + 2;
+        char *hash_msg = malloc(hash_msg_len);
+        sprintf(hash_msg, "%s\n%s\n%s", method, path, req_buf ? req_buf : "");
 
         // str -> hash
-        uint8_t str_hash[SHA256_DIGEST_SIZE + 1];
-        sha256_of_str((uint8_t *)str, str_len, &str_hash);
+        uint8_t hash[SHA256_DIGEST_SIZE + 1];
+        sha256_of_str((uint8_t *)hash_msg, hash_msg_len, &hash);
 
         // hash -> signature
         secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
         secp256k1_ecdsa_signature sig;
-        secp256k1_ecdsa_sign(ctx, &sig, &str_hash, encrypt_options->priv_key, NULL, NULL);
-        // append signature to http header.
-        int sig_len = 64;
-        char *sig_str = hex2str(sig_len, sig.data);
+        secp256k1_ecdsa_sign(ctx, &sig, &hash, encrypt_options->priv_key, NULL, NULL);
 
-        char h_sig[200];
-        sprintf(&h_sig, "x-signature: %s", sig_str, '\0');
-        header_list = curl_slist_append(header_list, (char *)&h_sig);
+        // privkey -> pubkey
+        secp256k1_pubkey pubkey;
+        secp256k1_ec_pubkey_create(ctx, &pubkey, encrypt_options->priv_key);
+        size_t pubkey_ser_len = 65;
+        uint8_t pubkey_ser[65];
+        secp256k1_ec_pubkey_serialize(ctx, pubkey_ser, &pubkey_ser_len, &pubkey, SECP256K1_EC_UNCOMPRESSED);
+
+        // append signature to http header.
+        size_t sig_str_len = 74;
+        uint8_t sig_str[74];
+        secp256k1_ecdsa_signature_serialize_der(ctx, sig_str, &sig_str_len, &sig);
+        char *sig_str_hex = hex2str(sig_str_len, sig_str);
+
+        const char *h_sig_key = "x-signature: ";
+        char *h_sig = malloc(strlen(h_sig_key) + strlen(sig_str_hex) + 1);
+        strcat(h_sig, h_sig_key);
+        strcat(h_sig, sig_str_hex);
+        header_list = curl_slist_append(header_list, h_sig);
+
+        // append public key to http header
+        char *pubkey_str = hex2str(pubkey_ser_len, pubkey_ser);
+
         char h_pub[200];
-        sprintf(&h_pub, "x-pubkey: %s", "0203023090", '\0');
+        sprintf(&h_pub, "x-pubkey: %s", pubkey_str, '\0');
         header_list = curl_slist_append(header_list, (char *)&h_pub);
 
         // free
-        free(sig_str);
+        free(sig_str_hex);
+        free(pubkey_str);
+        free(hash_msg);
+        free(h_sig);
     }
 
     // Include body if request body json is provided
