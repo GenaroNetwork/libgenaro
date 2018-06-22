@@ -11,8 +11,8 @@ static void json_request_worker(uv_work_t *work)
     json_request_t *req = work->data;
     int status_code = 0;
 
-    req->error_code = fetch_json(req->http_options, NULL,
-                                 req->options, req->method, req->path, req->body,
+    req->error_code = fetch_json(req->http_options, req->encrypt_options,
+                                 req->options, req->method, req->path, NULL, req->body,
                                  req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
@@ -65,7 +65,7 @@ static void create_bucket_request_worker(uv_work_t *work)
     json_object_object_add(body, "name", name);
 
     req->error_code = fetch_json(req->http_options, req->encrypt_options,
-                                 req->bridge_options, "POST", "/buckets", body,
+                                 req->bridge_options, "POST", "/buckets", NULL, body,
                                  true, &req->response, &status_code);
 
     json_object_put(body);
@@ -90,7 +90,7 @@ static void get_buckets_request_worker(uv_work_t *work)
     int status_code = 0;
 
     req->error_code = fetch_json(req->http_options, req->encrypt_options,
-                                 req->options, req->method, req->path, req->body,
+                                 req->options, req->method, req->path, NULL, req->body,
                                  req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
@@ -175,7 +175,7 @@ static void get_bucket_request_worker(uv_work_t *work)
     int status_code = 0;
 
     req->error_code = fetch_json(req->http_options, req->encrypt_options,
-                                 req->options, req->method, req->path, req->body,
+                                 req->options, req->method, req->path, NULL, req->body,
                                  req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
@@ -248,7 +248,7 @@ static void list_files_request_worker(uv_work_t *work)
     int status_code = 0;
 
     req->error_code = fetch_json(req->http_options, req->encrypt_options,
-                                 req->options, req->method, req->path, req->body,
+                                 req->options, req->method, req->path, NULL, req->body,
                                  req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
@@ -345,6 +345,7 @@ static uv_work_t *uv_work_new()
 
 static json_request_t *json_request_new(
     genaro_http_options_t *http_options,
+    genaro_encrypt_options_t *encrypt_options,
     genaro_bridge_options_t *options,
     char *method,
     char *path,
@@ -359,6 +360,7 @@ static json_request_t *json_request_new(
     }
 
     req->http_options = http_options;
+    req->encrypt_options = encrypt_options;
     req->options = options;
     req->method = method;
     req->path = path;
@@ -507,7 +509,7 @@ static uv_work_t *json_request_work_new(
     if (!work) {
         return NULL;
     }
-    work->data = json_request_new(env->http_options,
+    work->data = json_request_new(env->http_options, env->encrypt_options,
                                   env->bridge_options, method, path,
                                   request_body, auth, handle);
 

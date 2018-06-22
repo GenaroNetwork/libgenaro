@@ -146,6 +146,7 @@ typedef struct {
     genaro_bridge_options_t *options;
     char *method;
     char *path;
+    char *query_args;
     bool auth;
     struct json_object *body;
     struct json_object *response;

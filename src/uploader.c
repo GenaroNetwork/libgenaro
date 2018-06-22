@@ -440,6 +440,7 @@ static void create_bucket_entry(uv_work_t *work)
                                     req->options,
                                     "POST",
                                     path,
+                                    NULL,
                                     body,
                                     true,
                                     &req->response,
@@ -1073,6 +1074,7 @@ static void push_frame(uv_work_t *work)
                                     req->options,
                                     "PUT",
                                     resource,
+                                    NULL,
                                     body,
                                     true,
                                     &response,
@@ -1716,6 +1718,7 @@ static void request_frame_id(uv_work_t *work)
                                     req->options,
                                     "POST",
                                     "/frames",
+                                    NULL,
                                     body,
                                     true,
                                     &response,
@@ -2055,7 +2058,7 @@ static void send_exchange_report(uv_work_t *work)
     int request_status = fetch_json(req->http_options,
                                     req->encrypt_options,
                                     req->options, "POST",
-                                    "/reports/exchanges", body,
+                                    "/reports/exchanges", NULL, body,
                                     true, &response, &status_code);
 
 
@@ -2090,6 +2093,7 @@ static void queue_send_exchange_report(genaro_upload_state_t *state, int index)
     shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
 
     req->http_options = state->env->http_options;
+    req->encrypt_options = state->env->encrypt_options;
     req->options = state->env->bridge_options;
     req->status_code = 0;
     req->report = shard->report;
@@ -2141,7 +2145,6 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 clean_variables:
     queue_next_work(state);
 
-    json_object_put(req->response);
     genaro_free_get_bucket_request(req);
     free(work_req);
 }
@@ -2201,7 +2204,7 @@ static void verify_file_name(uv_work_t *work)
                      "Checking if file name [%s] already exists...", state->file_name);
 
     req->error_code = fetch_json(req->http_options, req->encrypt_options,
-                                 req->options, req->method, req->path, req->body,
+                                 req->options, req->method, req->path, NULL, req->body,
                                  req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
@@ -2249,6 +2252,7 @@ static void queue_verify_file_name(genaro_upload_state_t *state)
     }
 
     req->http_options = state->env->http_options;
+    req->encrypt_options = state->env->encrypt_options;
     req->options = state->env->bridge_options;
     req->method = "GET";
     req->path = path;

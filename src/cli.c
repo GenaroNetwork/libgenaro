@@ -719,7 +719,6 @@ static void list_files_callback(uv_work_t *work_req, int status)
     }
 
 cleanup:
-    json_object_put(req->response);
     genaro_free_list_files_request(req);
     free(work_req);
     exit(ret_status);

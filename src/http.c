@@ -93,7 +93,7 @@ int put_shard(genaro_http_options_t *http_options,
     }
 
     char query_args[80];
-    snprintf(query_args, 80, "?token=%s", token);
+    snprintf(query_args, 80, "token=%s", token);
 
     int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10 + 8
         + strlen(shard_hash) + strlen(query_args);
@@ -102,7 +102,7 @@ int put_shard(genaro_http_options_t *http_options,
         return 1;
     }
 
-    snprintf(url, url_len, "%s://%s:%i/shards/%s%s", proto, host, port,
+    snprintf(url, url_len, "%s://%s:%i/shards/%s?%s", proto, host, port,
              shard_hash, query_args);
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -322,14 +322,14 @@ int fetch_shard(genaro_http_options_t *http_options,
     }
 
     char query_args[80];
-    snprintf(query_args, 80, "?token=%s", token);
+    snprintf(query_args, 80, "token=%s", token);
     int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10
         + 8 + strlen(shard_hash) + strlen(query_args);
     char *url = calloc(url_len + 1, sizeof(char));
     if (!url) {
         return 1;
     }
-    snprintf(url, url_len, "%s://%s:%i/shards/%s%s", proto, host, port,
+    snprintf(url, url_len, "%s://%s:%i/shards/%s?%s", proto, host, port,
              shard_hash, query_args);
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -511,6 +511,7 @@ int fetch_json(genaro_http_options_t *http_options,
                genaro_bridge_options_t *options,
                char *method,
                char *path,
+               char *query_args,
                struct json_object *request_body,
                bool auth,
                struct json_object **response,
@@ -526,14 +527,14 @@ int fetch_json(genaro_http_options_t *http_options,
     // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     // Set the url
     size_t url_len = strlen(options->proto) + 3 + strlen(options->host) +
-        1 + 10 + strlen(path);
+        1 + 10 + strlen(path) + (query_args ? strlen(query_args) : 0);
     char *url = calloc(url_len + 1, sizeof(char));
     if (!url) {
         return 1;
     }
 
-    snprintf(url, url_len, "%s://%s:%i%s", options->proto, options->host,
-             options->port, path);
+    snprintf(url, url_len, "%s://%s:%i%s%s%s", options->proto, options->host,
+             options->port, path, query_args ? "?" : "", query_args ? query_args : "");
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
     // Set the user agent
@@ -591,9 +592,9 @@ int fetch_json(genaro_http_options_t *http_options,
             goto cleanup;
         }
         // method -> path -> body -> str
-        size_t hash_msg_len = strlen(method) + strlen(path) + (req_buf == NULL ? 0 : strlen(req_buf)) + 2;
+        size_t hash_msg_len = strlen(method) + strlen(path) + (req_buf? strlen(req_buf) : query_args ? strlen(query_args): 0) + 2;
         char *hash_msg = malloc(hash_msg_len);
-        sprintf(hash_msg, "%s\n%s\n%s", method, path, req_buf ? req_buf : "");
+        sprintf(hash_msg, "%s\n%s\n%s", method, path, req_buf ? req_buf : query_args ? query_args : "");
 
         // str -> hash
         uint8_t hash[SHA256_DIGEST_SIZE + 1];

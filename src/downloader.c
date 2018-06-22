@@ -61,7 +61,7 @@ static void request_pointers(uv_work_t *work)
     int status_code = 0;
     int request_status = fetch_json(req->http_options, req->encrypt_options,
                                     req->options, req->method,
-                                    req->path, req->body, req->auth,
+                                    req->path, req->query_args, req->body, req->auth,
                                     &req->response, &status_code);
 
 
@@ -89,7 +89,7 @@ static void request_replace_pointer(uv_work_t *work)
     char query_args[BUFSIZ];
     memset(query_args, '\0', BUFSIZ);
     snprintf(query_args, BUFSIZ,
-             "?limit=1&skip=%i&exclude=%s",
+             "limit=1&skip=%i&exclude=%s",
              req->pointer_index,
              req->excluded_farmer_ids);
 
@@ -105,12 +105,11 @@ static void request_replace_pointer(uv_work_t *work)
     strcat(path, req->bucket_id);
     strcat(path, "/files/");
     strcat(path, req->file_id);
-    strcat(path, query_args);
 
     int request_status = fetch_json(req->http_options,
                                     req->encrypt_options,
                                     req->options, "GET",
-                                    path, NULL, true,
+                                    path, query_args, NULL, true,
                                     &req->response, &status_code);
 
     if (request_status) {
@@ -585,9 +584,9 @@ static void queue_request_pointers(genaro_download_state_t *state)
 
     char query_args[BUFSIZ];
     memset(query_args, '\0', BUFSIZ);
-    snprintf(query_args, BUFSIZ, "?limit=3&skip=%d", state->total_pointers);
+    snprintf(query_args, BUFSIZ, "limit=3&skip=%d", state->total_pointers);
 
-    int path_len = 9 + strlen(state->bucket_id) + 7 +
+    size_t path_len = 9 + strlen(state->bucket_id) + 7 +
         strlen(state->file_id) + strlen(query_args);
 
     char *path = calloc(path_len + 1, sizeof(char));
@@ -599,13 +598,13 @@ static void queue_request_pointers(genaro_download_state_t *state)
     strcat(path, state->bucket_id);
     strcat(path, "/files/");
     strcat(path, state->file_id);
-    strcat(path, query_args);
 
     req->http_options = state->env->http_options;
     req->encrypt_options = state->env->encrypt_options;
     req->options = state->env->bridge_options;
     req->method = "GET";
     req->path = path;
+    req->query_args = query_args;
     req->body = NULL;
     req->auth = true;
 
@@ -929,7 +928,7 @@ static void send_exchange_report(uv_work_t *work)
     int request_status = fetch_json(req->http_options,
                                     req->encrypt_options,
                                     req->options, "POST",
-                                    "/reports/exchanges", body,
+                                    "/reports/exchanges", NULL, body,
                                     true, &response, &status_code);
 
 
@@ -1225,6 +1224,7 @@ static void request_info(uv_work_t *work)
                                     req->options,
                                     "GET",
                                     path,
+                                    NULL,
                                     NULL,
                                     true,
                                     &response,
