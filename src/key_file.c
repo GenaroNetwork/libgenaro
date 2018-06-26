@@ -198,7 +198,7 @@ key_file_obj_t *get_key_obj(json_object *key_json_obj) {
  * ***********************************************************
  */
 
-int extract_key_file_obj(char *passphrase, key_file_obj_t *key_file_obj, key_result_t **ptr_key_result) {
+int extract_key_file_obj(const char *passphrase, key_file_obj_t *key_file_obj, key_result_t **ptr_key_result) {
     int status = KEY_FILE_SUCCESS;
     uint8_t *buf_mac = NULL;
     uint8_t *buf_mac_sha3 = NULL;

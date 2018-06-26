@@ -6,6 +6,42 @@
 
 static inline void noop() {};
 
+key_result_t *genaro_parse_key_file(json_object *key_json_obj, const char *passphrase)
+{
+    key_file_obj_t *key_file_obj = get_key_obj(key_json_obj);
+    if (key_file_obj == KEY_FILE_ERR_POINTER)
+    {
+        goto parse_fail;
+    }
+    key_result_t *key_result = NULL;
+    int status = extract_key_file_obj(passphrase, key_file_obj, &key_result);
+    if (status != KEY_FILE_SUCCESS)
+    {
+        goto parse_fail;
+    }
+    return key_result;
+
+parse_fail:
+    if (key_file_obj)
+    {
+        key_file_obj_put(key_file_obj);
+    }
+    return NULL;
+}
+
+/**
+ * pass keys from key_result to encrypt_options
+ * @param[in] key_result will be freed
+ * @param[in] encrypt_options
+ */
+void genaro_key_result_to_encrypt_options(key_result_t *key_result, genaro_encrypt_options_t *encrypt_options)
+{
+    encrypt_options->priv_key = key_result->priv_key;
+    encrypt_options->key_len = key_result->key_len;
+    free(key_result->dec_key);
+    free(key_result);
+}
+
 static void json_request_worker(uv_work_t *work)
 {
     json_request_t *req = work->data;
@@ -943,16 +979,6 @@ GENARO_API uint64_t genaro_util_timestamp()
     return get_time_milliseconds();
 }
 
-GENARO_API int genaro_mnemonic_generate(int strength, char **buffer)
-{
-    return mnemonic_generate(strength, buffer);
-}
-
-GENARO_API bool genaro_mnemonic_check(const char *mnemonic)
-{
-    return mnemonic_check(mnemonic);
-}
-
 GENARO_API char *genaro_strerror(int error_code)
 {
     switch(error_code) {
@@ -1375,34 +1401,5 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
         return GENARO_MEMORY_ERROR;
     }
 
-    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
-}
-
-GENARO_API int genaro_bridge_register(genaro_env_t *env,
-                          const char *email,
-                          const char *password,
-                          void *handle,
-                          uv_after_work_cb cb)
-{
-    uint8_t sha256_digest[SHA256_DIGEST_SIZE];
-    sha256_of_str((uint8_t *)password, strlen(password), sha256_digest);
-
-    char *hex_str = hex2str(SHA256_DIGEST_SIZE, sha256_digest);
-    if (!hex_str) {
-        return GENARO_MEMORY_ERROR;
-    }
-
-    struct json_object *body = json_object_new_object();
-    json_object *email_str = json_object_new_string(email);
-    json_object *pass_str = json_object_new_string(hex_str);
-    free(hex_str);
-    json_object_object_add(body, "email", email_str);
-    json_object_object_add(body, "password", pass_str);
-
-    uv_work_t *work = json_request_work_new(env, "POST", "/users", body, true,
-                                            handle);
-    if (!work) {
-        return GENARO_MEMORY_ERROR;
-    }
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }

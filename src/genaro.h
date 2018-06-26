@@ -42,7 +42,6 @@ extern "C" {
 #ifndef _WIN32
 #include <sys/mman.h>
 #include <unistd.h>
-#include "key_file.h"
 
 #endif
 
@@ -544,6 +543,15 @@ typedef struct genaro_upload_state {
     int pending_work_count;
 } genaro_upload_state_t;
 
+typedef struct {
+    uint8_t *dec_key;
+    uint8_t *priv_key;
+    size_t key_len;
+} key_result_t;
+
+GENARO_API key_result_t *genaro_parse_key_file(json_object *key_json_obj, const char *passphrase);
+GENARO_API void genaro_key_result_to_encrypt_options(key_result_t *key_result, genaro_encrypt_options_t *encrypt_options);
+
 /**
  * @brief Initialize a Genaro environment
  *
@@ -647,29 +655,6 @@ GENARO_API int genaro_decrypt_auth(const char *buffer,
  * @return A unix timestamp
  */
 GENARO_API uint64_t genaro_util_timestamp();
-
-/**
- * @brief Will generate a new random mnemonic
- *
- * This will generate a new random mnemonic with 128 to 256 bits
- * of entropy.
- *
- * @param[in] strength - The bits of entropy
- * @param[out] buffer - The destination of the mnemonic
- * @return A non-zero value on error, zero on success.
- */
-GENARO_API int genaro_mnemonic_generate(int strength, char **buffer);
-
-/**
- * @brief Will check that a mnemonic is valid
- *
- * This will check that a mnemonic has been entered correctly by verifying
- * the checksum, and that words are a part of the list.
- *
- * @param[in] strength - The bits of entropy
- * @return Will return true on success and false failure
- */
-GENARO_API bool genaro_mnemonic_check(const char *mnemonic);
 
 /**
  * @brief Get the error message for an error code
@@ -972,22 +957,6 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                                                             void *handle,
                                                             genaro_progress_cb progress_cb,
                                                             genaro_finished_download_cb finished_cb);
-
-/**
- * @brief Register a user
- *
- * @param[in] env The genaro environment struct
- * @param[in] email the user's email
- * @param[in] password the user's password
- * @param[in] handle A pointer that will be available in the callback
- * @param[in] cb A function called with response when complete
- * @return A non-zero error value on failure and 0 on success.
- */
-GENARO_API int genaro_bridge_register(genaro_env_t *env,
-                                    const char *email,
-                                    const char *password,
-                                    void *handle,
-                                    uv_after_work_cb cb);
 
 static inline char separator()
 {

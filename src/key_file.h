@@ -45,12 +45,6 @@ typedef struct {
 } key_file_obj_t;
 void key_file_obj_put(key_file_obj_t *key_obj);
 
-
-typedef struct {
-    uint8_t *dec_key;
-    uint8_t *priv_key;
-    size_t key_len;
-} key_result_t;
 void key_result_put(key_result_t *key_result);
 
 /**
@@ -63,6 +57,6 @@ json_object *parse_key_file(char *path);
 // json_object -> key_file_obj_t
 key_file_obj_t *get_key_obj(json_object *key_json_obj);
 // passphrase -> key_file_obj_t -> key_result_t
-int extract_key_file_obj(char *passphrase, key_file_obj_t *key_obj, key_result_t **key_result);
+int extract_key_file_obj(const char *passphrase, key_file_obj_t *key_obj, key_result_t **key_result);
 
 #endif
