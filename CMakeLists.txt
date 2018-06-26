@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(libgenaro VERSION 0.1.0)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")
 
 include(CTest)
 enable_testing()
