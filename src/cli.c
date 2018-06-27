@@ -568,7 +568,6 @@ static int import_keys(char *host, char *key_file_path)
     int status = 0;
     char *user_file = NULL;
     char *root_dir = NULL;
-    char *key = NULL; // key to encrypt the file
     json_object *key_file_json_obj = NULL;
     key_file_obj_t *key_file_obj = NULL;
     key_result_t *key_result = NULL; // key of the private key
@@ -586,7 +585,7 @@ static int import_keys(char *host, char *key_file_path)
         goto clear_variables;
     }
 
-    // get key file path
+    // get key file path and validate the key file
     struct stat st;
     int key_file_path_parsed = 0;
     while (1) {
@@ -630,29 +629,13 @@ static int import_keys(char *host, char *key_file_path)
         }
     }
 
-    if (!key) {
-        key = calloc(BUFSIZ, sizeof(char));
-        printf("We now need to save these settings. Please enter a passphrase" \
-               " to lock your settings.\n\n");
-        if (get_password_verify("Unlock passphrase: ", key, 0)) {
-            printf("Unable to store encrypted authentication.\n");
-            status = 1;
-            goto clear_variables;
-        }
-        printf("\n");
-    }
-
     if (make_user_directory(root_dir)) {
         status = 1;
         goto clear_variables;
     }
 
-    if (genaro_encrypt_write_auth(user_file, key, key_file_json_obj)) {
-        status = 1;
-        printf("Failed to write to disk\n");
-        goto clear_variables;
-    }
-
+    // save the private key
+    genaro_write_auth(user_file, key_file_json_obj);
     printf("Successfully stored bridge username, password, and encryption "\
            "key to %s\n\n",
            user_file);
@@ -663,9 +646,6 @@ clear_variables:
     }
     if (root_dir) {
         free(root_dir);
-    }
-    if (key) {
-        free(key);
     }
     if (key_file_json_obj) {
         json_object_put(key_file_json_obj);
@@ -1044,19 +1024,8 @@ int main(int argc, char **argv)
 
         // try to get private key from encrypted user file
         if (access(user_file, F_OK) != -1) {
-            // get file unlock key
-            char *key = NULL;
-            key = calloc(BUFSIZ, sizeof(char));
-            if (!key) {
-                return 1;
-            }
-            printf("Unlock passphrase: ");
-            get_password(key, '*');
-            printf("\n");
-
             // read key_json_obj from file
-            int ret_read_auth = genaro_decrypt_read_auth(user_file, key, &key_json_obj);
-            free(key);
+            int ret_read_auth = genaro_read_auth(user_file, &key_json_obj);
             free(user_file);
             if (ret_read_auth) {
                 printf("Unable to read user file. Invalid keypass or path.\n");

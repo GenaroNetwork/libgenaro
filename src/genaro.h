@@ -583,71 +583,8 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
  */
 GENARO_API int genaro_destroy_env(genaro_env_t *env);
 
-/**
- * @brief Will encrypt and write options to disk
- *
- * This will encrypt bridge and encryption options to disk using a key
- * derivation function on a passphrase.
- *
- * @param[in] filepath - The file path to save the options
- * @param[in] passphrase - Used to encrypt options to disk
- * @param[in] bridge_user - The bridge username
- * @param[in] bridge_pass - The bridge password
- * @param[in] key_json_obj - json object of the private key
- * @return A non-zero value on error, zero on success.
- */
-GENARO_API int genaro_encrypt_write_auth(const char *filepath,
-                                         char *passphrase,
-                                         json_object *key_json_obj);
-
-
-/**
- * @brief Will encrypt options to disk
- *
- * This will encrypt bridge and encryption using a key
- * derivation function on a passphrase.
- *
- * @param[in] passphrase - Used to encrypt options to disk
- * @param[in] bridge_user - The bridge username
- * @param[in] bridge_pass - The bridge password
- * @param[in] mnemonic - The file encryption mnemonic
- * @param[out] buffer - The destination buffer
- * @return A non-zero value on error, zero on success.
- */
-GENARO_API int genaro_encrypt_auth(const char *passhrase,
-                                 const char *bridge_user,
-                                 const char *key_str,
-                                 char **buffer);
-
-/**
- * @brief Will read and decrypt options from disk
- *
- * This will decrypt bridge and encryption options from disk from
- * the passphrase.
- *
- * @param[in] filepath - The file path to read the options
- * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] key_json_obj - json object of the private key
- * @return A non-zero value on error, zero on success.
- */
- GENARO_API int genaro_decrypt_read_auth(const char *filepath,
-                                         const char *passphrase,
-                                         json_object **key_json_obj);
-
-/**
- * @brief Will decrypt options
- *
- * This will decrypt bridge and encryption options using key derived
- * from a passphrase.
- *
- * @param[in] buffer - The encrypted buffer
- * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] key_json_obj - json object of the private key
- * @return A non-zero value on error, zero on success.
- */
-GENARO_API int genaro_decrypt_auth(const char *buffer,
-                                 const char *passphrase,
-                                 json_object **key_json_obj);
+GENARO_API int genaro_write_auth(const char *filepath, json_object *key_json_obj);
+GENARO_API int genaro_read_auth(const char *filepath, json_object **key_json_obj);
 
 /**
  * @brief Will get the current unix timestamp in milliseconds

@@ -858,25 +858,7 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
     return status;
 }
 
-GENARO_API int genaro_encrypt_auth(const char *passphrase,
-                       const char *salt,
-                       const char *text,
-                       char **buffer)
-{
-    char *encrypted = NULL;
-
-    if (encrypt_data(passphrase, salt, text, &encrypted)) {
-        if (encrypted) {
-            free(encrypted);
-        }
-        return 1;
-    }
-
-    *buffer = encrypted;
-    return 0;
-}
-
-GENARO_API int genaro_encrypt_write_auth(const char *filepath, char *passphrase, json_object *key_json_obj)
+GENARO_API int genaro_write_auth(const char *filepath, json_object *key_json_obj)
 {
     FILE *fp;
     fp = fopen(filepath, "w");
@@ -884,45 +866,10 @@ GENARO_API int genaro_encrypt_write_auth(const char *filepath, char *passphrase,
         return 1;
     }
 
-    char *buffer = NULL;
     const char *key_json_str = json_object_to_json_string(key_json_obj);
-    if (genaro_encrypt_auth(passphrase, passphrase, key_json_str, &buffer)) {
-        fclose(fp);
-        return 1;
-    }
-
-    fwrite(buffer, strlen(buffer), sizeof(char), fp);
-    fwrite("\n", 1, sizeof(char), fp);
-
-    free(buffer);
+    fwrite(key_json_str, strlen(key_json_str), sizeof(char), fp);
     fclose(fp);
-
     return 0;
-}
-
-GENARO_API int genaro_decrypt_auth(const char *buffer,
-                       const char *passphrase,
-                       json_object **key_json_obj)
-{
-    int status = 0;
-    char *decrypted = NULL;
-
-    // TODO: "salt" is temporary
-    if (decrypt_data(passphrase, passphrase, buffer, &decrypted)) {
-        status = 1;
-        goto clean;
-    }
-
-    *key_json_obj = json_tokener_parse(decrypted);
-    if (*key_json_obj == NULL) {
-        status = 1;
-        goto clean;
-    }
-clean:
-    if (decrypted) {
-        free(decrypted);
-    }
-    return status;
 }
 
 /**
@@ -932,9 +879,7 @@ clean:
  * @param key_json_obj
  * @return 0: success, 1: fail
  */
-GENARO_API int genaro_decrypt_read_auth(const char *filepath,
-                                        const char *passphrase,
-                                        json_object **key_json_obj)
+GENARO_API int genaro_read_auth(const char *filepath, json_object **key_json_obj)
 {
     FILE *fp;
     fp = fopen(filepath, "r");
@@ -946,7 +891,7 @@ GENARO_API int genaro_decrypt_read_auth(const char *filepath,
     size_t fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    char *buffer = calloc(fsize + 1, sizeof(char));
+    char *buffer = calloc(fsize, sizeof(char));
     if (buffer == NULL) {
         return 1;
     }
@@ -966,11 +911,12 @@ GENARO_API int genaro_decrypt_read_auth(const char *filepath,
         return error;
     }
 
-    int status = genaro_decrypt_auth(buffer, passphrase, key_json_obj);
-
+    *key_json_obj = json_tokener_parse(buffer);
     free(buffer);
-
-    return status;
+    if (*key_json_obj == NULL) {
+        return 1;
+    }
+    return 0;
 
 }
 
