@@ -28,9 +28,8 @@ static inline void noop() {};
 #define HELP_TEXT "usage: genaro [<options>] <command> [<args>]\n\n"     \
     "These are common Genaro commands for various situations:\n\n"       \
     "setting up users profiles\n"                                       \
-    "  import-keys [<file-path>]      import existing user\n"                \
-    "  export-keys                    export bridge user, password and "     \
-    "encryption keys\n\n"                                               \
+    "  import-keys [<file-path>]    import existing JSON keystore file\n"  \
+    "  export-keys                  export JSON keystore file to stdout\n" \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
@@ -840,29 +839,58 @@ static void get_info_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-// TODO: 
 static int export_keys(char *host)
 {
     int status = 0;
     char *user_file = NULL;
     char *root_dir = NULL;
-    char *mnemonic = NULL;
+    FILE *fp = NULL;
+    json_object *key_json_obj = NULL;
+    key_file_obj_t *key_file_obj = NULL;
+    char *buff = malloc(BUFSIZ);
 
     if (get_user_auth_location(host, &root_dir, &user_file)) {
         printf("Unable to determine user auth filepath.\n");
         status = 1;
         goto clear_variables;
     }
+    fp = fopen(user_file, "r");
+    if (fp == NULL) {
+        status = 1;
+        goto clear_variables;
+    }
+    fread(buff, BUFSIZ, 1, fp);
+    fclose(fp);
+
+    key_json_obj = json_tokener_parse(buff);
+    if (key_json_obj == NULL) {
+        printf("File is not json format.\n");
+        status = 1;
+        goto clear_variables;
+    }
+    key_file_obj = get_key_obj(key_json_obj);
+    if (key_file_obj == KEY_FILE_ERR_POINTER) {
+        printf("File corrupted.\n");
+        status = 1;
+        goto clear_variables;
+    }
+    printf("%s\n", buff);
 
 clear_variables:
-    if (mnemonic) {
-        free(mnemonic);
-    }
     if (root_dir) {
         free(root_dir);
     }
     if (user_file) {
         free(user_file);
+    }
+    if (buff) {
+        free(buff);
+    }
+    if (key_json_obj) {
+        json_object_put(key_json_obj);
+    }
+    if (key_file_obj) {
+        key_file_obj_put(key_file_obj);
     }
     return status;
 }
