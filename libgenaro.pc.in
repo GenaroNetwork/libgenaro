@@ -8,4 +8,4 @@ Description: Library for the Genaro protocol.
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lgenaro
 Cflags: -I${includedir}
-Requires: libcurl nettle json-c libuv
+Requires: libcurl nettle json-c libuv libscrypt libkeccak libsecp256k1

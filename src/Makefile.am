@@ -1,6 +1,6 @@
 lib_LTLIBRARIES = libgenaro.la
 libgenaro_la_SOURCES = genaro.c utils.c utils.h http.c http.h uploader.c uploader.h downloader.c downloader.h bip39.c bip39.h bip39_english.h crypto.c crypto.h rs.c rs.h
-libgenaro_la_LIBADD = -lcurl -lnettle -ljson-c -luv -lm
+libgenaro_la_LIBADD = -lcurl -lnettle -ljson-c -luv -lm -lscrypt -lkeccak -lsecp256k1
 # The rules of thumb, when dealing with these values are:
 # - Always increase the revision value.
 # - Increase the current value whenever an interface has been added, removed or changed.

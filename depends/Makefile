@@ -49,7 +49,7 @@ build_env=CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32
 endif
 
 toolchain_packages:=clang cctools
-packages:=gmp nettle gnutls libcurl json-c libuv libmicrohttpd
+packages:=gmp nettle gnutls libcurl json-c libuv libmicrohttpd libscrypt libkeccak libsecp256k1
 all_packages = $(toolchain_packages) $(packages)
 
 $(foreach package,$(all_packages),$(eval include packages/$(package).mk))
@@ -92,7 +92,7 @@ define build_source
 	echo "====================================\n\n" && \
 	export PATH="$(TOOLCHAIN_BUILD_DIR)bin:${PATH}" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
-	$(build_env) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) $(config_lib_type) --with-pic --prefix=$(PREFIX_DIR) || exit && \
+	if test -f "./configure"; then $(build_env) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) $(config_lib_type) --with-pic --prefix=$(PREFIX_DIR) || exit; fi && \
 	make || exit && \
 	make install || exit && \
 	cd "$(CURDIR)"
