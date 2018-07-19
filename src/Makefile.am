@@ -1,5 +1,5 @@
 lib_LTLIBRARIES = libgenaro.la
-libgenaro_la_SOURCES = genaro.c utils.c utils.h http.c http.h uploader.c uploader.h downloader.c downloader.h bip39.c bip39.h bip39_english.h crypto.c crypto.h rs.c rs.h
+libgenaro_la_SOURCES = genaro.c utils.c utils.h http.c http.h uploader.c uploader.h downloader.c downloader.h bip39.c bip39.h bip39_english.h crypto.c crypto.h rs.c rs.h key_file.c key_file.h
 libgenaro_la_LIBADD = -lcurl -lnettle -ljson-c -luv -lm -lscrypt -lkeccak -lsecp256k1
 # The rules of thumb, when dealing with these values are:
 # - Always increase the revision value.
