@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(libgenaro VERSION 0.1.0)
+
+IF(APPLE)
+
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")
 
 include(CTest)
@@ -35,3 +38,47 @@ target_link_libraries(cli genaro uv json-c nettle curl secp256k1 scrypt keccak)
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
+
+ELSEIF(UNIX)
+
+add_library(genaro
+        src/genaro.c
+        src/bip39.c
+        src/crypto.c
+        src/downloader.c
+        src/http.c
+        src/key_file.c
+        src/rs.c
+        src/uploader.c
+        src/utils.c)
+target_link_libraries(genaro secp256k1 scrypt keccak)
+
+add_executable(cli src/cli.c)
+target_link_libraries(cli genaro m uv json-c nettle curl secp256k1 scrypt keccak)
+
+ELSEIF(WIN32)
+
+set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99")
+include_directories(depends/build/x86_64-w64-mingw32/include)
+include_directories(depends/sources/x86_64-w64-mingw32/libscrypt)
+include_directories(depends/sources/x86_64-w64-mingw32/libkeccak)
+link_directories(depends/build/x86_64-w64-mingw32/lib)
+
+add_library(genaro
+        src/genaro.c
+        src/bip39.c
+        src/crypto.c
+        src/downloader.c
+        src/http.c
+        src/key_file.c
+        src/rs.c
+        src/uploader.c
+        src/utils.c)
+target_link_libraries(genaro secp256k1 scrypt keccak)
+
+add_executable(cli src/cli.c)
+
+# nettle must locate behind curl and gnutls，gmp must locate behind gnutls，hogweed must locate behind gnutls.
+target_link_libraries(cli genaro uv json-c curl gnutls nettle hogweed gmp secp256k1 scrypt keccak ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
+
+ENDIF()

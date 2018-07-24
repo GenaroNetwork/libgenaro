@@ -15,8 +15,7 @@ Makefile.in
 TAGS
 aclocal.m4
 autom4te.cache/
-build-aux/
-build/*
+build*/
 cmake-build-debug
 config.log
 config.status
