@@ -619,7 +619,7 @@ int fetch_json(genaro_http_options_t *http_options,
         char *sig_str_hex = hex2str(sig_str_len, sig_str);
 
         const char *h_sig_key = "x-signature: ";
-        char *h_sig = malloc(strlen(h_sig_key) + strlen(sig_str_hex) + 1);
+        char *h_sig = calloc(strlen(h_sig_key) + strlen(sig_str_hex) + 1, sizeof(char));
         strcat(h_sig, h_sig_key);
         strcat(h_sig, sig_str_hex);
         header_list = curl_slist_append(header_list, h_sig);
@@ -628,7 +628,7 @@ int fetch_json(genaro_http_options_t *http_options,
         char *pubkey_str = hex2str(pubkey_ser_len, pubkey_ser);
 
         char h_pub[200];
-        sprintf(&h_pub, "x-pubkey: %s", pubkey_str, '\0');
+        sprintf(h_pub, "x-pubkey: %s", pubkey_str);
         header_list = curl_slist_append(header_list, (char *)&h_pub);
 
         // free
