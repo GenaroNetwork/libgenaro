@@ -233,6 +233,10 @@ typedef struct {
     const char *name;
     const char *id;
     bool decrypted;
+    uint64_t limitStorage;
+    uint64_t usedStorage;
+    uint64_t timeStart;
+    uint64_t timeEnd;
 } genaro_bucket_meta_t;
 
 /** @brief A structure for queueing create bucket request work

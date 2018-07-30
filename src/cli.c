@@ -756,9 +756,12 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
 
     for (int i = 0; i < req->total_buckets; i++) {
         genaro_bucket_meta_t *bucket = &req->buckets[i];
-        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+//        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+//               bucket->id, bucket->decrypted ? "true" : "false",
+//               bucket->created, bucket->name);
+        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s \tlimitStorage: %ld \tusedStorage: %ld \ttimeStart: %ld \ttimeEnd: %ld\n",
                bucket->id, bucket->decrypted ? "true" : "false",
-               bucket->created, bucket->name);
+               bucket->created, bucket->name, bucket->limitStorage, bucket->usedStorage, bucket->timeStart, bucket->timeEnd);
     }
 
     genaro_free_get_buckets_request(req);

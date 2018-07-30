@@ -107,7 +107,7 @@ static void create_bucket_request_worker(uv_work_t *work)
     json_object_put(body);
 
     if (req->response != NULL) {
-        req->bucket = malloc(sizeof(genaro_bucket_meta_t));
+        req->bucket = calloc(1, sizeof(genaro_bucket_meta_t));
 
         struct json_object *id;
         json_object_object_get_ex(req->response, "id", &id);
@@ -138,7 +138,7 @@ static void get_buckets_request_worker(uv_work_t *work)
     }
 
     if (num_buckets > 0) {
-        req->buckets = malloc(sizeof(genaro_bucket_meta_t) * num_buckets);
+        req->buckets = calloc(num_buckets, sizeof(genaro_bucket_meta_t));
         req->total_buckets = num_buckets;
     }
 
@@ -170,6 +170,11 @@ static void get_buckets_request_worker(uv_work_t *work)
     struct json_object *name;
     struct json_object *created;
     struct json_object *id;
+    
+    struct json_object *limitStorage;
+    struct json_object *usedStorage;
+    struct json_object *timeStart;
+    struct json_object *timeEnd;
 
     for (int i = 0; i < num_buckets; i++) {
         bucket_item = json_object_array_get_idx(req->response, i);
@@ -177,12 +182,20 @@ static void get_buckets_request_worker(uv_work_t *work)
         json_object_object_get_ex(bucket_item, "id", &id);
         json_object_object_get_ex(bucket_item, "name", &name);
         json_object_object_get_ex(bucket_item, "created", &created);
+        json_object_object_get_ex(bucket_item, "limitStorage", &limitStorage);
+        json_object_object_get_ex(bucket_item, "usedStorage", &usedStorage);
+        json_object_object_get_ex(bucket_item, "timeStart", &timeStart);
+        json_object_object_get_ex(bucket_item, "timeEnd", &timeEnd);
 
         genaro_bucket_meta_t *bucket = &req->buckets[i];
         bucket->id = json_object_get_string(id);
         bucket->decrypted = false;
         bucket->created = json_object_get_string(created);
         bucket->name = NULL;
+        bucket->limitStorage = json_object_get_int64(limitStorage);
+        bucket->usedStorage = json_object_get_int64(usedStorage);
+        bucket->timeStart = json_object_get_int64(timeStart);
+        bucket->timeEnd = json_object_get_int64(timeEnd);
 
         // Attempt to decrypt the name, otherwise
         // we will default the name to the encrypted text.
@@ -248,16 +261,31 @@ static void get_bucket_request_worker(uv_work_t *work)
     struct json_object *name;
     struct json_object *created;
     struct json_object *id;
+    
+    struct json_object *limitStorage;
+    struct json_object *usedStorage;
+    struct json_object *timeStart;
+    struct json_object *timeEnd;
 
     json_object_object_get_ex(req->response, "id", &id);
     json_object_object_get_ex(req->response, "name", &name);
     json_object_object_get_ex(req->response, "created", &created);
+    
+    json_object_object_get_ex(req->response, "limitStorage", &limitStorage);
+    json_object_object_get_ex(req->response, "usedStorage", &usedStorage);
+    json_object_object_get_ex(req->response, "timeStart", &timeStart);
+    json_object_object_get_ex(req->response, "timeEnd", &timeEnd);
 
     req->bucket = malloc(sizeof(genaro_bucket_meta_t));
     req->bucket->id = json_object_get_string(id);
     req->bucket->decrypted = false;
     req->bucket->created = json_object_get_string(created);
     req->bucket->name = NULL;
+    
+    req->bucket->limitStorage = json_object_get_int64(limitStorage);
+    req->bucket->usedStorage = json_object_get_int64(usedStorage);
+    req->bucket->timeStart = json_object_get_int64(timeStart);
+    req->bucket->timeEnd = json_object_get_int64(timeEnd);
 
     // Attempt to decrypt the name, otherwise
     // we will default the name to the encrypted text.
