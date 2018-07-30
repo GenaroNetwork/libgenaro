@@ -355,7 +355,7 @@ static void rename_bucket_request_worker(uv_work_t *work)
     json_object_object_add(body, "nameIsEncrypted", nameIsEncrypted);
     
     req->error_code = fetch_json(req->http_options, req->encrypt_options,
-                                 req->options, req->method, req->path, NULL, req->body,
+                                 req->options, req->method, req->path, NULL, body,
                                  req->auth, &req->response, &status_code);
     
     req->status_code = status_code;
@@ -613,6 +613,39 @@ static get_bucket_request_t *get_bucket_request_new(
     req->status_code = 0;
     req->handle = handle;
 
+    return req;
+}
+
+static rename_bucket_request_t *rename_bucket_request_new(
+                                                    genaro_http_options_t *http_options,
+                                                    genaro_bridge_options_t *options,
+                                                    genaro_encrypt_options_t *encrypt_options,
+                                                    char *method,
+                                                    char *path,
+                                                    struct json_object *request_body,
+                                                    bool auth,
+                                                    const char *bucket_name,
+                                                    void *handle)
+{
+    rename_bucket_request_t *req = malloc(sizeof(rename_bucket_request_t));
+    if (!req) {
+        return NULL;
+    }
+    
+    req->http_options = http_options;
+    req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->method = method;
+    req->path = path;
+    req->auth = auth;
+    req->body = request_body;
+    req->response = NULL;
+    req->bucket = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->bucket_name = bucket_name;
+    req->handle = handle;
+    
     return req;
 }
 
@@ -1184,21 +1217,30 @@ GENARO_API int genaro_bridge_delete_bucket(genaro_env_t *env,
 
 GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
                                            const char *id,
+                                           const char *name,
                                            void *handle,
                                            uv_after_work_cb cb)
 {
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return GENARO_MEMORY_ERROR;
+    }
+    
     char *path = str_concat_many(2, "/buckets/", id);
     if (!path) {
         return GENARO_MEMORY_ERROR;
     }
     
-    uv_work_t *work = json_request_work_new(env, "PATCH", path,
-                                            NULL, true, handle);
-    if (!work) {
+    work->data = rename_bucket_request_new(env->http_options,
+                                                env->bridge_options,
+                                                env->encrypt_options,
+                                                "GET", path, NULL,
+                                                true, name, handle);
+    if (!work->data) {
         return GENARO_MEMORY_ERROR;
     }
     
-    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+    return uv_queue_work(env->loop, (uv_work_t*) work, rename_bucket_request_worker, cb);
 }
 
 GENARO_API int genaro_bridge_get_bucket(genaro_env_t *env,

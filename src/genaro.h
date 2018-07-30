@@ -701,6 +701,7 @@ GENARO_API int genaro_bridge_delete_bucket(genaro_env_t *env,
  */
 GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
                                            const char *id,
+                                           const char *name,
                                            void *handle,
                                            uv_after_work_cb cb);
 
