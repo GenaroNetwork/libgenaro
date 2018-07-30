@@ -289,6 +289,25 @@ typedef struct {
     void *handle;
 } get_bucket_request_t;
 
+/** @brief A structure for queueing rename bucket request work
+ */
+typedef struct {
+    genaro_http_options_t *http_options;
+    genaro_encrypt_options_t *encrypt_options;
+    genaro_bridge_options_t *options;
+    const char *bucket_name;
+    const char *encrypted_bucket_name;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    genaro_bucket_meta_t *bucket;
+    int error_code;
+    int status_code;
+    void *handle;
+} rename_bucket_request_t;
+
 /** @brief A structure for that describes a bucket entry/file
  */
 typedef struct {
@@ -670,6 +689,20 @@ GENARO_API int genaro_bridge_delete_bucket(genaro_env_t *env,
                                          const char *id,
                                          void *handle,
                                          uv_after_work_cb cb);
+
+/**
+ * @brief Rename a bucket.
+ *
+ * @param[in] env The genaro environment struct
+ * @param[in] id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
+                                           const char *id,
+                                           void *handle,
+                                           uv_after_work_cb cb);
 
 /**
  * @brief Get a info of specific bucket.

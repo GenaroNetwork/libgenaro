@@ -306,6 +306,61 @@ static void get_bucket_request_worker(uv_work_t *work)
     }
 }
 
+static void rename_bucket_request_worker(uv_work_t *work)
+{
+    rename_bucket_request_t *req = work->data;
+    int status_code = 0;
+    
+    // Derive a key based on the master seed and bucket name magic number
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(req->encrypt_options->priv_key,
+                        req->encrypt_options->key_len,
+                        BUCKET_NAME_MAGIC,
+                        &bucket_key_as_str);
+    
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        req->error_code = GENARO_MEMORY_ERROR;
+        return;
+    }
+    
+    free(bucket_key_as_str);
+    
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+    
+    // Generate the synthetic iv with first half of hmac w/ name
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx2, strlen(req->bucket_name),
+                       (uint8_t *)req->bucket_name);
+    uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
+    
+    free(bucket_key);
+    
+    // Encrypt the bucket name
+    char *encrypted_bucket_name;
+    encrypt_meta(req->bucket_name, key, bucketname_iv, &encrypted_bucket_name);
+    req->encrypted_bucket_name = encrypted_bucket_name;
+    
+    struct json_object *body = json_object_new_object();
+    json_object *name = json_object_new_string(req->encrypted_bucket_name);
+    json_object *nameIsEncrypted = json_object_new_boolean(true);
+    json_object_object_add(body, "name", name);
+    json_object_object_add(body, "nameIsEncrypted", nameIsEncrypted);
+    
+    req->error_code = fetch_json(req->http_options, req->encrypt_options,
+                                 req->options, req->method, req->path, NULL, req->body,
+                                 req->auth, &req->response, &status_code);
+    
+    req->status_code = status_code;
+}
+
 static void list_files_request_worker(uv_work_t *work)
 {
     list_files_request_t *req = work->data;
@@ -1124,6 +1179,25 @@ GENARO_API int genaro_bridge_delete_bucket(genaro_env_t *env,
         return GENARO_MEMORY_ERROR;
     }
 
+    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+}
+
+GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
+                                           const char *id,
+                                           void *handle,
+                                           uv_after_work_cb cb)
+{
+    char *path = str_concat_many(2, "/buckets/", id);
+    if (!path) {
+        return GENARO_MEMORY_ERROR;
+    }
+    
+    uv_work_t *work = json_request_work_new(env, "PATCH", path,
+                                            NULL, true, handle);
+    if (!work) {
+        return GENARO_MEMORY_ERROR;
+    }
+    
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
