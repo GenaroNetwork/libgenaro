@@ -302,7 +302,6 @@ typedef struct {
     bool auth;
     struct json_object *body;
     struct json_object *response;
-    genaro_bucket_meta_t *bucket;
     int error_code;
     int status_code;
     void *handle;

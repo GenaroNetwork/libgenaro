@@ -640,7 +640,6 @@ static rename_bucket_request_t *rename_bucket_request_new(
     req->auth = auth;
     req->body = request_body;
     req->response = NULL;
-    req->bucket = NULL;
     req->error_code = 0;
     req->status_code = 0;
     req->bucket_name = bucket_name;
@@ -1232,10 +1231,10 @@ GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
     }
     
     work->data = rename_bucket_request_new(env->http_options,
-                                                env->bridge_options,
-                                                env->encrypt_options,
-                                                "GET", path, NULL,
-                                                true, name, handle);
+                                           env->bridge_options,
+                                           env->encrypt_options,
+                                           "POST", path, NULL,
+                                           true, name, handle);
     if (!work->data) {
         return GENARO_MEMORY_ERROR;
     }

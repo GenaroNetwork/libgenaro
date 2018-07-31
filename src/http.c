@@ -629,7 +629,7 @@ int fetch_json(genaro_http_options_t *http_options,
 
         char h_pub[200];
         sprintf(h_pub, "x-pubkey: %s", pubkey_str);
-        header_list = curl_slist_append(header_list, (char *)&h_pub);
+        header_list = curl_slist_append(header_list, h_pub);
 
         // free
         free(sig_str_hex);
@@ -641,8 +641,7 @@ int fetch_json(genaro_http_options_t *http_options,
     // Include body if request body json is provided
     http_body_send_t *post_body = NULL;
     if (request_body) {
-        header_list = curl_slist_append(header_list,
-                                       "Content-Type: application/json");
+        header_list = curl_slist_append(header_list, "Content-Type: application/json");
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
 
@@ -652,7 +651,7 @@ int fetch_json(genaro_http_options_t *http_options,
         }
         post_body->pnt = (char *)req_buf;
         post_body->remain = strlen(req_buf);
-
+        
         curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_json_send);
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)post_body);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (uint64_t)strlen(req_buf));
