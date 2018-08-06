@@ -39,7 +39,9 @@ void genaro_key_result_to_encrypt_options(key_result_t *key_result, genaro_encry
     encrypt_options->priv_key = key_result->priv_key;
     encrypt_options->key_len = key_result->key_len;
     free(key_result->dec_key);
+    key_result->dec_key = NULL;
     free(key_result);
+    key_result = NULL;
 }
 
 static void json_request_worker(uv_work_t *work)
@@ -920,9 +922,12 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
 
     // free and destroy all bridge options
     free((char *)env->bridge_options->proto);
+    env->bridge_options->proto = NULL;
     free((char *)env->bridge_options->host);
+    env->bridge_options->host = NULL;
 
     free(env->bridge_options);
+    env->bridge_options = NULL;
 
     // free and destroy all encryption options
     if (env->encrypt_options && env->encrypt_options->priv_key) {
@@ -943,30 +948,39 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
         VirtualFree((char *)env->bridge_options, key_len, MEM_RELEASE);
 #else
         free((char *)env->encrypt_options->priv_key);
+        env->encrypt_options->priv_key = NULL;
 #endif
     }
 
     if (env->tmp_path) {
         free((char *)env->tmp_path);
+        env->tmp_path = NULL;
     }
 
     free(env->encrypt_options);
+    env->encrypt_options = NULL;
 
     // free all http options
     free((char *)env->http_options->user_agent);
+    env->http_options->user_agent = NULL;
     if (env->http_options->proxy_url) {
         free((char *)env->http_options->proxy_url);
+        env->http_options->proxy_url = NULL;
     }
     if (env->http_options->cainfo_path) {
         free((char *)env->http_options->cainfo_path);
+        env->http_options->cainfo_path = NULL;
     }
     free(env->http_options);
+    env->http_options = NULL;
 
     // free the log levels
     free(env->log);
+    env->log = NULL;
 
     // free the environment
     free(env);
+    env = NULL;
 
     curl_global_cleanup();
 
@@ -1028,6 +1042,7 @@ GENARO_API int genaro_read_auth(const char *filepath, json_object **key_json_obj
 
     *key_json_obj = json_tokener_parse(buffer);
     free(buffer);
+    buffer = NULL;
     if (*key_json_obj == NULL) {
         return 1;
     }
@@ -1166,10 +1181,13 @@ GENARO_API void genaro_free_get_buckets_request(get_buckets_request_t *req)
     if (req->buckets && req->total_buckets > 0) {
         for (int i = 0; i < req->total_buckets; i++) {
             free((char *)req->buckets[i].name);
+            req->buckets[i].name = NULL;
         }
     }
     free(req->buckets);
+    req->buckets = NULL;
     free(req);
+    req = NULL;
 }
 
 GENARO_API int genaro_bridge_create_bucket(genaro_env_t *env,
@@ -1273,11 +1291,15 @@ GENARO_API void genaro_free_get_bucket_request(get_bucket_request_t *req)
 {
     json_object_put(req->response);
     free(req->path);
+    req->path = NULL;
     if (req->bucket) {
         free((char *)req->bucket->name);
+        req->bucket->name = NULL;
     }
     free(req->bucket);
+    req->bucket = NULL;
     free(req);
+    req = NULL;
 }
 
 GENARO_API int genaro_bridge_list_files(genaro_env_t *env,
@@ -1312,13 +1334,17 @@ GENARO_API void genaro_free_list_files_request(list_files_request_t *req)
 {
     json_object_put(req->response);
     free(req->path);
+    req->path = NULL;
     if (req->files && req->total_files > 0) {
         for (int i = 0; i < req->total_files; i++) {
             free((char *)req->files[i].filename);
+            req->files[i].filename = NULL;
         }
     }
     free(req->files);
+    req->files = NULL;
     free(req);
+    req = NULL;
 }
 
 GENARO_API int genaro_bridge_create_bucket_token(genaro_env_t *env,

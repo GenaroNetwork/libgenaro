@@ -310,6 +310,7 @@ static void upload_file_complete(int status, char *file_id, void *handle)
     printf("Upload Success! File ID: %s\n", file_id);
 
     free(file_id);
+    file_id = NULL;
 
     exit(0);
 }
@@ -485,7 +486,10 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
 
     if (req->response == NULL) {
         free(req);
+        req = NULL;
+        work_req->data = NULL;
         free(work_req);
+        work_req = NULL;
         printf("Failed to list mirrors.\n");
         exit(1);
     }
@@ -525,8 +529,11 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
 
     json_object_put(req->response);
     free(req->path);
+    req->path = NULL;
     free(req);
+    req = NULL;
     free(work_req);
+    work_req = NULL;
 }
 
 
@@ -559,6 +566,7 @@ key_result_t *do_extract_key_file_obj(key_file_obj_t *key_file_obj)
     }
 extract_fail:
     free(user_input);
+    user_input = NULL;
     return key_result;
 }
 
@@ -642,9 +650,11 @@ static int import_keys(char *host, char *key_file_path)
 clear_variables:
     if (user_file) {
         free(user_file);
+        user_file = NULL;
     }
     if (root_dir) {
         free(root_dir);
+        root_dir = NULL;
     }
     if (key_file_json_obj) {
         json_object_put(key_file_json_obj);
@@ -657,6 +667,7 @@ clear_variables:
     }
     if (user_input) {
         free(user_input);
+        user_input = NULL;
     }
     return status;
 }
