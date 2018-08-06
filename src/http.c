@@ -94,12 +94,7 @@ int put_shard(genaro_http_options_t *http_options,
 
     char query_args[80];
     snprintf(query_args, 80, "token=%s", token);
-    
-    // In a few cases, proto is NULL somehow.
-    if((NULL == proto) || (NULL == host)){
-        return 1;
-    }
-    
+
     int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10 + 8
         + strlen(shard_hash) + strlen(query_args);
     char *url = calloc(url_len + 1, sizeof(char));
@@ -169,20 +164,11 @@ int put_shard(genaro_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)shard_body);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (uint64_t)shard_total_bytes);
     }
-    
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, http_options->timeout);
 
     // Ignore any data sent back, we only need to know the status code
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_ignore_receive);
 
-    time_t start, end;
-    time(&start);
-    
     int req = curl_easy_perform(curl);
-    
-    time(&end);
-    if((int)(end - start) > 2)
-        printf("put_shard: %lfs\n", (double)(end - start));
 
     curl_slist_free_all(header_list);
     free(header);
@@ -337,12 +323,6 @@ int fetch_shard(genaro_http_options_t *http_options,
 
     char query_args[80];
     snprintf(query_args, 80, "token=%s", token);
-    
-    // In a few cases, proto is NULL somehow.
-    if((NULL == proto) || (NULL == host)){
-        return 1;
-    }
-    
     int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10
         + 8 + strlen(shard_hash) + strlen(query_args);
     char *url = calloc(url_len + 1, sizeof(char));
@@ -543,7 +523,8 @@ int fetch_json(genaro_http_options_t *http_options,
     if (!curl) {
         return 1;
     }
-    
+
+    // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     // Set the url
     size_t url_len = strlen(options->proto) + 3 + strlen(options->host) +
         1 + 10 + strlen(path) + (query_args ? strlen(query_args) : 0);
@@ -679,16 +660,9 @@ int fetch_json(genaro_http_options_t *http_options,
         header_list = curl_slist_append(header_list, "Content-Type: application/json");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
     }
-    
-    time_t start, end;
-    time(&start);
 
     int req = curl_easy_perform(curl);
-    
-    time(&end);
-    if((int)(end - start) > 2)
-        printf("curl_easy_perform: %lfs\n", (double)(end - start));
-    
+
     free(url);
 
     if (header_list) {

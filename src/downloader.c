@@ -4,15 +4,10 @@
 static void free_exchange_report(genaro_exchange_report_t *report)
 {
     free(report->data_hash);
-    report->data_hash = NULL;
     free(report->reporter_id);
-    report->reporter_id = NULL;
     free(report->farmer_id);
-    report->farmer_id = NULL;
     free(report->client_id);
-    report->client_id = NULL;
     free(report);
-    report = NULL;
 }
 
 static void free_download_state(genaro_download_state_t *state)
@@ -21,55 +16,41 @@ static void free_download_state(genaro_download_state_t *state)
         genaro_pointer_t *pointer = &state->pointers[i];
 
         free(pointer->token);
-        pointer->token = NULL;
         free(pointer->shard_hash);
-        pointer->shard_hash = NULL;
         free(pointer->farmer_id);
-        pointer->farmer_id = NULL;
         free(pointer->farmer_address);
-        pointer->farmer_address = NULL;
 
         free_exchange_report(pointer->report);
-        pointer->report = NULL;
     }
 
     if (state->excluded_farmer_ids) {
         free(state->excluded_farmer_ids);
-        state->excluded_farmer_ids = NULL;
     }
 
     if (state->decrypt_key) {
         memset_zero(state->decrypt_key, SHA256_DIGEST_SIZE);
         free(state->decrypt_key);
-        state->decrypt_key = NULL;
     }
 
     if (state->decrypt_ctr) {
         memset_zero(state->decrypt_ctr, AES_BLOCK_SIZE);
         free(state->decrypt_ctr);
-        state->decrypt_ctr = NULL;
     }
 
     if (state->info) {
         if (state->info->erasure) {
             free((char *)state->info->erasure);
-            state->info->erasure = NULL;
         }
         free((char *)state->info->hmac);
-        state->info->hmac = NULL;
         free(state->info);
-        state->info = NULL;
     }
 
     if (state->hmac)  {
         free((char *)state->hmac);
-        state->hmac = NULL;
     }
 
     free(state->pointers);
-    state->pointers = NULL;
     free(state);
-    state = NULL;
 }
 
 static void request_pointers(uv_work_t *work)
@@ -143,7 +124,7 @@ static void request_replace_pointer(uv_work_t *work)
     }
 
     free(path);
-    path = NULL;
+
 }
 
 static void set_pointer_from_json(genaro_download_state_t *state,
@@ -249,13 +230,9 @@ static void set_pointer_from_json(genaro_download_state_t *state,
 
     if (is_replaced) {
         free(p->token);
-        p->token = NULL;
         free(p->shard_hash);
-        p->shard_hash = NULL;
         free(p->farmer_address);
-        p->farmer_address = NULL;
         free(p->farmer_id);
-        p->farmer_id = NULL;
     }
     if (token) {
         p->token = strdup(token);
@@ -415,11 +392,8 @@ static void after_request_pointers(uv_work_t *work, int status)
         json_object_put(req->response);
     }
     free(req->path);
-    req->path = NULL;
     free(req);
-    work->data = NULL;
     free(work);
-    work = NULL;
 }
 
 static void after_request_replace_pointer(uv_work_t *work, int status)
@@ -493,9 +467,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
     json_object_put(req->response);
     free(work->data);
-    work->data = NULL;
     free(work);
-    work = NULL;
 }
 
 static void queue_request_pointers(genaro_download_state_t *state)
@@ -720,9 +692,7 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
     shard_request_download_t *req = work->data;
 
     free(req);
-    work->data = NULL;
     free(work);
-    progress_handle->data = NULL;
 }
 
 static uint64_t calculate_data_filesize(genaro_download_state_t *state)
@@ -772,7 +742,6 @@ static void after_request_shard(uv_work_t *work, int status)
 
     // free the download progress
     free(progress_handle->data);
-    progress_handle->data = NULL;
 
     // assign work so that we can free after progress_handle is closed
     progress_handle->data = work;
@@ -1004,9 +973,8 @@ static void after_send_exchange_report(uv_work_t *work, int status)
     queue_next_work(req->state);
 
     free(work->data);
-    work->data = NULL;
     free(work);
-    work = NULL;
+
 }
 
 static void queue_send_exchange_reports(genaro_download_state_t *state)
@@ -1107,11 +1075,9 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
 cleanup:
     if (file_key_as_str) {
         free(file_key_as_str);
-        file_key_as_str = NULL;
     }
     if (index) {
         free(index);
-        index = NULL;
     }
 }
 
@@ -1143,7 +1109,6 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
 
     memset_zero(file_key, DETERMINISTIC_KEY_SIZE + 1);
     free(file_key);
-    file_key = NULL;
 
     state->decrypt_key = decrypt_key;
 
@@ -1164,7 +1129,6 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
     memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
 
     free(file_id_hash);
-    file_id_hash = NULL;
 
     state->decrypt_ctr = decrypt_ctr;
 }
@@ -1231,9 +1195,8 @@ static void after_request_info(uv_work_t *work, int status)
     queue_next_work(req->state);
 
     free(req);
-    work->data = NULL;
     free(work);
-    work = NULL;
+
 }
 
 static void request_info(uv_work_t *work)
@@ -1379,7 +1342,6 @@ clean_up:
         json_object_put(response);
     }
     free(path);
-    path = NULL;
 }
 
 static void queue_request_info(genaro_download_state_t *state)
@@ -1526,18 +1488,13 @@ static void after_recover_shards(uv_work_t *work, int status)
 
     memset_zero(req->decrypt_key, SHA256_DIGEST_SIZE);
     free(req->decrypt_key);
-    req->decrypt_key = NULL;
 
     memset_zero(req->decrypt_ctr, AES_BLOCK_SIZE);
     free(req->decrypt_ctr);
-    req->decrypt_ctr = NULL;
 
     free(req->zilch);
-    req->zilch = NULL;
     free(req);
-    work->data = NULL;
     free(work);
-    work = NULL;
 }
 
 static void recover_shards(uv_work_t *work)
@@ -1674,17 +1631,14 @@ finish:
 
     if (data_blocks) {
         free(data_blocks);
-        data_blocks = NULL;
     }
 
     if (fec_blocks) {
         free(fec_blocks);
-        fec_blocks = NULL;
     }
 
     if (rs) {
         reed_solomon_release(rs);
-        rs = NULL;
     }
 
 #ifdef _WIN32
@@ -1749,7 +1703,6 @@ static void queue_recover_shards(genaro_download_state_t *state)
 
         if (!is_ready) {
             free(zilch);
-            zilch = NULL;
             return;
         }
 

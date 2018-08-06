@@ -196,47 +196,38 @@ static void shard_meta_cleanup(shard_meta_t *shard_meta)
 {
     if (shard_meta->hash != NULL) {
         free(shard_meta->hash);
-        shard_meta->hash = NULL;
     }
 
     free(shard_meta);
-    shard_meta = NULL;
 }
 
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer)
 {
     if (farmer_pointer->token != NULL) {
         free(farmer_pointer->token);
-        farmer_pointer->token = NULL;
     }
 
     if (farmer_pointer->farmer_user_agent != NULL) {
         free(farmer_pointer->farmer_user_agent);
-        farmer_pointer->farmer_user_agent = NULL;
     }
 
     if (farmer_pointer->farmer_protocol != NULL) {
         free(farmer_pointer->farmer_protocol);
-        farmer_pointer->farmer_protocol = NULL;
     }
 
     if (farmer_pointer->farmer_address != NULL) {
         free(farmer_pointer->farmer_address);
-        farmer_pointer->farmer_address = NULL;
     }
 
     if (farmer_pointer->farmer_port != NULL) {
         free(farmer_pointer->farmer_port);
-        farmer_pointer->farmer_port = NULL;
     }
 
     if (farmer_pointer->farmer_node_id != NULL) {
         free(farmer_pointer->farmer_node_id);
-        farmer_pointer->farmer_node_id = NULL;
     }
 
     free(farmer_pointer);
-    farmer_pointer = NULL;
 }
 
 static void cleanup_state(genaro_upload_state_t *state)
@@ -257,109 +248,89 @@ static void cleanup_state(genaro_upload_state_t *state)
 
     if (state->frame_id) {
         free(state->frame_id);
-        state->frame_id = NULL;
     }
 
     if (state->hmac_id) {
         free(state->hmac_id);
-        state->hmac_id = NULL;
     }
 
     if (state->encrypted_file_name) {
         free((char *)state->encrypted_file_name);
-        state->encrypted_file_name = NULL;
     }
 
     if (state->exclude) {
         free(state->exclude);
-        state->exclude = NULL;
     }
 
     if (state->encryption_ctr) {
         free(state->encryption_ctr);
-        state->encryption_ctr = NULL;
     }
 
     if (state->encryption_key) {
         free(state->encryption_key);
-        state->encryption_key = NULL;
     }
 
     if (state->parity_file) {
         fclose(state->parity_file);
-        state->parity_file = NULL;
     }
 
     if (state->parity_file_path) {
         unlink(state->parity_file_path);
         free(state->parity_file_path);
-        state->parity_file_path = NULL;
     }
 
     if (state->encrypted_file) {
         fclose(state->encrypted_file);
-        state->encrypted_file = NULL;
     }
 
     if (state->encrypted_file_path) {
         unlink(state->encrypted_file_path);
         free(state->encrypted_file_path);
-        state->encrypted_file_path = NULL;
     }
 
     if (state->index) {
         free((char *)state->index);
-        state->index = NULL;
     }
 
     if (state->shard) {
         for (int i = 0; i < state->total_shards; i++ ) {
+
             state->log->debug(state->env->log_options, state->handle,
                               "fn[cleanup_state] - Cleaning up shard %d", i);
 
             shard_meta_cleanup(state->shard[i].meta);
-            state->shard[i].meta = NULL;
 
             state->log->debug(state->env->log_options, state->handle,
                               "fn[cleanup_state] - Cleaning up pointers %d", i);
 
             pointer_cleanup(state->shard[i].pointer);
-            state->shard[i].pointer = NULL;
-
             if (state->shard[i].report) {
                 free(state->shard[i].report);
-                state->shard[i].report = NULL;
             }
         }
         free(state->shard);
-        state->shard = NULL;
     }
 
     state->finished_cb(state->error_status, state->file_id, state->handle);
 
     free(state);
-    state = NULL;
 }
 
 static void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
 {
     if (ctx->encryption_ctr) {
         free(ctx->encryption_ctr);
-        ctx->encryption_ctr = NULL;
     }
 
     if (ctx->encryption_key) {
         free(ctx->encryption_key);
-        ctx->encryption_key = NULL;
     }
 
     if (ctx->ctx) {
         free(ctx->ctx);
-        ctx->ctx = NULL;
     }
 
     free(ctx);
-    ctx = NULL;
 }
 
 static void after_create_bucket_entry(uv_work_t *work, int status)
@@ -412,11 +383,7 @@ clean_variables:
         json_object_put(req->response);
     }
     free(req);
-    req = NULL;
-    work->data = NULL;
-
     free(work);
-    work = NULL;
 }
 
 static void create_bucket_entry(uv_work_t *work)
@@ -495,7 +462,6 @@ static void create_bucket_entry(uv_work_t *work)
 
     json_object_put(body);
     free(path);
-    path = NULL;
 }
 
 static int prepare_bucket_entry_hmac(genaro_upload_state_t *state)
@@ -593,12 +559,10 @@ static void free_push_shard_work(uv_handle_t *progress_handle)
 
     if (req) {
         free(req);
-        req = NULL;
     }
 
     if (work) {
         free(work);
-        work = NULL;
     }
 }
 
@@ -611,7 +575,6 @@ static void after_push_shard(uv_work_t *work, int status)
 
     // free the upload progress
     free(progress_handle->data);
-    progress_handle->data = NULL;
 
     // assign work so that we can free after progress_handle is closed
     progress_handle->data = work;
@@ -762,7 +725,6 @@ static void push_shard(uv_work_t *work)
 clean_variables:
     if (encryption_ctx) {
         free_encryption_ctx(encryption_ctx);
-        encryption_ctx = NULL;
     }
 }
 
@@ -1022,11 +984,7 @@ clean_variables:
     }
 
     free(req);
-    req = NULL;
-    work->data = NULL;
-
     free(work);
-    work = NULL;
 }
 
 static void push_frame(uv_work_t *work)
@@ -1102,7 +1060,6 @@ static void push_frame(uv_work_t *work)
             node_id = strtok (NULL, ",");
         }
         free(exclude_list);
-        exclude_list = NULL;
     }
 
     json_object_object_add(body, "exclude", exclude);
@@ -1382,15 +1339,10 @@ clean_variables:
     queue_next_work(state);
     if (shard_meta) {
         shard_meta_cleanup(shard_meta);
-        shard_meta = NULL;
     }
 
     free(req);
-    req = NULL;
-    work->data = NULL;
-
     free(work);
-    work = NULL;
 }
 
 static void prepare_frame(uv_work_t *work)
@@ -1415,7 +1367,6 @@ static void prepare_frame(uv_work_t *work)
         }
         memcpy(shard_meta->challenges_as_str[i], challenge_as_str, strlen(challenge_as_str));
         free(challenge_as_str);
-        challenge_as_str = NULL;
     }
 
     // Hash of the shard_data
@@ -1518,7 +1469,6 @@ static void prepare_frame(uv_work_t *work)
     }
     memcpy(shard_meta->hash, hash, strlen(hash));
     free(hash);
-    hash = NULL;
 
     uint8_t preleaf_sha256[SHA256_DIGEST_SIZE];
     memset_zero(preleaf_sha256, SHA256_DIGEST_SIZE);
@@ -1542,7 +1492,6 @@ static void prepare_frame(uv_work_t *work)
 clean_variables:
     if (encryption_ctx) {
         free_encryption_ctx(encryption_ctx);
-        encryption_ctx = NULL;
     }
 }
 
@@ -1607,10 +1556,7 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
 clean_variables:
     queue_next_work(state);
     free(work->data);
-    work->data = NULL;
-
     free(work);
-    work = NULL;
 }
 
 static void create_encrypted_file(uv_work_t *work)
@@ -1686,7 +1632,6 @@ clean_variables:
     }
     if (encryption_ctx) {
         free_encryption_ctx(encryption_ctx);
-        encryption_ctx = NULL;
     }
 }
 
@@ -1749,11 +1694,7 @@ static void after_request_frame_id(uv_work_t *work, int status)
 clean_variables:
     queue_next_work(state);
     free(req);
-    req = NULL;
-    work->data = NULL;
-
     free(work);
-    work = NULL;
 }
 
 static void request_frame_id(uv_work_t *work)
@@ -1870,10 +1811,7 @@ static void after_create_parity_shards(uv_work_t *work, int status)
 clean_variables:
     queue_next_work(state);
     free(work->data);
-    work->data = NULL;
-
     free(work);
-    work = NULL;
 }
 
 static void create_parity_shards(uv_work_t *work)
@@ -1993,17 +1931,14 @@ static void create_parity_shards(uv_work_t *work)
 clean_variables:
     if (data_blocks) {
         free(data_blocks);
-        data_blocks = NULL;
     }
 
     if (fec_blocks) {
         free(fec_blocks);
-        fec_blocks = NULL;
     }
 
     if (tmp_folder) {
         free(tmp_folder);
-        tmp_folder = NULL;
     }
 
     if (map) {
@@ -2022,6 +1957,7 @@ clean_variables:
         fclose(encrypted_file);
     }
 }
+
 
 static void queue_create_parity_shards(genaro_upload_state_t *state)
 {
@@ -2080,10 +2016,8 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 clean_variables:
     queue_next_work(req->state);
     free(work->data);
-    work->data = NULL;
-
     free(work);
-    work = NULL;
+
 }
 
 static void send_exchange_report(uv_work_t *work)
@@ -2212,10 +2146,7 @@ clean_variables:
     queue_next_work(state);
 
     genaro_free_get_bucket_request(req);
-    work_req->data = NULL;
-
     free(work_req);
-    work_req = NULL;
 }
 
 static void queue_verify_bucket_id(genaro_upload_state_t *state)
@@ -2259,12 +2190,8 @@ clean_variables:
 
     json_object_put(req->response);
     free(req->path);
-    req->path = NULL;
     free(req);
-    req = NULL;
-    work_req->data = NULL;
     free(work_req);
-    work_req = NULL;
 }
 
 static void verify_file_name(uv_work_t *work)
@@ -2388,23 +2315,17 @@ static void queue_next_work(genaro_upload_state_t *state)
     int *pending_work_count = &state->pending_work_count;
 
     if (state->canceled) {
-        cleanup_state(state);
-        state = NULL;
-        return;
+        return cleanup_state(state);
     }
 
     // report any errors
     if (state->error_status != 0) {
-        cleanup_state(state);
-        state = NULL;
-        return;
+        return cleanup_state(state);
     }
 
     // report upload complete
     if (state->completed_upload) {
-        cleanup_state(state);
-        state = NULL;
-        return;
+        return cleanup_state(state);
     }
 
     // Verify bucket_id is exists
@@ -2450,13 +2371,13 @@ static void queue_next_work(genaro_upload_state_t *state)
         !state->completed_upload) {
         queue_create_bucket_entry(state);
     }
-    
+
     for (int index = 0; index < state->total_shards; index++ ) {
         if (state->shard[index].report->send_status == GENARO_REPORT_AWAITING_SEND) {
             queue_send_exchange_report(state, index);
         }
     }
-    
+
     // NB: This needs to be the last thing, there is a bug with mingw
     // builds and uv_async_init, where leaving a block will cause the state
     // pointer to change values.
@@ -2481,7 +2402,6 @@ static void begin_work_queue(uv_work_t *work, int status)
     queue_next_work(state);
 
     free(work);
-    work = NULL;
 }
 
 static void prepare_upload_state(uv_work_t *work)
@@ -2566,7 +2486,6 @@ static void prepare_upload_state(uv_work_t *work)
     }
 
     free(bucket_key_as_str);
-    bucket_key_as_str = NULL;
 
     // Get file name encryption key with first half of hmac w/ magic
     struct hmac_sha512_ctx ctx1;
@@ -2586,7 +2505,6 @@ static void prepare_upload_state(uv_work_t *work)
     hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
 
     free(bucket_key);
-    bucket_key = NULL;
 
     char *encrypted_file_name;
     encrypt_meta(state->file_name, key, filename_iv, &encrypted_file_name);
@@ -2667,13 +2585,12 @@ static void prepare_upload_state(uv_work_t *work)
 cleanup:
     if (key_as_str) {
         free(key_as_str);
-        key_as_str = NULL;
     }
 
     if (index) {
         free(index);
-        index = NULL;
     }
+
 }
 
 char *create_tmp_name(genaro_upload_state_t *state, char *extension)
@@ -2712,7 +2629,6 @@ char *create_tmp_name(genaro_upload_state_t *state, char *extension)
             '\0');
 
     free(tmp_folder);
-    tmp_folder = NULL;
     return path;
 }
 

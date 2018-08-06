@@ -221,11 +221,8 @@ int mnemonic_to_seed(uint8_t *priv_key, size_t key_len, const char *passphrase,
     memset_zero(salt, 8 + 256);
 
     free(seed);
-    seed = NULL;
     free(salt);
-    salt = NULL;
     free(sha512_str);
-    sha512_str = NULL;
 
     return 1;
 }
