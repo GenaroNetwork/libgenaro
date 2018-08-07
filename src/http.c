@@ -119,6 +119,8 @@ int put_shard(genaro_http_options_t *http_options,
 
     if (http_options->proxy_url) {
         curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
+    } else {
+        curl_easy_setopt(curl, CURLOPT_NOPROXY, "*");
     }
 
     if (http_options->cainfo_path) {
