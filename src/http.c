@@ -506,74 +506,6 @@ static size_t body_json_receive(void *buffer, size_t size, size_t nmemb,
     return buflen;
 }
 
-int CurlDebug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr)
-{
-    char *curl_dubug_str = getenv("CURL_DEBUG");
-    int curl_debug = 0;
-    if(curl_dubug_str){
-        curl_debug = atoi(curl_dubug_str);
-    }
-    
-    FILE *curlDebugFile;
-    if(1 == curl_debug){
-        curlDebugFile = fopen("/Users/dingyi/Genaro/test/curlDebugInfo.log", "a");
-    }
-    
-    if(itype == CURLINFO_TEXT)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[TEXT]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[TEXT]: %s\n", pData);
-        }
-    }
-    else if(itype == CURLINFO_HEADER_IN)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[HEADER_IN]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[HEADER_IN]: %s\n", pData);
-        }
-    }
-    else if(itype == CURLINFO_HEADER_OUT)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[HEADER_OUT]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[HEADER_OUT]: %s\n", pData);
-        }
-    }
-    else if(itype == CURLINFO_DATA_IN)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[DATA_IN]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[DATA_IN]: %s\n", pData);
-        }
-    }
-    else if(itype == CURLINFO_DATA_OUT)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[DATA_OUT]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[DATA_OUT]: %s\n", pData);
-        }
-    }
-    else
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "CurlDebug!\n");
-        }else if(2 == curl_debug){
-            printf("CurlDebug!\n");
-        }
-    }
-    if(1 == curl_debug){
-        fclose(curlDebugFile);
-    }
-
-    return 0;
-}
-
 int fetch_json(genaro_http_options_t *http_options,
                genaro_encrypt_options_t *encrypt_options,
                genaro_bridge_options_t *options,
@@ -591,9 +523,6 @@ int fetch_json(genaro_http_options_t *http_options,
     if (!curl) {
         return 1;
     }
-    
-    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, CurlDebug);//打印完整的调试信息
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
     // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     // Set the url
