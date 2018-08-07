@@ -506,74 +506,6 @@ static size_t body_json_receive(void *buffer, size_t size, size_t nmemb,
     return buflen;
 }
 
-int CurlDebug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr)
-{
-    char *curl_dubug_str = getenv("CURL_DEBUG");
-    int curl_debug = 0;
-    if(curl_dubug_str){
-        curl_debug = atoi(curl_dubug_str);
-    }
-    
-    FILE *curlDebugFile;
-    if(1 == curl_debug){
-        curlDebugFile = fopen("/Users/dingyi/Genaro/test/curlDebugInfo.log", "a");
-    }
-    
-    if(itype == CURLINFO_TEXT)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[TEXT]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[TEXT]: %s\n", pData);
-        }
-    }
-    else if(itype == CURLINFO_HEADER_IN)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[HEADER_IN]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[HEADER_IN]: %s\n", pData);
-        }
-    }
-    else if(itype == CURLINFO_HEADER_OUT)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[HEADER_OUT]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[HEADER_OUT]: %s\n", pData);
-        }
-    }
-    else if(itype == CURLINFO_DATA_IN)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[DATA_IN]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[DATA_IN]: %s\n", pData);
-        }
-    }
-    else if(itype == CURLINFO_DATA_OUT)
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "[DATA_OUT]: %s\n", pData);
-        }else if(2 == curl_debug){
-            printf("[DATA_OUT]: %s\n", pData);
-        }
-    }
-    else
-    {
-        if(1 == curl_debug){
-            fprintf(curlDebugFile, "CurlDebug!\n");
-        }else if(2 == curl_debug){
-            printf("CurlDebug!\n");
-        }
-    }
-    if(1 == curl_debug){
-        fclose(curlDebugFile);
-    }
-
-    return 0;
-}
-
 int fetch_json(genaro_http_options_t *http_options,
                genaro_encrypt_options_t *encrypt_options,
                genaro_bridge_options_t *options,
@@ -591,21 +523,22 @@ int fetch_json(genaro_http_options_t *http_options,
     if (!curl) {
         return 1;
     }
-    
-    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, CurlDebug);//打印完整的调试信息
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-    // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    bool contain_args = false;
+    if(query_args && strlen(query_args) != 0){
+        contain_args = true;
+    }
+
     // Set the url
     size_t url_len = strlen(options->proto) + 3 + strlen(options->host) +
-        1 + 10 + strlen(path) + (query_args ? strlen(query_args) : 0);
+        1 + 10 + strlen(path) + (contain_args ? strlen(query_args) : 0);
     char *url = calloc(url_len + 1, sizeof(char));
     if (!url) {
         return 1;
     }
 
     snprintf(url, url_len, "%s://%s:%i%s%s%s", options->proto, options->host,
-             options->port, path, query_args ? "?" : "", query_args ? query_args : "");
+             options->port, path, contain_args ? "?" : "", contain_args ? query_args : "");
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
     // Set the user agent
@@ -662,10 +595,16 @@ int fetch_json(genaro_http_options_t *http_options,
             ret = 1;
             goto cleanup;
         }
+        
+        bool contain_args = false;
+        if(query_args && strlen(query_args) != 0){
+            contain_args = true;
+        }
+
         // method -> path -> body -> str
-        size_t hash_msg_len = strlen(method) + strlen(path) + (req_buf? strlen(req_buf) : query_args ? strlen(query_args): 0) + 2;
+        size_t hash_msg_len = strlen(method) + strlen(path) + (req_buf? strlen(req_buf) : contain_args ? strlen(query_args): 0) + 2;
         char *hash_msg = malloc(hash_msg_len);
-        sprintf(hash_msg, "%s\n%s\n%s", method, path, req_buf ? req_buf : query_args ? query_args : "");
+        sprintf(hash_msg, "%s\n%s\n%s", method, path, req_buf ? req_buf : contain_args ? query_args : "");
 
         // str -> hash
         uint8_t hash[SHA256_DIGEST_SIZE + 1];
