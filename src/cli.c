@@ -49,8 +49,9 @@ static inline void noop() {};
     "  -p, --proxy <url>         set the socks proxy "                  \
     "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
     "  -l, --log <level>         set the log level (default 0)\n"       \
-    "  -d, --debug               set the debug log level\n\n"
-
+    "  -d, --debug               set the debug log level\n\n"           \
+    "environment variables:\n"                                          \
+    "  GENARO_BRIDGE                  the bridge host "
 
 #define CLI_VERSION "libgenaro-2.0.0-beta"
 
