@@ -4,6 +4,7 @@ project(libgenaro VERSION 0.1.0)
 IF(APPLE)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")
+set(CMAKE_C_FLAGS "-gdwarf-2 -g3")
 
 include(CTest)
 enable_testing()
