@@ -423,13 +423,13 @@ static void create_bucket_entry(uv_work_t *work)
         json_object_object_add(body, "erasure", erasure);
     }
 
-    int path_len = strlen(state->bucket_id) + 16;
+    int path_len = 9 + strlen(state->bucket_id) + 6;
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
         req->error_status = GENARO_MEMORY_ERROR;
         return;
     }
-    sprintf(path, "%s%s%s%c", "/buckets/", state->bucket_id, "/files", '\0');
+    sprintf(path, "%s%s%s", "/buckets/", state->bucket_id, "/files");
 
     req->log->debug(state->env->log_options, state->handle,
                     "fn[create_bucket_entry] - JSON body: %s", json_object_to_json_string(body));
@@ -2621,12 +2621,12 @@ char *create_tmp_name(genaro_upload_state_t *state, char *extension)
     digest_encoded[encode_len] = '\0';
 
     sprintf(path,
-            "%s%c%s%s%c",
+            "%s%c%s%s",
             tmp_folder,
             separator(),
             digest_encoded,
-            extension,
-            '\0');
+            extension
+            );
 
     free(tmp_folder);
     return path;
