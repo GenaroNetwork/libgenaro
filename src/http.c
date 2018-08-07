@@ -524,17 +524,21 @@ int fetch_json(genaro_http_options_t *http_options,
         return 1;
     }
 
-    // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    bool contain_args = false;
+    if(query_args && strlen(query_args) != 0){
+        contain_args = true;
+    }
+
     // Set the url
     size_t url_len = strlen(options->proto) + 3 + strlen(options->host) +
-        1 + 10 + strlen(path) + (query_args ? strlen(query_args) : 0);
+        1 + 10 + strlen(path) + (contain_args ? strlen(query_args) : 0);
     char *url = calloc(url_len + 1, sizeof(char));
     if (!url) {
         return 1;
     }
 
     snprintf(url, url_len, "%s://%s:%i%s%s%s", options->proto, options->host,
-             options->port, path, query_args ? "?" : "", query_args ? query_args : "");
+             options->port, path, contain_args ? "?" : "", contain_args ? query_args : "");
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
     // Set the user agent
@@ -591,10 +595,16 @@ int fetch_json(genaro_http_options_t *http_options,
             ret = 1;
             goto cleanup;
         }
+        
+        bool contain_args = false;
+        if(query_args && strlen(query_args) != 0){
+            contain_args = true;
+        }
+
         // method -> path -> body -> str
-        size_t hash_msg_len = strlen(method) + strlen(path) + (req_buf? strlen(req_buf) : query_args ? strlen(query_args): 0) + 2;
+        size_t hash_msg_len = strlen(method) + strlen(path) + (req_buf? strlen(req_buf) : contain_args ? strlen(query_args): 0) + 2;
         char *hash_msg = malloc(hash_msg_len);
-        sprintf(hash_msg, "%s\n%s\n%s", method, path, req_buf ? req_buf : query_args ? query_args : "");
+        sprintf(hash_msg, "%s\n%s\n%s", method, path, req_buf ? req_buf : contain_args ? query_args : "");
 
         // str -> hash
         uint8_t hash[SHA256_DIGEST_SIZE + 1];

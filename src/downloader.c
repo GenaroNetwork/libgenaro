@@ -86,15 +86,14 @@ static void request_replace_pointer(uv_work_t *work)
     int status_code = 0;
 
     int excluded_farmer_ids_len = (req->excluded_farmer_ids) ? strlen(req->excluded_farmer_ids) : 0;
-    char query_args[BUFSIZ];
-    memset(query_args, '\0', BUFSIZ);
+    char *query_args = (char *)calloc(BUFSIZ, sizeof(char));
     snprintf(query_args, BUFSIZ,
              "limit=1&skip=%i&exclude=%s",
              req->pointer_index,
              req->excluded_farmer_ids);
 
     int path_len = 9 + strlen(req->bucket_id) + 7 +
-        strlen(req->file_id) + strlen(query_args);
+        strlen(req->file_id);
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
         req->error_status = GENARO_MEMORY_ERROR;
@@ -124,7 +123,7 @@ static void request_replace_pointer(uv_work_t *work)
     }
 
     free(path);
-
+    free(query_args);
 }
 
 static void set_pointer_from_json(genaro_download_state_t *state,
@@ -392,6 +391,9 @@ static void after_request_pointers(uv_work_t *work, int status)
         json_object_put(req->response);
     }
     free(req->path);
+    req->path = NULL;
+    free(req->query_args);
+    req->query_args = NULL;
     free(req);
     free(work);
 }
@@ -582,12 +584,11 @@ static void queue_request_pointers(genaro_download_state_t *state)
         return;
     }
 
-    char query_args[BUFSIZ];
-    memset(query_args, '\0', BUFSIZ);
+    char *query_args = (char *)calloc(BUFSIZ, sizeof(char));
     snprintf(query_args, BUFSIZ, "limit=3&skip=%d", state->total_pointers);
 
     size_t path_len = 9 + strlen(state->bucket_id) + 7 +
-        strlen(state->file_id) + strlen(query_args);
+        strlen(state->file_id);
 
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
