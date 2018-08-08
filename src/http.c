@@ -605,17 +605,17 @@ int fetch_json(genaro_http_options_t *http_options,
 
         // method -> path -> body -> str
         size_t hash_msg_len = strlen(method) + strlen(path) + (req_buf? strlen(req_buf) : contain_args ? strlen(query_args): 0) + 2;
-        char *hash_msg = malloc(hash_msg_len);
+        char *hash_msg = malloc(hash_msg_len + 1);
         sprintf(hash_msg, "%s\n%s\n%s", method, path, req_buf ? req_buf : contain_args ? query_args : "");
 
         // str -> hash
         uint8_t hash[SHA256_DIGEST_SIZE + 1];
-        sha256_of_str((uint8_t *)hash_msg, hash_msg_len, &hash);
+        sha256_of_str((uint8_t *)hash_msg, hash_msg_len, hash);
 
         // hash -> signature
         secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
         secp256k1_ecdsa_signature sig;
-        secp256k1_ecdsa_sign(ctx, &sig, &hash, encrypt_options->priv_key, NULL, NULL);
+        secp256k1_ecdsa_sign(ctx, &sig, hash, encrypt_options->priv_key, NULL, NULL);
 
         // privkey -> pubkey
         secp256k1_pubkey pubkey;

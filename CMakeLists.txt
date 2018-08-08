@@ -59,7 +59,7 @@ target_link_libraries(cli genaro m uv json-c nettle curl secp256k1 scrypt keccak
 
 ELSEIF(WIN32)
 
-set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99")
+set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99 -g")
 include_directories(depends/build/x86_64-w64-mingw32/include)
 include_directories(depends/sources/x86_64-w64-mingw32/libscrypt)
 include_directories(depends/sources/x86_64-w64-mingw32/libkeccak)

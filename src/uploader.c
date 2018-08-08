@@ -2606,7 +2606,7 @@ char *create_tmp_name(genaro_upload_state_t *state, char *extension)
     }
 
     char *path = calloc(
-        tmp_folder_len + 1 + encode_len + extension_len + 2,
+        tmp_folder_len + 1 + encode_len + extension_len + 1,
         sizeof(char)
     );
 
