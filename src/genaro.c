@@ -6,6 +6,9 @@
 
 static inline void noop() {};
 
+/*Curl info output directory, used only for debug*/
+char *curl_output_dir = NULL;
+
 key_result_t *genaro_parse_key_file(json_object *key_json_obj, const char *passphrase)
 {
     key_file_obj_t *key_file_obj = get_key_obj(key_json_obj);
@@ -905,11 +908,27 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
             log->warn = log_formatter_warn;
         case 1:
             log->error = log_formatter_error;
-        case 0:
+        case 0:{
+            char *genaro_debug_str = getenv("GENARO_DEBUG");
+            if(genaro_debug_str) {
+                int genaro_debug = atoi(genaro_debug_str);
+                if(genaro_debug) {
+                    log->debug = log_formatter_debug;
+                }
+            }
             break;
+        }
     }
 
     env->log = log;
+
+    // get curl output file from environment, only for debug.
+    char *genaro_curl_output_str = getenv("GENARO_CURL_OUTPUT");
+    if(genaro_curl_output_str) {
+        if(access(genaro_curl_output_str, F_OK) != -1) {
+            curl_output_dir = genaro_curl_output_str;
+        }
+    }
 
     return env;
 }
@@ -1491,4 +1510,38 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+}
+
+int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr)
+{
+    if(!curl_output_dir) {
+        return 0;
+    }
+
+    char *curl_output_file = str_concat_many(2, curl_output_dir, "/_genaro_curl_debug.log");
+
+    FILE *fd = fopen(curl_output_file, "a");
+    if (!fd) {
+        return 0;
+    }
+    
+    if(itype == CURLINFO_TEXT) {
+        fprintf(fd, "[TEXT]: %s\n", pData);
+    }
+    else if(itype == CURLINFO_HEADER_IN) {
+        fprintf(fd, "[HEADER_IN]: %s\n", pData);
+    }
+    else if(itype == CURLINFO_HEADER_OUT) {
+        fprintf(fd, "[HEADER_OUT]: %s\n", pData);
+    }
+    else if(itype == CURLINFO_DATA_IN) {
+        fprintf(fd, "[DATA_IN]: %s\n", pData);
+    }
+    else if(itype == CURLINFO_DATA_OUT) {
+        fprintf(fd, "[DATA_OUT]: %s\n", pData);
+    }
+    
+    fclose(fd);
+
+    return 0;
 }

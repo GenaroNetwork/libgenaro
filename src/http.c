@@ -92,6 +92,13 @@ int put_shard(genaro_http_options_t *http_options,
         return 1;
     }
 
+    // output the Curl debug info, only for debug.
+    if(curl_output_dir)
+    {
+        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    }
+
     char query_args[80];
     snprintf(query_args, 80, "token=%s", token);
 
@@ -311,6 +318,13 @@ int fetch_shard(genaro_http_options_t *http_options,
         return 1;
     }
 
+    // output the Curl debug info, only for debug.
+    if(curl_output_dir)
+    {
+        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    }
+
     if (http_options->user_agent) {
         curl_easy_setopt(curl, CURLOPT_USERAGENT, http_options->user_agent);
     }
@@ -524,6 +538,13 @@ int fetch_json(genaro_http_options_t *http_options,
     CURL *curl = curl_easy_init();
     if (!curl) {
         return 1;
+    }
+
+    // output the Curl debug info, only for debug.
+    if(curl_output_dir)
+    {
+        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     }
 
     bool contain_args = false;

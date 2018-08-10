@@ -2219,6 +2219,13 @@ static void queue_verify_file_name(genaro_upload_state_t *state)
         state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
+    
+    // output the Curl debug info, only for debug.
+    if(curl_output_dir)
+    {
+        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    }
 
     char *escaped = curl_easy_escape(curl, state->encrypted_file_name,
                                      strlen(state->encrypted_file_name));

@@ -932,6 +932,11 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                                                             genaro_progress_cb progress_cb,
                                                             genaro_finished_download_cb finished_cb);
 
+/*Curl debug function*/
+int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr);
+
+extern char *curl_output_dir;
+
 static inline char separator()
 {
 #ifdef _WIN32
