@@ -881,7 +881,7 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
 /**
  * @brief Will cancel an upload
  *
- * @param[in] state A pointer to the the upload state
+ * @param[in] state A pointer to the upload state
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
@@ -890,7 +890,7 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
  * @brief Upload a file
  *
  * @param[in] env A pointer to environment
- * @param[in] state A pointer to the the upload state
+ * @param[in] state A pointer to the upload state
  * @param[in] opts The options for the upload
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] progress_cb Function called with progress updates
@@ -906,7 +906,7 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
 /**
  * @brief Will cancel a download
  *
- * @param[in] state A pointer to the the download state
+ * @param[in] state A pointer to the download state
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state);
@@ -915,7 +915,7 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
  * @brief Download a file
  *
  * @param[in] env A pointer to environment
- * @param[in] state A pointer to the the download state
+ * @param[in] state A pointer to the download state
  * @param[in] bucket_id Character array of bucket id
  * @param[in] file_id Character array of file id
  * @param[in] destination File descriptor of the destination
@@ -931,10 +931,20 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                                                             void *handle,
                                                             genaro_progress_cb progress_cb,
                                                             genaro_finished_download_cb finished_cb);
+/**
+ * @brief Decrypt an encrypted name
+ *
+ * @param[in] env A pointer to environment
+ * @param[in] encrypted_name A pointer to the encrypted name
+ * @return NULL on failure and the decrypted name on success.
+ */
+GENARO_API char *genaro_bridge_decrypt_meta(genaro_env_t *env, 
+                                            const char * const encrypted_name);
 
 /*Curl debug function*/
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr);
 
+extern int genaro_debug;
 extern char *curl_output_dir;
 
 static inline char separator()

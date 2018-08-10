@@ -1091,6 +1091,9 @@ int main(int argc, char **argv)
             goto end_program;
         }
 
+        char *test = genaro_bridge_decrypt_meta(env, "2Cc5wvmI1259qsoLm1PNDf1Yzno4OcQT16kpDByg9XY9M+EyRA3EzjcVOe6OkQl/ws34tg==");
+        printf("decrypted name: %s\n", test);
+
         if (strcmp(command, "download-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];

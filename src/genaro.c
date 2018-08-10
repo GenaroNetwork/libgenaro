@@ -6,6 +6,10 @@
 
 static inline void noop() {};
 
+/*whether to print the debug info if the level of Logging configuration 
+options is set to 0, it will get from the environment GENARO_DEBUG*/
+int genaro_debug = 0;
+
 /*Curl info output directory, used only for debug*/
 char *curl_output_dir = NULL;
 
@@ -908,10 +912,10 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
             log->warn = log_formatter_warn;
         case 1:
             log->error = log_formatter_error;
-        case 0:{
+        case 0: {
             char *genaro_debug_str = getenv("GENARO_DEBUG");
             if(genaro_debug_str) {
-                int genaro_debug = atoi(genaro_debug_str);
+                genaro_debug = atoi(genaro_debug_str);
                 if(genaro_debug) {
                     log->debug = log_formatter_debug;
                 }
@@ -1510,6 +1514,50 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
     }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+}
+
+GENARO_API char *genaro_bridge_decrypt_meta(genaro_env_t *env, 
+                                            const char * const encrypted_name)
+{
+    // Derive a key based on the master seed
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(env->encrypt_options->priv_key,
+                        env->encrypt_options->key_len,
+                        BUCKET_NAME_MAGIC,
+                        &bucket_key_as_str);
+
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        return NULL;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    free(bucket_key);
+
+    // Attempt to decrypt the name, otherwise
+    // we will default the name to the encrypted text.
+    // The decrypted flag will be set to indicate the status
+    // of decryption for alternative display.
+    if (!encrypted_name) {
+        return NULL;
+    }
+
+    char *decrypted_name;
+    int error_status = decrypt_meta(encrypted_name, key,
+                                    &decrypted_name);
+    if (!error_status) {
+        return decrypted_name;
+    } else {
+        return NULL;
+    }
 }
 
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr)

@@ -177,7 +177,20 @@ int put_shard(genaro_http_options_t *http_options,
     // Ignore any data sent back, we only need to know the status code
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_ignore_receive);
 
+    time_t start = 0, end = 0;
+    if(genaro_debug) {  
+        time(&start);
+    }
+    
     int req = curl_easy_perform(curl);
+
+    if(genaro_debug) {
+        time(&end);
+        double interval = (double)(end - start);
+        if(interval > 10.0) {
+            printf("curl_easy_perform in put_shard: %lfs\n", interval);
+        }
+    }
 
     curl_slist_free_all(header_list);
     free(header);
@@ -395,7 +408,20 @@ int fetch_shard(genaro_http_options_t *http_options,
     body->file_position = file_position;
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
 
+    time_t start = 0, end = 0;
+    if(genaro_debug) {  
+        time(&start);
+    }
+    
     int req = curl_easy_perform(curl);
+
+    if(genaro_debug) {
+        time(&end);
+        double interval = (double)(end - start);
+        if(interval > 10.0) {
+            printf("curl_easy_perform in fetch_shard: %lfs\n", interval);
+        }
+    }
 
     curl_slist_free_all(node_chunk);
     free(body->tail);
@@ -694,7 +720,20 @@ int fetch_json(genaro_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
     }
 
+    time_t start = 0, end = 0;
+    if(genaro_debug) {  
+        time(&start);
+    }
+
     int req = curl_easy_perform(curl);
+
+    if(genaro_debug) {
+        time(&end);
+        double interval = (double)(end - start);
+        if(interval > 10.0) {
+            printf("curl_easy_perform in fetch_json: %lfs\n", interval);
+        }
+    }
 
     free(url);
 
