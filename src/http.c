@@ -93,7 +93,7 @@ int put_shard(genaro_http_options_t *http_options,
     }
 
     // output the Curl debug info, only for debug.
-    if(curl_output_dir)
+    if(curl_out_dir)
     {
         curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
@@ -332,7 +332,7 @@ int fetch_shard(genaro_http_options_t *http_options,
     }
 
     // output the Curl debug info, only for debug.
-    if(curl_output_dir)
+    if(curl_out_dir)
     {
         curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
@@ -567,7 +567,7 @@ int fetch_json(genaro_http_options_t *http_options,
     }
 
     // output the Curl debug info, only for debug.
-    if(curl_output_dir)
+    if(curl_out_dir)
     {
         curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);

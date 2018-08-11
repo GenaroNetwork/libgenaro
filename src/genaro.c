@@ -11,7 +11,7 @@ options is set to 0, it will get from the environment GENARO_DEBUG*/
 int genaro_debug = 0;
 
 /*Curl info output directory, used only for debug*/
-char *curl_output_dir = NULL;
+char *curl_out_dir = NULL;
 
 key_result_t *genaro_parse_key_file(json_object *key_json_obj, const char *passphrase)
 {
@@ -927,10 +927,10 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
     env->log = log;
 
     // get curl output file from environment, only for debug.
-    char *genaro_curl_output_str = getenv("GENARO_CURL_OUTPUT");
-    if(genaro_curl_output_str) {
-        if(access(genaro_curl_output_str, F_OK) != -1) {
-            curl_output_dir = genaro_curl_output_str;
+    char *genaro_curl_out_dir_str = getenv("GENARO_CURL_OUT_DIR");
+    if(genaro_curl_out_dir_str) {
+        if(access(genaro_curl_out_dir_str, F_OK) != -1) {
+            curl_out_dir = genaro_curl_out_dir_str;
         }
     }
 
@@ -1562,11 +1562,11 @@ GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env,
 
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr)
 {
-    if(!curl_output_dir) {
+    if(!curl_out_dir) {
         return 0;
     }
 
-    char *curl_output_file = str_concat_many(2, curl_output_dir, "/_genaro_curl_debug.log");
+    char *curl_output_file = str_concat_many(2, curl_out_dir, "/_genaro_curl_debug.log");
 
     FILE *fd = fopen(curl_output_file, "a");
     if (!fd) {

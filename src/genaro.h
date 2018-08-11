@@ -945,7 +945,7 @@ GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env,
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr);
 
 extern int genaro_debug;
-extern char *curl_output_dir;
+extern char *curl_out_dir;
 
 static inline char separator()
 {
