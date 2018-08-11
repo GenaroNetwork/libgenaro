@@ -1516,7 +1516,7 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-GENARO_API char *genaro_bridge_decrypt_meta(genaro_env_t *env, 
+GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env, 
                                             const char * const encrypted_name)
 {
     // Derive a key based on the master seed

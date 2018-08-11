@@ -938,7 +938,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
  * @param[in] encrypted_name A pointer to the encrypted name
  * @return NULL on failure and the decrypted name on success.
  */
-GENARO_API char *genaro_bridge_decrypt_meta(genaro_env_t *env, 
+GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env, 
                                             const char * const encrypted_name);
 
 /*Curl debug function*/
