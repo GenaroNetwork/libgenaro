@@ -36,6 +36,11 @@ target_link_libraries(genaro secp256k1 scrypt keccak)
 add_executable(cli src/cli.c)
 target_link_libraries(cli genaro uv json-c nettle curl secp256k1 scrypt keccak)
 
+# add_executable(tests_rs test/tests_rs.c)
+
+# add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
+# target_link_libraries(tests genaro uv json-c nettle curl microhttpd)
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
@@ -56,6 +61,11 @@ target_link_libraries(genaro secp256k1 scrypt keccak)
 
 add_executable(cli src/cli.c)
 target_link_libraries(cli genaro m uv json-c nettle curl secp256k1 scrypt keccak)
+
+# add_executable(tests_rs test/tests_rs.c)
+
+# add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
+# target_link_libraries(tests genaro uv json-c nettle curl microhttpd)
 
 ELSEIF(WIN32)
 
@@ -81,5 +91,8 @@ add_executable(cli src/cli.c)
 
 # nettle must locate behind curl and gnutls，gmp must locate behind gnutls，hogweed must locate behind gnutls.
 target_link_libraries(cli genaro uv json-c curl gnutls nettle hogweed gmp secp256k1 scrypt keccak ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
+
+# add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
+# target_link_libraries(tests genaro uv json-c curl gnutls nettle hogweed gmp microhttpd ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
 
 ENDIF()
