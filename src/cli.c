@@ -36,6 +36,7 @@ static inline void noop() {};
     "  remove-file <bucket-id> <file-id>\n"                             \
     "  add-bucket <name> \n"                                            \
     "  remove-bucket <bucket-id>\n"                                     \
+    "  rename-bucket <bucket-id> <new-bucket-name>\n"                   \
     "  list-mirrors <bucket-id> <file-id>\n\n"                          \
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
@@ -843,6 +844,24 @@ static void get_info_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+static void rename_bucket_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    rename_bucket_request_t *req = work_req->data;
+
+    if (req->status_code != 200) {
+        printf("Request failed with status code: %i\n", req->status_code);
+        goto clean_variables;
+    }
+    printf("Success to rename bucket.\n");
+
+clean_variables:
+    json_object_put(req->response);
+    free((char *)req->encrypted_bucket_name);
+    free(req);
+    free(work_req);
+}
+
 static int export_keys(char *host)
 {
     int status = 0;
@@ -1179,7 +1198,20 @@ int main(int argc, char **argv)
             }
             genaro_bridge_list_mirrors(env, bucket_id, file_id,
                                       NULL, list_mirrors_callback);
-        } else {
+        } else if (strcmp(command, "rename-bucket") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *new_bucket_name = argv[command_index + 2];
+
+            if (!bucket_id || !new_bucket_name) {
+                printf("Missing arguments, expected: <bucket-id> <new_bucket-name>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            genaro_bridge_rename_bucket(env, bucket_id, new_bucket_name, NULL,
+                                       rename_bucket_callback);
+        }
+        else {
             printf("'%s' is not a genaro command. See 'genaro --help'\n\n",
                    command);
             status = 1;
