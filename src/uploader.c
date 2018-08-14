@@ -737,30 +737,14 @@ static void progress_put_shard(uv_async_t* async)
     state->shard[progress->pointer_index].uploaded_size = progress->bytes;
 
     uint64_t uploaded_bytes = 0;
-    uint64_t total_bytes = 0;
 
-    bool can_cal_total = true;
     for (int i = 0; i < state->total_shards; i++) {
         shard_tracker_t *shard = &state->shard[i];
 
         uploaded_bytes += shard->uploaded_size;
-
-        // The size of the meta of shard is calculated on function prepare_frame.
-        // if it is 0, means that the it hasn't been calculated.
-        if(shard->meta->size != 0) {
-            total_bytes += shard->meta->size;
-        } else {
-            can_cal_total = false;
-        }
     }
 
-    // This moment can not calculate the total bytes, give an approximate value
-    // which is definitely larger than actual bytes.
-    if(!can_cal_total) {
-        total_bytes = state->total_shards * state->shard_size;
-    }
-
-    double total_progress = (double)uploaded_bytes / (double)total_bytes;
+    double total_progress = (double)uploaded_bytes / (double)state->total_bytes;
 
     // will not happen.
     if(total_progress > 1.0) {
@@ -771,7 +755,7 @@ static void progress_put_shard(uv_async_t* async)
         return;
     }
 
-    if (uploaded_bytes == total_bytes) {
+    if (uploaded_bytes == state->total_bytes) {
         state->progress_finished = true;
     }
 
@@ -2453,6 +2437,8 @@ static void prepare_upload_state(uv_work_t *work)
     state->total_data_shards = ceil((double)state->file_size / state->shard_size);
     state->total_parity_shards = (state->rs) ? ceil((double)state->total_data_shards * 2.0 / 3.0) : 0;
     state->total_shards = state->total_data_shards + state->total_parity_shards;
+
+    state->total_bytes = state->file_size + state->total_parity_shards * state->shard_size;
 
     int tracker_calloc_amount = state->total_shards * sizeof(shard_tracker_t);
     state->shard = malloc(tracker_calloc_amount);
