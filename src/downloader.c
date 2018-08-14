@@ -1885,7 +1885,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                                                             const char *file_id,
                                                             FILE *destination,
                                                             void *handle,
-                                                            genaro_progress_cb progress_cb,
+                                                            genaro_progress_download_cb progress_cb,
                                                             genaro_finished_download_cb finished_cb)
 {
     genaro_download_state_t *state = malloc(sizeof(genaro_download_state_t));

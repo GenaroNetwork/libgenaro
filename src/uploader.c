@@ -730,7 +730,6 @@ clean_variables:
 
 static void progress_put_shard(uv_async_t* async)
 {
-
     shard_upload_progress_t *progress = async->data;
 
     genaro_upload_state_t *state = progress->state;
@@ -740,15 +739,33 @@ static void progress_put_shard(uv_async_t* async)
     uint64_t uploaded_bytes = 0;
     uint64_t total_bytes = 0;
 
+    bool can_cal_total = true;
     for (int i = 0; i < state->total_shards; i++) {
-
         shard_tracker_t *shard = &state->shard[i];
 
         uploaded_bytes += shard->uploaded_size;
-        total_bytes += shard->meta->size;
+
+        // The size of the meta of shard is calculated on function prepare_frame.
+        // if it is 0, means that the it hasn't been calculated.
+        if(shard->meta->size != 0) {
+            total_bytes += shard->meta->size;
+        } else {
+            can_cal_total = false;
+        }
+    }
+
+    // This moment can not calculate the total bytes, give an approximate value
+    // which is definitely larger than actual bytes.
+    if(!can_cal_total) {
+        total_bytes = state->total_shards * state->shard_size;
     }
 
     double total_progress = (double)uploaded_bytes / (double)total_bytes;
+
+    // will not happen.
+    if(total_progress > 1.0) {
+        total_progress = 1.0;
+    }
 
     if (state->progress_finished) {
         return;
@@ -759,11 +776,8 @@ static void progress_put_shard(uv_async_t* async)
     }
 
     state->progress_cb(total_progress,
-                       uploaded_bytes,
-                       total_bytes,
+                       state->file_size,
                        state->handle);
-
-
 }
 
 static void queue_push_shard(genaro_upload_state_t *state, int index)
@@ -2219,13 +2233,6 @@ static void queue_verify_file_name(genaro_upload_state_t *state)
         state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
-    
-    // output the Curl debug info, only for debug.
-    if(curl_out_dir)
-    {
-        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-    }
 
     char *escaped = curl_easy_escape(curl, state->encrypted_file_name,
                                      strlen(state->encrypted_file_name));
@@ -2403,7 +2410,7 @@ static void begin_work_queue(uv_work_t *work, int status)
     genaro_upload_state_t *state = work->data;
 
     // Load progress bar
-    state->progress_cb(0, 0, 0, state->handle);
+    state->progress_cb(0.0, state->file_size, state->handle);
 
     state->pending_work_count -= 1;
     queue_next_work(state);
@@ -2665,7 +2672,7 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state)
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
                             genaro_upload_opts_t *opts,
                             void *handle,
-                            genaro_progress_cb progress_cb,
+                            genaro_progress_upload_cb progress_cb,
                             genaro_finished_upload_cb finished_cb)
 {
     if (!opts->fd) {

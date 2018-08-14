@@ -368,7 +368,17 @@ typedef struct {
 
 /** @brief A function signature for download/upload progress callback
  */
-typedef void (*genaro_progress_cb)(double progress,
+/*typedef void (*genaro_progress_cb)(double progress,
+                                  uint64_t bytes,
+                                  uint64_t total_bytes,
+                                  void *handle);
+*/
+
+typedef void (*genaro_progress_upload_cb)(double progress,
+                                  uint64_t file_bytes,
+                                  void *handle);
+
+typedef void (*genaro_progress_download_cb)(double progress,
                                   uint64_t bytes,
                                   uint64_t total_bytes,
                                   void *handle);
@@ -440,7 +450,7 @@ typedef struct genaro_download_state {
     const char *file_id;
     const char *bucket_id;
     FILE *destination;
-    genaro_progress_cb progress_cb;
+    genaro_progress_download_cb progress_cb;
     genaro_finished_download_cb finished_cb;
     bool finished;
     bool canceled;
@@ -556,7 +566,7 @@ typedef struct genaro_upload_state {
     int file_verify_count;
     int create_encrypted_file_count;
 
-    genaro_progress_cb progress_cb;
+    genaro_progress_upload_cb progress_cb;
     genaro_finished_upload_cb finished_cb;
     int error_status;
     genaro_log_levels_t *log;
@@ -900,7 +910,7 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
                                                         genaro_upload_opts_t *opts,
                                                         void *handle,
-                                                        genaro_progress_cb progress_cb,
+                                                        genaro_progress_upload_cb progress_cb,
                                                         genaro_finished_upload_cb finished_cb);
 
 /**
@@ -929,7 +939,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                                                             const char *file_id,
                                                             FILE *destination,
                                                             void *handle,
-                                                            genaro_progress_cb progress_cb,
+                                                            genaro_progress_download_cb progress_cb,
                                                             genaro_finished_download_cb finished_cb);
 /**
  * @brief Decrypt an encrypted name

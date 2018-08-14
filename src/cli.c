@@ -365,7 +365,7 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
 
 
 
-    genaro_progress_cb progress_cb = (genaro_progress_cb)noop;
+    genaro_progress_upload_cb progress_cb = (genaro_progress_upload_cb)noop;
     if (env->log_options->level == 0) {
         progress_cb = file_progress;
     }
@@ -458,7 +458,7 @@ static int download_file(genaro_env_t *env, char *bucket_id,
     uv_signal_init(env->loop, sig);
     uv_signal_start(sig, download_signal_handler, SIGINT);
 
-    genaro_progress_cb progress_cb = (genaro_progress_cb)noop;
+    genaro_progress_download_cb progress_cb = (genaro_progress_download_cb)noop;
     if (path && env->log_options->level == 0) {
         progress_cb = file_progress;
     }

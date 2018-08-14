@@ -150,7 +150,6 @@ int put_shard(genaro_http_options_t *http_options,
 
     shard_body_send_t *shard_body = NULL;
 
-
     if (original_file && shard_total_bytes) {
 
         shard_body = malloc(sizeof(shard_body_send_t));
