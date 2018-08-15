@@ -385,7 +385,9 @@ typedef void (*genaro_progress_download_cb)(double progress,
 
 /** @brief A function signature for a download complete callback
  */
-typedef void (*genaro_finished_download_cb)(int status, FILE *fd, void *handle);
+typedef void (*genaro_finished_download_cb)(int status, const char *origin_file_path, 
+                                            const char *renamed_file_path, FILE *fd, 
+                                            void *handle);
 
 /** @brief A function signature for an upload complete callback
  */
@@ -449,6 +451,8 @@ typedef struct genaro_download_state {
     genaro_env_t *env;
     const char *file_id;
     const char *bucket_id;
+    const char *origin_file_path;
+    const char *renamed_file_path;
     FILE *destination;
     genaro_progress_download_cb progress_cb;
     genaro_finished_download_cb finished_cb;
@@ -478,7 +482,6 @@ typedef struct genaro_download_state {
     genaro_log_levels_t *log;
     void *handle;
 } genaro_download_state_t;
-
 
 typedef struct {
     char *hash;
@@ -937,6 +940,8 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
+                                                            const char *origin_file_path,
+                                                            const char *renamed_file_path,
                                                             FILE *destination,
                                                             void *handle,
                                                             genaro_progress_download_cb progress_cb,

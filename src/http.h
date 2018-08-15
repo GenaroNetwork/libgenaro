@@ -174,5 +174,4 @@ int fetch_json(genaro_http_options_t *http_options,
                struct json_object **response,
                int *status_code);
 
-
 #endif /* GENARO_HTTP_H */

@@ -64,7 +64,6 @@ static void request_pointers(uv_work_t *work)
                                     req->path, req->query_args, req->body, req->auth,
                                     &req->response, &status_code);
 
-
     if (request_status) {
         state->log->warn(state->env->log_options, state->handle,
                          "Request pointers error: %i", request_status);
@@ -75,7 +74,6 @@ static void request_pointers(uv_work_t *work)
     if (!req->response) {
         req->status_code = -1;
     }
-
 }
 
 static void request_replace_pointer(uv_work_t *work)
@@ -932,7 +930,6 @@ static void send_exchange_report(uv_work_t *work)
                                     "/reports/exchanges", NULL, body,
                                     true, &response, &status_code);
 
-
     if (request_status) {
         state->log->warn(state->env->log_options, state->handle,
                          "Send exchange report error: %i", request_status);
@@ -975,12 +972,10 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 
     free(work->data);
     free(work);
-
 }
 
 static void queue_send_exchange_reports(genaro_download_state_t *state)
 {
-
     if (state->canceled) {
         return;
     }
@@ -1197,7 +1192,6 @@ static void after_request_info(uv_work_t *work, int status)
 
     free(req);
     free(work);
-
 }
 
 static void request_info(uv_work_t *work)
@@ -1380,7 +1374,6 @@ static void queue_request_info(genaro_download_state_t *state)
         state->error_status = GENARO_QUEUE_ERROR;
         return;
     }
-
 }
 
 static int prepare_file_hmac(genaro_download_state_t *state)
@@ -1779,6 +1772,8 @@ static void queue_next_work(genaro_download_state_t *state)
 
             state->finished = true;
             state->finished_cb(state->error_status,
+                               state->origin_file_path,
+                               state->renamed_file_path,
                                state->destination,
                                state->handle);
 
@@ -1812,7 +1807,8 @@ static void queue_next_work(genaro_download_state_t *state)
             }
 
             state->finished = true;
-            state->finished_cb(state->error_status, state->destination, state->handle);
+            state->finished_cb(state->error_status, state->origin_file_path, 
+                state->renamed_file_path, state->destination, state->handle);
 
             free_download_state(state);
             return;
@@ -1855,7 +1851,6 @@ finish_up:
 
     state->log->debug(state->env->log_options, state->handle,
                       "Pending work count: %d", state->pending_work_count);
-
 }
 
 GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
@@ -1883,6 +1878,8 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
+                                                            const char *origin_file_path,
+                                                            const char *renamed_file_path,
                                                             FILE *destination,
                                                             void *handle,
                                                             genaro_progress_download_cb progress_cb,
@@ -1901,6 +1898,8 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->env = env;
     state->file_id = file_id;
     state->bucket_id = bucket_id;
+    state->origin_file_path = origin_file_path;
+    state->renamed_file_path = renamed_file_path;
     state->destination = destination;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
