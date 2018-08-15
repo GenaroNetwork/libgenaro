@@ -302,7 +302,6 @@ static void append_pointers_to_state(genaro_download_state_t *state,
                           "Finished requesting pointers");
         state->pointers_completed = true;
     } else if (length > 0) {
-
         int prev_total_pointers = state->total_pointers;
         int total_pointers = state->total_pointers + length;
 
@@ -321,7 +320,6 @@ static void append_pointers_to_state(genaro_download_state_t *state,
         state->total_shards = total_pointers;
 
         for (int i = 0; i < length; i++) {
-
             // get the relative index
             int j = i + prev_total_pointers;
 
@@ -336,7 +334,6 @@ static void append_pointers_to_state(genaro_download_state_t *state,
             }
         }
     }
-
 }
 
 static void after_request_pointers(uv_work_t *work, int status)
@@ -353,7 +350,7 @@ static void after_request_pointers(uv_work_t *work, int status)
                           json_object_to_json_string(req->response));
     }
 
-    if (status != 0)  {
+    if (status != 0) {
 
         state->error_status = GENARO_BRIDGE_POINTER_ERROR;
 
@@ -410,19 +407,12 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
                       json_object_to_json_string(req->response));
 
     if (status != 0) {
-
         state->error_status = GENARO_BRIDGE_REPOINTER_ERROR;
-
     } else if (req->error_status) {
-
         state->error_status = req->error_status;
-
     } else if (req->status_code == 429 || req->status_code == 420) {
-
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
-
     } else if (req->status_code != 200) {
-
         if (req->status_code > 0 && req->status_code < 500) {
             state->pointers[req->pointer_index].status = POINTER_MISSING;
         } else {
@@ -440,7 +430,6 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
             state->pointer_fail_count = 0;
             state->pointers[req->pointer_index].status = POINTER_MISSING;
         }
-
     } else if (!json_object_is_type(req->response, json_type_array)) {
         state->error_status = GENARO_BRIDGE_JSON_ERROR;
     } else {
@@ -493,7 +482,6 @@ static void queue_request_pointers(genaro_download_state_t *state)
         }
 
         if (pointer->status == POINTER_ERROR_REPORTED) {
-
             // exclude this farmer id from future requests
             state->log->debug(state->env->log_options,
                               state->handle,
@@ -593,6 +581,7 @@ static void queue_request_pointers(genaro_download_state_t *state)
         state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
+    
     strcat(path, "/buckets/");
     strcat(path, state->bucket_id);
     strcat(path, "/files/");
@@ -715,18 +704,33 @@ static void report_progress(genaro_download_state_t *state)
     uint64_t total_bytes = 0;
 
     for (int i = 0; i < state->total_pointers; i++) {
-
         genaro_pointer_t *pointer = &state->pointers[i];
 
         downloaded_bytes += pointer->downloaded_size;
         total_bytes += pointer->size;
     }
 
+    // if pointers have not been completely gotten, use the original file size to calculate
+    // the bytes that need to be downloaded, the algorithm is the same as upload.
+    if(!state->pointers_completed) {
+        bool rs = true;
+        if (state->info->size < MIN_SHARD_SIZE) {
+            rs = false;
+        }
+
+        if (state->shard_size) {
+            uint32_t total_data_shards = ceil((double)state->info->size / state->shard_size);
+            uint32_t total_parity_shards = rs ? ceil((double)total_data_shards * 2.0 / 3.0) : 0;
+            state->total_shards = total_data_shards + total_parity_shards;
+
+            total_bytes = state->info->size + total_parity_shards * state->shard_size;
+        }
+    }
+    
     double total_progress = (double)downloaded_bytes / (double)total_bytes;
 
     state->progress_cb(total_progress,
-                       downloaded_bytes,
-                       total_bytes,
+                       state->info->size,
                        state->handle);
 }
 
@@ -785,7 +789,6 @@ static void after_request_shard(uv_work_t *work, int status)
         pointer->downloaded_size = pointer->size;
 
         report_progress(req->state);
-
     }
 
     queue_next_work(req->state);
@@ -1238,7 +1241,6 @@ static void request_info(uv_work_t *work)
                          "Request file info error: %i", request_status);
 
     } else if (status_code == 200 || status_code == 304) {
-
         req->info = malloc(sizeof(genaro_file_meta_t));
         req->info->created = NULL;
         req->info->filename = NULL;
@@ -1274,6 +1276,16 @@ static void request_info(uv_work_t *work)
 
         if (index) {
             req->info->index = strdup(index);
+        }
+
+        struct json_object *size_value;
+        char *size = NULL;
+        if (json_object_object_get_ex(response, "size", &size_value)) {
+            size = (char *)json_object_get_string(size_value);
+        }
+
+        if (size) {
+            req->info->size = (uint64_t)strtoll(size, NULL, 10 );
         }
 
         struct json_object *hmac_obj;
@@ -1789,7 +1801,6 @@ static void queue_next_work(genaro_download_state_t *state)
         state->truncated) {
 
         if (!state->finished && state->pending_work_count == 0) {
-
             // calculate the hmac of all shard hashes
             if (prepare_file_hmac(state)) {
                 state->error_status = GENARO_FILE_GENERATE_HMAC_ERROR;
@@ -1891,7 +1902,6 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     }
 
     // setup download state
-    state->total_bytes = 0;
     state->info = NULL;
     state->requesting_info = false;
     state->info_fail_count = 0;

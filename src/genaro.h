@@ -378,9 +378,13 @@ typedef void (*genaro_progress_upload_cb)(double progress,
                                   uint64_t file_bytes,
                                   void *handle);
 
-typedef void (*genaro_progress_download_cb)(double progress,
+/*typedef void (*genaro_progress_download_cb)(double progress,
                                   uint64_t bytes,
                                   uint64_t total_bytes,
+                                  void *handle);*/
+
+typedef void (*genaro_progress_download_cb)(double progress,
+                                  uint64_t file_bytes,
                                   void *handle);
 
 /** @brief A function signature for a download complete callback
@@ -444,7 +448,6 @@ typedef struct {
  * reference to it, so that once the work is complete the state can be updated.
  */
 typedef struct genaro_download_state {
-    uint64_t total_bytes;
     genaro_file_meta_t *info;
     bool requesting_info;
     uint32_t info_fail_count;

@@ -40,7 +40,6 @@ static void print_shard_info(genaro_upload_state_t *state, int index) {
     printf("================\n");
 
     return;
-
 }
 
 static uv_work_t *uv_work_new()
