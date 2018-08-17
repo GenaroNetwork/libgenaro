@@ -746,7 +746,6 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
     }
 
     if (encrypt_options && encrypt_options->priv_key) {
-
         // prevent private key from being swapped unencrypted to disk
 #ifdef _POSIX_MEMLOCK
         if (encrypt_options->key_len >= page_size) {

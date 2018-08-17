@@ -15,6 +15,7 @@
 #endif
 
 #include "genaro.h"
+#include "utils.h"
 #include "key_file.h"
 
 #define GENARO_THREADPOOL_SIZE "64"
@@ -69,6 +70,67 @@ static char *get_home_dir()
 #else
     return getenv("HOME");
 #endif
+}
+
+char *RetriveNewName(const char *fileName, const char *extra)
+{
+	if (fileName == NULL || strlen(fileName) == 0)
+	{
+		return NULL;
+	}
+
+	int len = strlen(fileName);
+	int extra_len = extra ? strlen(extra) : 0;
+	char *retName = NULL;
+
+	int dotIndex = len;
+	bool flag = false;
+	for (int i = 0; i < len; i++)
+	{
+		if (!flag)
+		{
+			if (fileName[i] != '.')
+			{
+				flag = true;
+			}
+		}
+
+		if (flag && fileName[i] == '.')
+		{
+			dotIndex = i;
+			break;
+		}
+	}
+
+	char *left_name = (char *)malloc((dotIndex + 1) * sizeof(char));
+	strncpy(left_name, fileName, dotIndex);
+	left_name[dotIndex] = '\0';
+
+	char *right_name = NULL;
+	if (dotIndex != len)
+	{
+		right_name = (char *)malloc((len - dotIndex + 2) * sizeof(char));
+		right_name[0] = '.';
+		for (int i = dotIndex + 2; i < len + 1; i++)
+		{
+			right_name[i - dotIndex - 1] = fileName[i - 1];
+		}
+		right_name[len - dotIndex] = '\0';
+	}
+
+	if (right_name)
+	{
+		retName = str_concat_many(3, left_name, extra, right_name);
+	}
+	else
+	{
+		retName = str_concat_many(2, left_name, extra);
+	}
+
+	free(left_name);
+	free(right_name);
+
+	return retName;
 }
 
 static int make_user_directory(char *path)
@@ -385,7 +447,7 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
     return state->error_status;
 }
 
-static void download_file_complete(int status, FILE *fd, void *handle)
+static void download_file_complete(int status, const char *origin_file_path, const char *renamed_file_path, FILE *fd, void *handle)
 {
     printf("\n");
     fclose(fd);
@@ -403,6 +465,92 @@ static void download_file_complete(int status, FILE *fd, void *handle)
 
         exit(status);
     }
+
+    // download success, remove the original file, and rename
+    // the downloaded file to the same file name.
+    if (status == 0)
+    {
+        const char *final_file_path = strdup(origin_file_path);
+
+        bool getname_failed = true;
+
+        // original file exists
+        if (access(final_file_path, F_OK) != -1)
+        {
+            // delete it
+            int ret = unlink(final_file_path);
+
+            // failed to delete
+            if (ret != 0)
+            {
+            #ifndef _WIN32
+                char *path_name = dirname((char *)final_file_path);
+				char *file_name = basename((char *)final_file_path);
+            #else
+                char drive[_MAX_DRIVE];
+                char dir[_MAX_DIR];
+                char fname[_MAX_FNAME];
+                char ext[_MAX_EXT];
+
+                _splitpath(final_file_path, drive, dir, fname, ext);
+                char *path_name = str_concat_many(2, drive, dir);
+                char *file_name = str_concat_many(2, fname, ext);
+            #endif
+
+                int index = 1;
+                char temp_str[5];
+
+                do
+                {
+                    sprintf(temp_str, " (%d)", index);
+                    char *temp_file_name = RetriveNewName(file_name, temp_str);
+                    if (temp_file_name == NULL)
+                    {
+                        break;
+                    }
+
+                    free((char *)final_file_path);
+                    final_file_path = str_concat_many(2, path_name, temp_file_name);
+
+                    free(temp_file_name);
+
+                    if (access(final_file_path, F_OK) == -1)
+                    {
+                        getname_failed = false;
+                        break;
+                    }
+                } while (++index < 10);
+            }
+            else
+            {
+                getname_failed = false;
+            }
+        }
+        else
+        {
+            getname_failed = false;
+        }
+
+        if (!getname_failed)
+        {
+            rename(renamed_file_path, final_file_path);
+        }
+        else
+        {
+            unlink(renamed_file_path);
+        }
+
+        free((char *)final_file_path);
+    }
+    else
+    {
+        // download failed, delete the temp file.
+        unlink(renamed_file_path);
+    }
+
+    free((char *)origin_file_path);
+    free((char *)renamed_file_path);
+
     printf("Download Success!\n");
     exit(0);
 }
@@ -421,6 +569,7 @@ static int download_file(genaro_env_t *env, char *bucket_id,
                          char *file_id, char *path)
 {
     FILE *fd = NULL;
+    const char *renamed_path = NULL;
 
     if (path) {
         char user_input[BUFSIZ];
@@ -443,14 +592,15 @@ static int download_file(genaro_env_t *env, char *bucket_id,
             unlink(path);
         }
 
-        fd = fopen(path, "w+");
+        renamed_path = str_concat_many(2, path, ".genarotmp");
+        fd = fopen(renamed_path, "w+");
     } else {
         fd = stdout;
     }
 
     if (fd == NULL) {
         // TODO send to stderr
-        printf("Unable to open %s: %s\n", path, strerror(errno));
+        printf("Unable to open %s: %s\n", renamed_path, strerror(errno));
         return 1;
     }
 
@@ -459,12 +609,13 @@ static int download_file(genaro_env_t *env, char *bucket_id,
     uv_signal_start(sig, download_signal_handler, SIGINT);
 
     genaro_progress_download_cb progress_cb = (genaro_progress_download_cb)noop;
-    if (path && env->log_options->level == 0) {
+    if (renamed_path && env->log_options->level == 0) {
         progress_cb = file_progress;
     }
 
     genaro_download_state_t *state = genaro_bridge_resolve_file(env, bucket_id,
-                                                              file_id, fd, NULL,
+                                                              file_id, strdup(path), 
+                                                              renamed_path, fd, NULL,
                                                               progress_cb,
                                                               download_file_complete);
     if (!state) {

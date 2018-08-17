@@ -310,7 +310,7 @@ static void cleanup_state(genaro_upload_state_t *state)
         free(state->shard);
     }
 
-    state->finished_cb(state->error_status, state->file_id, state->handle);
+    state->finished_cb(state->bucket_id, state->file_name, state->error_status, state->file_id, state->handle);
 
     free(state);
 }
