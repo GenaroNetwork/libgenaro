@@ -488,10 +488,10 @@ typedef struct genaro_download_state {
 
 typedef struct {
     char *hash;
-    uint8_t *challenges[GENARO_SHARD_CHALLENGES][32];
-    char *challenges_as_str[GENARO_SHARD_CHALLENGES][64 + 1];
+    uint8_t challenges[GENARO_SHARD_CHALLENGES][32];
+    char challenges_as_str[GENARO_SHARD_CHALLENGES][64 + 1];
     // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
-    char *tree[2 * GENARO_SHARD_CHALLENGES - 1][20 * 2 + 1];
+    char tree[GENARO_SHARD_CHALLENGES][20 * 2 + 1];
     int index;
     bool is_parity;
     uint64_t size;

@@ -280,7 +280,6 @@ win_finished:
 #endif
 }
 
-
 int unmap_file(uint8_t *map, uint64_t filesize)
 {
 #ifdef _WIN32

@@ -31,10 +31,10 @@ static void print_shard_info(genaro_upload_state_t *state, int index) {
     printf("size:  %"PRIu64"\n", shard_meta->size);
     printf("is_parity: %d\n", shard_meta->is_parity);
     for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
-        printf("Challenge [%d]: %s\n", i, (char *)shard_meta->challenges_as_str[i]);
+        printf("Challenge [%d]: %s\n", i, shard_meta->challenges_as_str[i]);
     }
     for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
-        printf("Leaf [%d]: %s\n", i, (char *)shard_meta->tree[i]);
+        printf("Leaf [%d]: %s\n", i, shard_meta->tree[i]);
     }
 
     printf("================\n");
@@ -456,7 +456,6 @@ static void create_bucket_entry(uv_work_t *work)
                        "Create bucket entry error: %i", request_status);
     }
 
-
     req->status_code = status_code;
 
     json_object_put(body);
@@ -612,16 +611,13 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->report->code = GENARO_REPORT_SUCCESS;
         shard->report->message = GENARO_REPORT_SHARD_UPLOADED;
         shard->report->send_status = GENARO_REPORT_AWAITING_SEND;
-
     } else if (!state->canceled){
-
         // Update the exchange report with failure
         shard->report->code = GENARO_REPORT_FAILURE;
         shard->report->message = GENARO_REPORT_UPLOAD_ERROR;
         shard->report->send_status = GENARO_REPORT_AWAITING_SEND;
 
         if (shard->push_shard_request_count == 6) {
-
             req->log->error(state->env->log_options, state->handle,
                             "Failed to push shard %d\n", req->shard_meta_index);
 
@@ -681,7 +677,7 @@ static void push_shard(uv_work_t *work)
     if (!state->rs) {
         // Initialize the encryption context
         encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
-                                                                        state->encryption_key);
+                                                state->encryption_key);
         if (!encryption_ctx) {
             state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
@@ -1028,7 +1024,7 @@ static void push_frame(uv_work_t *work)
     for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         json_object_array_add(challenges,
                               json_object_new_string(
-                                  (char *)shard_meta->challenges_as_str[i]));
+                                  shard_meta->challenges_as_str[i]));
     }
     json_object_object_add(body, "challenges", challenges);
 
@@ -1037,7 +1033,7 @@ static void push_frame(uv_work_t *work)
     for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         json_object_array_add(tree,
                               json_object_new_string(
-                                  (char *)shard_meta->tree[i]));
+                                  shard_meta->tree[i]));
     }
     json_object_object_add(body, "tree", tree);
 
@@ -1300,7 +1296,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
 
         state->log->debug(state->env->log_options, state->handle,
                           "Shard %d Challenge [%d]: %s",
-                        req->shard_meta_index,
+                          req->shard_meta_index,
                           i,
                           state->shard[req->shard_meta_index].meta->challenges_as_str[i]);
     }
@@ -1367,7 +1363,7 @@ static void prepare_frame(uv_work_t *work)
     }
 
     // Hash of the shard_data
-    shard_meta->hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 2, sizeof(char));
+    shard_meta->hash = calloc(RIPEMD160_DIGEST_SIZE * 2 + 2, sizeof(char));
     if (!shard_meta->hash) {
         req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
@@ -1377,7 +1373,7 @@ static void prepare_frame(uv_work_t *work)
                    "Creating frame for shard index %d",
                    req->shard_meta_index);
 
-    // Sha256 of encrypted data for calculating shard has
+    // Sha256 of encrypted data for calculating shard
     uint8_t prehash_sha256[SHA256_DIGEST_SIZE];
 
     // Initialize context for sha256 of encrypted data
@@ -1388,7 +1384,7 @@ static void prepare_frame(uv_work_t *work)
     struct sha256_ctx first_sha256_for_leaf[GENARO_SHARD_CHALLENGES];
     for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
         sha256_init(&first_sha256_for_leaf[i]);
-        sha256_update(&first_sha256_for_leaf[i], 32, (uint8_t *)&shard_meta->challenges[i]);
+        sha256_update(&first_sha256_for_leaf[i], 32, shard_meta->challenges[i]);
     }
 
     genaro_encryption_ctx_t *encryption_ctx = NULL;
@@ -1417,7 +1413,7 @@ static void prepare_frame(uv_work_t *work)
 
         read_bytes = pread(fileno(req->shard_file),
                            read_data, AES_BLOCK_SIZE * 256,
-                           shard_meta->index*state->shard_size + total_read);
+                           shard_meta->index * state->shard_size + total_read);
 
         if (read_bytes == -1) {
             req->log->warn(state->env->log_options, state->handle,
@@ -1471,9 +1467,9 @@ static void prepare_frame(uv_work_t *work)
     memset_zero(preleaf_sha256, SHA256_DIGEST_SIZE);
     uint8_t preleaf_ripemd160[RIPEMD160_DIGEST_SIZE];
     memset_zero(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE);
-    char leaf[RIPEMD160_DIGEST_SIZE*2 +1];
-    memset(leaf, '\0', RIPEMD160_DIGEST_SIZE*2 +1);
-    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
+    char leaf[RIPEMD160_DIGEST_SIZE * 2 + 1];
+    memset(leaf, '\0', RIPEMD160_DIGEST_SIZE * 2 + 1);
+    for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++) {
         // finish first sha256 for leaf
         sha256_digest(&first_sha256_for_leaf[i], SHA256_DIGEST_SIZE, preleaf_sha256);
 
@@ -1483,7 +1479,7 @@ static void prepare_frame(uv_work_t *work)
         // sha256 and ripemd160 again
         ripemd160sha256_as_string(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE, leaf);
 
-        memcpy(shard_meta->tree[i], leaf, RIPEMD160_DIGEST_SIZE*2 + 1);
+        memcpy(shard_meta->tree[i], leaf, RIPEMD160_DIGEST_SIZE * 2 + 1);
     }
 
 clean_variables:
@@ -1558,6 +1554,11 @@ clean_variables:
 
 static void create_encrypted_file(uv_work_t *work)
 {
+    time_t start, end;
+    if(genaro_debug) {
+        time(&start);
+    }
+    
     encrypt_file_req_t *req = work->data;
     genaro_upload_state_t *state = req->upload_state;
 
@@ -1565,7 +1566,7 @@ static void create_encrypted_file(uv_work_t *work)
 
     // Initialize the encryption context
     genaro_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
-                                                                    state->encryption_key);
+                                                                     state->encryption_key);
     if (!encryption_ctx) {
         state->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
@@ -1629,6 +1630,14 @@ clean_variables:
     }
     if (encryption_ctx) {
         free_encryption_ctx(encryption_ctx);
+    }
+
+    if(genaro_debug) {
+        time(&end);
+        double interval = (double)(end - start);
+        if(interval > 10.0) {
+            printf("time of create_encrypted_file: %lfs\n", interval);
+        }
     }
 }
 
@@ -1813,6 +1822,11 @@ clean_variables:
 
 static void create_parity_shards(uv_work_t *work)
 {
+    time_t start, end;
+    if(genaro_debug) {
+        time(&start);
+    }
+	
     parity_shard_req_t *req = work->data;
     genaro_upload_state_t *state = req->upload_state;
 
@@ -1885,7 +1899,7 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    data_blocks = (uint8_t**)malloc(state->total_data_shards * sizeof(uint8_t *));
+    data_blocks = (uint8_t **)malloc(state->total_data_shards * sizeof(uint8_t *));
     if (!data_blocks) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
@@ -1897,7 +1911,7 @@ static void create_parity_shards(uv_work_t *work)
         data_blocks[i] = map + i * state->shard_size;
     }
 
-    fec_blocks = (uint8_t**)malloc(state->total_parity_shards * sizeof(uint8_t *));
+    fec_blocks = (uint8_t **)malloc(state->total_parity_shards * sizeof(uint8_t *));
     if (!fec_blocks) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
@@ -1917,7 +1931,6 @@ static void create_parity_shards(uv_work_t *work)
                       state->total_parity_shards,
                       state->shard_size,
                       state->file_size);
-
 
     reed_solomon *rs = reed_solomon_new(state->total_data_shards,
                                         state->total_parity_shards);
@@ -1953,8 +1966,15 @@ clean_variables:
     if (encrypted_file) {
         fclose(encrypted_file);
     }
-}
 
+    if(genaro_debug) {
+        time(&end);
+        double interval = (double)(end - start);
+        if(interval > 10.0) {
+            printf("time of create_parity_shards: %lfs\n", interval);
+        }
+    }
+}
 
 static void queue_create_parity_shards(genaro_upload_state_t *state)
 {
@@ -2293,13 +2313,13 @@ static void queue_push_frame_and_shard(genaro_upload_state_t *state)
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
             state->shard[index].report->send_status == GENARO_REPORT_NOT_PREPARED &&
             check_in_progress(state, PUSHING_FRAME) < state->push_frame_limit) {
-            queue_push_frame(state, index);
+                queue_push_frame(state, index);
         }
 
         if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
             state->shard[index].report->send_status == GENARO_REPORT_NOT_PREPARED &&
             check_in_progress(state, PUSHING_SHARD) < state->push_shard_limit) {
-            queue_push_shard(state, index);
+                queue_push_shard(state, index);
         }
     }
 }
@@ -2358,7 +2378,7 @@ static void queue_next_work(genaro_upload_state_t *state)
     for (int index = 0; index < state->total_shards; index++ ) {
         if (state->shard[index].progress == AWAITING_PREPARE_FRAME &&
             check_in_progress(state, PREPARING_FRAME) < state->prepare_frame_limit) {
-            queue_prepare_frame(state, index);
+                queue_prepare_frame(state, index);
         }
     }
 
@@ -2580,7 +2600,6 @@ static void prepare_upload_state(uv_work_t *work)
         state->encrypted_file_path = create_tmp_name(state, ".crypt");
     }
 
-
 cleanup:
     if (key_as_str) {
         free(key_as_str);
@@ -2589,7 +2608,6 @@ cleanup:
     if (index) {
         free(index);
     }
-
 }
 
 char *create_tmp_name(genaro_upload_state_t *state, char *extension)
