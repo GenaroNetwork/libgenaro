@@ -335,13 +335,12 @@ void close_signal(uv_handle_t *handle)
 }
 
 static void file_progress(double progress,
-                          uint64_t downloaded_bytes,
-                          uint64_t total_bytes,
+                          uint64_t file_bytes,
                           void *handle)
 {
     int bar_width = 70;
 
-    if (progress == 0 && downloaded_bytes == 0) {
+    if (progress == 0) {
         printf("Preparing File...");
         fflush(stdout);
         return;
@@ -363,12 +362,12 @@ static void file_progress(double progress,
     fflush(stdout);
 }
 
-static void upload_file_complete(int status, char *file_id, void *handle)
+static void upload_file_complete(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
 {
     printf("\n");
-    if (status != 0) {
-        printf("Upload failure: %s\n", genaro_strerror(status));
-        exit(status);
+    if (error_status != 0) {
+        printf("Upload failure: %s\n", genaro_strerror(error_status));
+        exit(error_status);
     }
 
     printf("Upload Success! File ID: %s\n", file_id);
@@ -463,91 +462,85 @@ static void download_file_complete(int status, const char *origin_file_path, con
                 printf("Download failure: %s\n", genaro_strerror(status));
         }
 
+        // delete the temp file.
+        unlink(renamed_file_path);
+
         exit(status);
     }
 
     // download success, remove the original file, and rename
     // the downloaded file to the same file name.
-    if (status == 0)
+    const char *final_file_path = strdup(origin_file_path);
+
+    bool getname_failed = true;
+
+    // original file exists
+    if (access(final_file_path, F_OK) != -1)
     {
-        const char *final_file_path = strdup(origin_file_path);
+        // delete it
+        int ret = unlink(final_file_path);
 
-        bool getname_failed = true;
-
-        // original file exists
-        if (access(final_file_path, F_OK) != -1)
+        // failed to delete
+        if (ret != 0)
         {
-            // delete it
-            int ret = unlink(final_file_path);
+        #ifndef _WIN32
+            char *path_name = dirname((char *)final_file_path);
+            char *file_name = basename((char *)final_file_path);
+        #else
+            char drive[_MAX_DRIVE];
+            char dir[_MAX_DIR];
+            char fname[_MAX_FNAME];
+            char ext[_MAX_EXT];
 
-            // failed to delete
-            if (ret != 0)
+            _splitpath(final_file_path, drive, dir, fname, ext);
+            char *path_name = str_concat_many(2, drive, dir);
+            char *file_name = str_concat_many(2, fname, ext);
+        #endif
+
+            int index = 1;
+            char temp_str[5];
+
+            do
             {
-            #ifndef _WIN32
-                char *path_name = dirname((char *)final_file_path);
-				char *file_name = basename((char *)final_file_path);
-            #else
-                char drive[_MAX_DRIVE];
-                char dir[_MAX_DIR];
-                char fname[_MAX_FNAME];
-                char ext[_MAX_EXT];
-
-                _splitpath(final_file_path, drive, dir, fname, ext);
-                char *path_name = str_concat_many(2, drive, dir);
-                char *file_name = str_concat_many(2, fname, ext);
-            #endif
-
-                int index = 1;
-                char temp_str[5];
-
-                do
+                sprintf(temp_str, " (%d)", index);
+                char *temp_file_name = RetriveNewName(file_name, temp_str);
+                if (temp_file_name == NULL)
                 {
-                    sprintf(temp_str, " (%d)", index);
-                    char *temp_file_name = RetriveNewName(file_name, temp_str);
-                    if (temp_file_name == NULL)
-                    {
-                        break;
-                    }
+                    break;
+                }
 
-                    free((char *)final_file_path);
-                    final_file_path = str_concat_many(2, path_name, temp_file_name);
+                free((char *)final_file_path);
+                final_file_path = str_concat_many(2, path_name, temp_file_name);
 
-                    free(temp_file_name);
+                free(temp_file_name);
 
-                    if (access(final_file_path, F_OK) == -1)
-                    {
-                        getname_failed = false;
-                        break;
-                    }
-                } while (++index < 10);
-            }
-            else
-            {
-                getname_failed = false;
-            }
+                if (access(final_file_path, F_OK) == -1)
+                {
+                    getname_failed = false;
+                    break;
+                }
+            } while (++index < 10);
         }
         else
         {
             getname_failed = false;
         }
-
-        if (!getname_failed)
-        {
-            rename(renamed_file_path, final_file_path);
-        }
-        else
-        {
-            unlink(renamed_file_path);
-        }
-
-        free((char *)final_file_path);
     }
     else
     {
-        // download failed, delete the temp file.
+        getname_failed = false;
+    }
+
+    if (!getname_failed)
+    {
+        rename(renamed_file_path, final_file_path);
+    }
+    else
+    {
         unlink(renamed_file_path);
     }
 
+    free((char *)final_file_path);
     free((char *)origin_file_path);
     free((char *)renamed_file_path);
 
