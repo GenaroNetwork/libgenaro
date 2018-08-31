@@ -1135,7 +1135,7 @@ int main(int argc, char **argv)
     }
 
     if (!genaro_bridge) {
-        genaro_bridge = "https://api.storj.io:443/";
+        genaro_bridge = "http://118.31.61.119:8080";
     }
 
     // Parse the host, part and proto from the genaro bridge url
