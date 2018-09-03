@@ -6,20 +6,18 @@ IF(APPLE)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")
 # set(CMAKE_C_FLAGS "-gdwarf-2 -g3")
 
+add_subdirectory(../secp256k1 build-secp256k1)
+add_subdirectory(../libkeccak build-libkeccak)
+
+include_directories(../secp256k1/include)
+include_directories(../libkeccak)
+
 include(CTest)
 enable_testing()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-add_subdirectory(../secp256k1 build-secp256k1)
-add_subdirectory(../libscrypt build-libscrypt)
-add_subdirectory(../libkeccak build-libkeccak)
-
-include_directories(../secp256k1/include)
-include_directories(../libscrypt)
-include_directories(../libkeccak)
 
 add_library(genaro
         src/genaro.c
@@ -31,10 +29,11 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c)
-target_link_libraries(genaro secp256k1 scrypt keccak)
+target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
 
 add_executable(genaroeden-cli src/cli.c)
-target_link_libraries(genaroeden-cli genaro uv json-c nettle curl secp256k1 scrypt keccak)
+# target_link_libraries(genaroeden-cli genaro uv json-c nettle curl secp256k1 scrypt keccak)
+target_link_libraries(genaroeden-cli genaro /usr/local/lib/libuv.a /usr/local/lib/libjson-c.a /usr/local/lib/libnettle.a libcurl.a libsecp256k1.a libscrypt.a libkeccak.a /usr/local/lib/libgmp.a)
 
 # add_executable(tests_rs test/tests_rs.c)
 
@@ -47,6 +46,7 @@ include(CPack)
 
 ELSEIF(UNIX)
 
+set(CMAKE_C_FLAGS "-pthread")
 # set(CMAKE_C_FLAGS "-g3")
 
 add_library(genaro
@@ -59,10 +59,11 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c)
-target_link_libraries(genaro secp256k1 scrypt keccak)
+target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
 
 add_executable(genaroeden-cli src/cli.c)
-target_link_libraries(genaroeden-cli genaro m uv json-c nettle curl secp256k1 scrypt keccak)
+# target_link_libraries(genaroeden-cli genaro m uv json-c nettle curl secp256k1 scrypt keccak)
+target_link_libraries(genaroeden-cli genaro m libuv.a libjson-c.a libnettle.a curl libsecp256k1.a libscrypt.a libkeccak.a libgmp.a)
 
 # add_executable(tests_rs test/tests_rs.c)
 
@@ -73,6 +74,15 @@ ELSEIF(WIN32)
 
 # set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99 -g")
 set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99")
+
+add_subdirectory(../secp256k1 build-secp256k1)
+add_subdirectory(../libscrypt build-libscrypt)
+add_subdirectory(../libkeccak build-libkeccak)
+
+include_directories(../secp256k1/include)
+include_directories(../libscrypt)
+include_directories(../libkeccak)
+
 include_directories(depends/build/x86_64-w64-mingw32/include)
 include_directories(depends/sources/x86_64-w64-mingw32/libscrypt)
 include_directories(depends/sources/x86_64-w64-mingw32/libkeccak)
