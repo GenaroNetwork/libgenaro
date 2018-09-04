@@ -12,6 +12,7 @@
 #else
 #include <termios.h>
 #include <unistd.h>
+#include <libgen.h>
 #endif
 
 #include "genaro.h"

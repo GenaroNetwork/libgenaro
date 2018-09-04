@@ -232,6 +232,7 @@ typedef struct {
     const char *created;
     const char *name;
     const char *id;
+    const char *bucketId;
     bool decrypted;
     uint64_t limitStorage;
     uint64_t usedStorage;
