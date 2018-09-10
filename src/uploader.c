@@ -2078,7 +2078,6 @@ static void send_exchange_report(uv_work_t *work)
                                     "/reports/exchanges", NULL, body,
                                     true, &response, &status_code);
 
-
     if (request_status) {
         state->log->warn(state->env->log_options, state->handle,
                          "Send exchange report error: %i", request_status);
@@ -2171,7 +2170,6 @@ static void queue_verify_bucket_id(genaro_upload_state_t *state)
     state->pending_work_count += 1;
     genaro_bridge_get_bucket(state->env, state->bucket_id, state, verify_bucket_id_callback);
 }
-
 
 static void verify_file_name_callback(uv_work_t *work_req, int status)
 {
