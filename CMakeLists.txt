@@ -75,14 +75,6 @@ ELSEIF(WIN32)
 # set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99 -g")
 set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99")
 
-add_subdirectory(../secp256k1 build-secp256k1)
-add_subdirectory(../libscrypt build-libscrypt)
-add_subdirectory(../libkeccak build-libkeccak)
-
-include_directories(../secp256k1/include)
-include_directories(../libscrypt)
-include_directories(../libkeccak)
-
 include_directories(depends/build/x86_64-w64-mingw32/include)
 include_directories(depends/sources/x86_64-w64-mingw32/libscrypt)
 include_directories(depends/sources/x86_64-w64-mingw32/libkeccak)
