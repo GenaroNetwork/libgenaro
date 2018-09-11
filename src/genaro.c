@@ -3,7 +3,7 @@
 #include "utils.h"
 #include "crypto.h"
 #include "key_file.h"
-#include "rsa.h"
+#include "rsa_pkcs1.h"
 
 static inline void noop() {};
 
@@ -553,7 +553,7 @@ static void after_prepare_decrypt_key(uv_work_t *work, int status)
         if(!req->error_code) {
             encrypted = (unsigned char *)malloc(RSA_ENCRYPTED_MAX_LENGTH * sizeof(unsigned char));
             // use RSA to encrypt the file encryption key.
-            encrypted_length = public_encrypt((unsigned char *)decrypt_key, DETERMINISTIC_KEY_SIZE, (unsigned char *)req->rsa_public_key, encrypted);
+            encrypted_length = public_encrypt((unsigned char *)decrypt_key, DETERMINISTIC_KEY_SIZE, (unsigned char *)req->share_public_key, encrypted);
             if(encrypted_length == -1) {
                 req->error_code = GENARO_RSA_ENCRYPTION_ERROR;
             }
@@ -561,8 +561,8 @@ static void after_prepare_decrypt_key(uv_work_t *work, int status)
     }
     
     queue_share_file(req->http_options, req->options, req->encrypt_options, 
-                            error_code, status_code, req->file_id, req->to_address, req->decrypted_file_name,
-                            req->price, (const char *)encrypted, req->loop, req->handle, req->cb);
+                     error_code, status_code, req->file_id, req->to_address, req->decrypted_file_name,
+                     req->price, (const char *)encrypted, req->loop, req->handle, req->cb);
 
 cleanup:
     free(req->path);
@@ -582,16 +582,16 @@ static void prepare_decrypt_key_request_worker(uv_work_t *work)
                                  req->options, req->method, req->path, NULL, req->body,
                                  req->auth, &req->response, &status_code);
 
+    req->status_code = status_code;
+
     // TODO(dingyi)
     if(status_code != 200 && status_code != 304) {
         return;
     }
 
-    req->status_code = status_code;
-
     if (!req->response) {
         req->index = NULL;
-        req->rsa_public_key = NULL;
+        req->share_public_key = NULL;
         return;
     }
 
@@ -605,13 +605,13 @@ static void prepare_decrypt_key_request_worker(uv_work_t *work)
     req->index = json_object_get_string(index);
 
     // get the RSA public key
-    struct json_object *rsa_public_key;
-    json_object_object_get_ex(req->response, "shareKey", &rsa_public_key);
-    if(rsa_public_key == NULL) {
+    struct json_object *share_public_key;
+    json_object_object_get_ex(req->response, "sharePublicKey", &share_public_key);
+    if(share_public_key == NULL) {
         req->error_code = GENARO_BRIDGE_JSON_ERROR;
         return;
     }
-    req->rsa_public_key = json_object_get_string(rsa_public_key);
+    req->share_public_key = json_object_get_string(share_public_key);
 }
 
 static void list_files_request_worker(uv_work_t *work)
@@ -935,7 +935,7 @@ static prepare_decrypt_key_request_t *prepare_decrypt_key_request_new(
     req->price = price;
     req->cb = cb;
     req->index = NULL;
-    req->rsa_public_key = NULL;
+    req->share_public_key = NULL;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -1030,7 +1030,7 @@ static void log_formatter_error(genaro_log_options_t *options, void *handle,
 
 GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
                                  genaro_encrypt_options_t *encrypt_options,
-                                 genaro_rsa_prikey_options_t *rsaPrikey_options,
+                                 genaro_share_prikey_options_t *rsaPrikey_options,
                                  genaro_http_options_t *http_options,
                                  genaro_log_options_t *log_options)
 {
@@ -1149,7 +1149,7 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
     }
 
     // deep copy rsaPrikey options
-    genaro_rsa_prikey_options_t *ro = malloc(sizeof(genaro_rsa_prikey_options_t));
+    genaro_share_prikey_options_t *ro = malloc(sizeof(genaro_share_prikey_options_t));
     if (!ro) {
         return NULL;
     }

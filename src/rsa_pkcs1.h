@@ -1,5 +1,5 @@
-#ifndef __RSA_H_
-#define __RSA_H_
+#ifndef __RSA_PKCS1_H_
+#define __RSA_PKCS1_H_
 
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
@@ -7,6 +7,8 @@
 #include <openssl/evp.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
+
+#define RSA_PADDING RSA_PKCS1_PADDING
 
 RSA *createRSA(unsigned char *key, int is_public);
 

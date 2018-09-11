@@ -179,7 +179,7 @@ typedef struct genaro_http_options {
 typedef struct genaro_rsa_prikey_options {
     const char *priv_key;
     // size_t key_len;
-} genaro_rsa_prikey_options_t;
+} genaro_share_prikey_options_t;
 
 /** @brief A function signature for logging
  */
@@ -219,7 +219,7 @@ typedef struct genaro_env {
     genaro_encrypt_options_t *encrypt_options;
     genaro_http_options_t *http_options;
     genaro_log_options_t *log_options;
-    genaro_rsa_prikey_options_t *rsaPrikey_options;
+    genaro_share_prikey_options_t *rsaPrikey_options;
     const char *tmp_path;
     uv_loop_t *loop;
     genaro_log_levels_t *log;
@@ -337,7 +337,7 @@ typedef struct {
     double price;
     uv_after_work_cb cb;
     const char *index;
-    const char *rsa_public_key;
+    const char *share_public_key;
     char *method;
     char *path;
     bool auth;
@@ -665,7 +665,7 @@ GENARO_API void genaro_key_result_to_encrypt_options(key_result_t *key_result, g
  */
 GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
                                          genaro_encrypt_options_t *encrypt_options,
-                                         genaro_rsa_prikey_options_t *rsaPrikey_options,
+                                         genaro_share_prikey_options_t *rsaPrikey_options,
                                          genaro_http_options_t *http_options,
                                          genaro_log_options_t *log_options);
 

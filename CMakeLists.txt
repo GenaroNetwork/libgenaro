@@ -29,7 +29,7 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c
-        src/rsa.c)
+        src/rsa_pkcs1.c)
 target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a libcrypto.a)
 
 add_executable(genaroeden-cli src/cli.c)
@@ -60,7 +60,7 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c
-        src/rsa.c)
+        src/rsa_pkcs1.c)
 target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
 
 add_executable(genaroeden-cli src/cli.c)
@@ -77,10 +77,12 @@ ELSEIF(WIN32)
 # set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99 -g")
 set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99")
 
+include_directories("C:/Program Files/Mingw-w64/opt/include")
 include_directories(depends/build/x86_64-w64-mingw32/include)
 include_directories(depends/sources/x86_64-w64-mingw32/libscrypt)
 include_directories(depends/sources/x86_64-w64-mingw32/libkeccak)
 link_directories(depends/build/x86_64-w64-mingw32/lib)
+link_directories("C:/Program Files/Mingw-w64/opt/lib")
 
 add_library(genaro
         src/genaro.c
@@ -92,13 +94,13 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c
-        src/rsa.c)
-target_link_libraries(genaro secp256k1 scrypt keccak)
+        src/rsa_pkcs1.c)
+# target_link_libraries(genaro secp256k1 scrypt keccak)
 
 add_executable(genaroeden-cli src/cli.c)
 
 # nettle must locate behind curl and gnutls，gmp must locate behind gnutls，hogweed must locate behind gnutls.
-target_link_libraries(genaroeden-cli genaro uv json-c curl gnutls nettle hogweed gmp secp256k1 scrypt keccak ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
+target_link_libraries(genaroeden-cli genaro uv json-c curl gnutls nettle hogweed gmp secp256k1 scrypt keccak crypto ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
 
 # add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
 # target_link_libraries(tests genaro uv json-c curl gnutls nettle hogweed gmp microhttpd ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)

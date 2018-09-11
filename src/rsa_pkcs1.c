@@ -1,7 +1,5 @@
 // #include <stdio.h>
-#include "rsa.h"
-
-#define RSA_PADDING RSA_PKCS1_PADDING
+#include "rsa_pkcs1.h"
 
 RSA *createRSA(unsigned char *key, int is_public)
 {
@@ -40,14 +38,14 @@ int private_decrypt(unsigned char *enc_data, int data_len, unsigned char *key, u
 
 int private_encrypt(unsigned char *data, int data_len, unsigned char *key, unsigned char *encrypted)
 {
-    RSA * rsa = createRSA(key, 0);
+    RSA *rsa = createRSA(key, 0);
     int result = RSA_private_encrypt(data_len, data, encrypted, rsa, RSA_PADDING);
     return result;
 }
 
 int public_decrypt(unsigned char *enc_data, int data_len, unsigned char *key, unsigned char *decrypted)
 {
-    RSA * rsa = createRSA(key, 1);
+    RSA *rsa = createRSA(key, 1);
     int  result = RSA_public_decrypt(data_len, enc_data, decrypted, rsa, RSA_PADDING);
     return result;
 }
