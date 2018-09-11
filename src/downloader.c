@@ -351,13 +351,9 @@ static void after_request_pointers(uv_work_t *work, int status)
     }
 
     if (status != 0) {
-
         state->error_status = GENARO_BRIDGE_POINTER_ERROR;
-
     } else if (req->status_code == 429 || req->status_code == 420) {
-
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
-
     } else if (req->status_code != 200) {
         if (req->status_code > 0 && req->status_code < 500) {
             state->error_status = GENARO_BRIDGE_POINTER_ERROR;
@@ -373,7 +369,6 @@ static void after_request_pointers(uv_work_t *work, int status)
             state->pointer_fail_count = 0;
             state->error_status = GENARO_BRIDGE_POINTER_ERROR;
         }
-
     } else if (!json_object_is_type(req->response, json_type_array)) {
         state->error_status = GENARO_BRIDGE_JSON_ERROR;
     } else {
@@ -1141,8 +1136,8 @@ static void determine_decryption_key(genaro_download_state_t *state, char *key)
         state->decrypt_key = NULL;
         state->decrypt_ctr = NULL;
     } else if(key) {
-        // TODO 获取RSA private key
-        char *rsa_private_key = "";
+        // TODO(dingyi)
+        char *rsa_private_key = state->env->rsaPrikey_options->priv_key;
         unsigned char decrypted[RSA_ENCRYPTED_MAX_LENGTH] = {};
         int decrypted_length = private_decrypt(key, DETERMINISTIC_KEY_SIZE, (unsigned char *)rsa_private_key, decrypted);
         if(decrypted_length == -1) {
@@ -1327,7 +1322,7 @@ static void request_info(uv_work_t *work)
             req->info->index = strdup(index);
         }
 
-        // TODO
+        // TODO(dingyi)
         struct json_object *key_value;
         char *key = NULL;
         if (json_object_object_get_ex(response, "key", &key_value)) {

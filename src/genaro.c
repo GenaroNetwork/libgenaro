@@ -467,7 +467,7 @@ static void share_file_request_worker(uv_work_t *work)
                                     req->options, "GET", req->path, NULL, req->body,
                                     req->auth, &req->response, &status_code);
 
-    // TODO
+    // TODO(dingyi)
     if(status_code != 200) {
         return;
     }
@@ -501,7 +501,7 @@ static void queue_share_file(genaro_http_options_t *http_options,
 
     char *path = strdup("/shares");
 
-    //TODO
+    //TODO(dingyi)
     struct json_object *body = json_object_new_object();
     json_object_object_add(body, "toAddress", json_object_new_string(to_address));
     json_object_object_add(body, "price", json_object_new_double(price));
@@ -537,7 +537,7 @@ static void after_prepare_decrypt_key(uv_work_t *work, int status)
     int encrypted_length = -1;
     uint8_t *decrypt_key = NULL;
 
-    // TODO dingyi
+    // TODO(dingyi)
     if (status != 0) {
         error_code = GENARO_QUEUE_ERROR;
     } else if(!req->status_code && (req->status_code == 200 || req->status_code == 304)) {
@@ -582,7 +582,7 @@ static void prepare_decrypt_key_request_worker(uv_work_t *work)
                                  req->options, req->method, req->path, NULL, req->body,
                                  req->auth, &req->response, &status_code);
 
-    // TODO
+    // TODO(dingyi)
     if(status_code != 200 && status_code != 304) {
         return;
     }
@@ -595,8 +595,7 @@ static void prepare_decrypt_key_request_worker(uv_work_t *work)
         return;
     }
 
-    //TODO
-    // get the "index" for file decryption
+    // TODO(dingyi) get the "index" for file decryption
     struct json_object *index;
     json_object_object_get_ex(req->response, "index", &index);
     if(index == NULL) {
@@ -605,7 +604,7 @@ static void prepare_decrypt_key_request_worker(uv_work_t *work)
     }
     req->index = json_object_get_string(index);
 
-    // TODO: get the RSA public key
+    // get the RSA public key
     struct json_object *rsa_public_key;
     json_object_object_get_ex(req->response, "shareKey", &rsa_public_key);
     if(rsa_public_key == NULL) {
@@ -1960,7 +1959,7 @@ GENARO_API int genaro_bridge_share_file(genaro_env_t *env,
         return GENARO_MEMORY_ERROR;
     }
 
-    //TODO
+    // TODO(dingyi)
     char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
                                  file_id, "/info");
     if (!path) {
