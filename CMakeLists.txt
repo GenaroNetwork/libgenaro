@@ -3,7 +3,7 @@ project(libgenaro VERSION 0.1.0)
 
 IF(APPLE)
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
 # set(CMAKE_C_FLAGS "-gdwarf-2 -g3")
 
 add_subdirectory(../secp256k1 build-secp256k1)
@@ -30,7 +30,7 @@ add_library(genaro
         src/uploader.c
         src/utils.c
         src/rsa.c)
-target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
+target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a libcrypto.a)
 
 add_executable(genaroeden-cli src/cli.c)
 # target_link_libraries(genaroeden-cli genaro uv json-c nettle curl secp256k1 scrypt keccak)

@@ -1132,22 +1132,71 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
     state->decrypt_ctr = decrypt_ctr;
 }
 
-static void determine_decryption_key(genaro_download_state_t *state)
+// has_key
+static void determine_decryption_key(genaro_download_state_t *state, char *key)
 {
     if (!state->env->encrypt_options ||
         !state->env->encrypt_options->priv_key) {
 
         state->decrypt_key = NULL;
         state->decrypt_ctr = NULL;
-    } else {
-        if (state->info->index) {
-            // calculate decryption key based on the index
-            determine_decryption_key_v1(state);
-        } else {
-            // calculate decryption key based on the file_id
-            determine_decryption_key_v0(state);
+    } else if(key) {
+        // TODO 获取RSA private key
+        char *rsa_private_key = "";
+        unsigned char decrypted[4098] = {};
+        int decrypted_length = private_decrypt(key, DETERMINISTIC_KEY_SIZE, (unsigned char *)rsa_private_key, decrypted);
+        if(decrypted_length == -1) {
+            state->error_status = GENARO_RSA_DECRYPTION_ERROR;
+            return;
         }
-    };
+
+        state->decrypt_key = (uint8_t *)decrypted;
+
+        // get decrypt_ctr
+        if (state->info->index) {
+            uint8_t *index = str2hex(strlen(state->info->index), (char *)state->info->index);
+            if (!index) {
+                state->error_status = GENARO_MEMORY_ERROR;
+                return;
+            }
+
+            uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+            if (!decrypt_ctr) {
+                state->error_status = GENARO_MEMORY_ERROR;
+                return;
+            }
+
+            memcpy(decrypt_ctr, index, AES_BLOCK_SIZE);
+            state->decrypt_ctr = decrypt_ctr;
+        }
+        else {
+            uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
+            if (!file_id_hash) {
+                state->error_status = GENARO_MEMORY_ERROR;
+                return;
+            }
+            ripemd160_of_str((uint8_t *)state->file_id,
+                             strlen(state->file_id), file_id_hash);
+            file_id_hash[RIPEMD160_DIGEST_SIZE] = '\0';
+
+            uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+            if (!decrypt_ctr) {
+                state->error_status = GENARO_MEMORY_ERROR;
+                return;
+            }
+            memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
+
+            free(file_id_hash);
+
+            state->decrypt_ctr = decrypt_ctr;
+        }
+    } else if (state->info->index) {
+        // calculate decryption key based on the index
+        determine_decryption_key_v1(state);
+    } else {
+        // calculate decryption key based on the file_id
+        determine_decryption_key_v0(state);
+    }
 }
 
 static void after_request_info(uv_work_t *work, int status)
@@ -1171,7 +1220,7 @@ static void after_request_info(uv_work_t *work, int status)
         }
 
         // Now that we have info we can calculate the decryption key
-        determine_decryption_key(req->state);
+        determine_decryption_key(req->state, req->key);
 
     } else if (req->error_status) {
         switch(req->error_status) {
@@ -1278,6 +1327,17 @@ static void request_info(uv_work_t *work)
             req->info->index = strdup(index);
         }
 
+        // TODO
+        struct json_object *key_value;
+        char *key = NULL;
+        if (json_object_object_get_ex(response, "key", &key_value)) {
+            key = (char *)json_object_get_string(key_value);
+        }
+
+        if (key) {
+            req->key = strdup(key);
+        }
+
         struct json_object *size_value;
         char *size = NULL;
         if (json_object_object_get_ex(response, "size", &size_value)) {
@@ -1372,6 +1432,7 @@ static void queue_request_info(genaro_download_state_t *state)
     req->status_code = 0;
     req->bucket_id = state->bucket_id;
     req->file_id = state->file_id;
+    req->key = NULL;
     req->error_status = 0;
     req->info = NULL;
     req->state = state;

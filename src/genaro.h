@@ -102,8 +102,9 @@ extern "C" {
 // Miscellaneous errors
 #define GENARO_HEX_DECODE_ERROR 7000
 
-// RSA encryption errors
+// RSA encryption/decryption errors
 #define GENARO_RSA_ENCRYPTION_ERROR 8000
+#define GENARO_RSA_DECRYPTION_ERROR 8001
 
 // Exchange report codes
 #define GENARO_REPORT_SUCCESS 1000
@@ -317,11 +318,30 @@ typedef struct {
     genaro_http_options_t *http_options;
     genaro_encrypt_options_t *encrypt_options;
     genaro_bridge_options_t *options;
+    uv_loop_t *loop;
     const char *bucket_id;
     const char *file_id;
     const char *para;
+    uv_after_work_cb cb;
     const char *index;
     const char *rsa_public_key;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    int error_code;
+    int status_code;
+    void *handle;
+} prepare_decrypt_key_request_t;
+
+/** @brief A structure for queueing store decrypt key request work
+ */
+typedef struct {
+    genaro_http_options_t *http_options;
+    genaro_encrypt_options_t *encrypt_options;
+    genaro_bridge_options_t *options;
+    const char *key;
     char *method;
     char *path;
     bool auth;

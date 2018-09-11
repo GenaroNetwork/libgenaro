@@ -113,6 +113,9 @@ typedef struct {
     int status_code;
     const char *bucket_id;
     const char *file_id;
+    /* if this file is not encrypted by the user himself, "key" is
+     the file encryption key that is encrypted with RSA public key */
+    const char *key;
     int error_status;
     genaro_file_meta_t *info;
     /* state should not be modified in worker threads */

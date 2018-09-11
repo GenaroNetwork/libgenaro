@@ -3,6 +3,7 @@
 #include "utils.h"
 #include "crypto.h"
 #include "key_file.h"
+#include "rsa.h"
 
 static inline void noop() {};
 
@@ -47,6 +48,12 @@ void genaro_key_result_to_encrypt_options(key_result_t *key_result, genaro_encry
     encrypt_options->key_len = key_result->key_len;
     free(key_result->dec_key);
     free(key_result);
+}
+
+static uv_work_t *uv_work_new()
+{
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    return work;
 }
 
 static void json_request_worker(uv_work_t *work)
@@ -328,14 +335,13 @@ static void rename_bucket_request_worker(uv_work_t *work)
     req->status_code = status_code;
 }
 
-static uint8_t *get_decryption_key_v1(store_decrypt_key_request_t *req)
+static uint8_t *get_decryption_key_v1(prepare_decrypt_key_request_t *req)
 {
     uint8_t *index = NULL;
     char *file_key_as_str = NULL;
 
     file_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!file_key_as_str) {
-        
         goto cleanup;
     }
 
@@ -363,14 +369,18 @@ cleanup:
     if (index) {
         free(index);
     }
+    return NULL;
 }
 
-static uint8_t *get_decryption_key_v0(store_decrypt_key_request_t *req)
+static uint8_t *get_decryption_key_v0(prepare_decrypt_key_request_t *req)
 {
-    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    char *file_key = NULL;
+    uint8_t *decrypt_key = NULL;
+
+    file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!file_key) {
         req->error_code = GENARO_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
 
     if (generate_file_key(req->encrypt_options->priv_key,
@@ -378,14 +388,14 @@ static uint8_t *get_decryption_key_v0(store_decrypt_key_request_t *req)
                           req->bucket_id,
                           req->file_id, &file_key)) {
         req->error_code = GENARO_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
-    uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+    decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
     if (!decrypt_key) {
         req->error_code = GENARO_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
 
     sha256_of_str((uint8_t *)file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
@@ -395,11 +405,192 @@ static uint8_t *get_decryption_key_v0(store_decrypt_key_request_t *req)
     free(file_key);
 
     return decrypt_key;
+
+cleanup:
+    free(file_key);
+    free(decrypt_key);
+    return NULL;
 }
 
-static void store_decrypt_key_request_worker(uv_work_t *work)
+static store_decrypt_key_request_t *store_decrypt_key_request_new(
+        genaro_http_options_t *http_options,
+        genaro_bridge_options_t *options,
+        genaro_encrypt_options_t *encrypt_options,
+        int error_code,
+        int status_code,
+        char *method,
+        char *path,
+        struct json_object *request_body,
+        bool auth,
+        const char *key,
+        void *handle)
 {
+    store_decrypt_key_request_t *req = malloc(sizeof(store_decrypt_key_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->http_options = http_options;
+    req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->method = method;
+    req->path = path;
+    req->auth = auth;
+    req->body = request_body;
+    req->response = NULL;
+
+    // this key is the file decryption key that is encrypted with RSA.
+    req->key = key;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
+static void store_decrypt_key_request_worker(uv_work_t *work) {
+    if(!work) {
+        return;
+    }
+
     store_decrypt_key_request_t *req = work->data;
+
+    if(!req) {
+        return;
+    }
+
+    // error_code and status_code from prepare_decrypt_key
+    if(req->error_code || req->status_code) {
+        return;
+    }
+
+    int status_code = 0;
+
+    // TODO: store the file encryption key that is encrypted with RSA public key.
+    char *path = "";
+    // char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
+    //                              file_id, "/info");
+    if (!path) {
+        req->error_code = GENARO_MEMORY_ERROR;
+        return;
+    }
+    req->path = path;
+
+    struct json_object *body = json_object_new_object();
+    struct json_object *key = json_object_new_string(req->key);
+    json_object_object_add(body, "key", key);
+    req->body = body;
+    int request_status = fetch_json(req->http_options, req->encrypt_options,
+                                    req->options, "GET", req->path, NULL, req->body,
+                                    req->auth, &req->response, &status_code);
+
+    // TODO
+    if(status_code != 200) {
+        return;
+    }
+
+    req->status_code = status_code;
+
+    json_object_put(body);
+    free(path); path = NULL;
+    free(req->key); req->key = NULL;
+}
+
+static void queue_store_decrypt_key(genaro_http_options_t *http_options,
+                                    genaro_bridge_options_t *options,
+                                    genaro_encrypt_options_t *encrypt_options,
+                                    int error_code,
+                                    int status_code,
+                                    uv_loop_t *loop,
+                                    const char *key,
+                                    uv_after_work_cb cb,
+                                    void *handle)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        if(error_code != 0) {
+            error_code = GENARO_MEMORY_ERROR;
+        }
+    }
+
+    //TODO
+    char *path = "";
+    // char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
+    //                              file_id, "/info");
+    if (!path) {
+        if(error_code != 0) {
+            error_code = GENARO_MEMORY_ERROR;
+        }
+    }
+
+    uv_work_t *req = NULL;
+
+    if(work) {
+        work->data = store_decrypt_key_request_new(http_options, options, encrypt_options,
+                                                   error_code, status_code, "GET", path, 
+                                                   NULL, true, key, handle);
+        req = work->data;
+    } else {
+        req = NULL;
+    }
+
+    uv_queue_work(loop, req, store_decrypt_key_request_worker, cb);
+}
+
+static void after_prepare_decrypt_key(uv_work_t *work, int status)
+{
+    prepare_decrypt_key_request_t *req = work->data;
+    int error_code = req->error_code;
+    int status_code = req->status_code;
+    unsigned char *encrypted = NULL;
+    int encrypted_length = -1;
+    uint8_t *decrypt_key = NULL;
+
+    // TODO dingyi, why 4098???
+    if (status != 0) {
+        error_code = GENARO_QUEUE_ERROR;
+    } else if(!req->status_code && req->status_code == 200) {
+        if (req->response) {
+            json_object_put(req->response);
+        }
+
+        if(req->index) {
+            decrypt_key = get_decryption_key_v1(req);
+        } else {
+            decrypt_key = get_decryption_key_v0(req);
+        }
+        if(!req->error_code) {
+            encrypted = (unsigned char *)malloc(4098 * sizeof(unsigned char));
+            // use RSA to encrypt the file decryption key.
+            encrypted_length = public_encrypt((unsigned char *)decrypt_key, DETERMINISTIC_KEY_SIZE, (unsigned char *)req->rsa_public_key, encrypted);
+            if(encrypted_length == -1)
+            {
+                req->error_code = GENARO_RSA_ENCRYPTION_ERROR;
+            }
+        }
+    }
+    
+    queue_store_decrypt_key(req->http_options, req->options, req->encrypt_options, 
+                            error_code, status_code,
+                            req->loop, (const char *)encrypted, req->cb, req->handle);
+
+cleanup:
+    free(req->path);
+    req->path = NULL;
+    free(req);
+    req = NULL;
+    free(work);
+    work = NULL;
+}
+
+// static void after_store_decrypt_key(uv_work_t *work, int status)
+// {
+
+// }
+
+static void prepare_decrypt_key_request_worker(uv_work_t *work)
+{
+    prepare_decrypt_key_request_t *req = work->data;
     int status_code = 0;
 
     req->error_code = fetch_json(req->http_options, req->encrypt_options,
@@ -415,6 +606,7 @@ static void store_decrypt_key_request_worker(uv_work_t *work)
 
     if (!req->response) {
         req->index = NULL;
+        req->rsa_public_key = NULL;
         return;
     }
 
@@ -428,16 +620,6 @@ static void store_decrypt_key_request_worker(uv_work_t *work)
     }
     req->index = json_object_get_string(index);
 
-    uint8_t *decrypt_key = NULL;
-    if(req->index) {
-        decrypt_key = get_decryption_key_v1(req);
-    } else {
-        decrypt_key = get_decryption_key_v0(req);
-    }
-    if(req->error_code) {
-        return;
-    }
-
     // TODO: get the RSA public key
     struct json_object *rsa_public_key;
     json_object_object_get_ex(req->response, "key", &rsa_public_key);
@@ -446,45 +628,6 @@ static void store_decrypt_key_request_worker(uv_work_t *work)
         return;
     }
     req->rsa_public_key = json_object_get_string(rsa_public_key);
-
-    unsigned char encrypted[4098] = {};
-
-    int encrypted_length = public_encrypt((unsigned char *)decrypt_key, DETERMINISTIC_KEY_SIZE, (unsigned char *)req->rsa_public_key, encrypted);
-    if(encrypted_length == -1)
-    {
-        req->error_code = GENARO_RSA_ENCRYPTION_ERROR;
-        return;
-    }
-
-    // TODO: store the file encryption key that is encrypted with RSA public key.
-    char *path = "";
-    // char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
-    //                              file_id, "/info");
-    if (!path) {
-        return GENARO_MEMORY_ERROR;
-    }
-    req->path = path;
-    
-    struct json_object *body = json_object_new_object();
-    json_object *key = json_object_new_string((const char *)encrypted);
-    json_object_object_add(body, "key", key);
-    req->body = body;
-    int request_status = fetch_json(req->http_options, req->encrypt_options,
-                                 req->options, "GET", req->path, NULL, req->body,
-                                 req->auth, &req->response, &status_code);
-
-    // TODO
-    if(status_code != 200) {
-        return;
-    }
-
-    req->status_code = status_code;
-
-    json_object_put(body);
-    free(path);
-    // if (!req->response) {
-    //     return;
-    // }
 }
 
 static void list_files_request_worker(uv_work_t *work)
@@ -580,12 +723,6 @@ static void list_files_request_worker(uv_work_t *work)
             file->filename = strdup(encrypted_file_name);
         }
     }
-}
-
-static uv_work_t *uv_work_new()
-{
-    uv_work_t *work = malloc(sizeof(uv_work_t));
-    return work;
 }
 
 static json_request_t *json_request_new(
@@ -776,10 +913,11 @@ static rename_bucket_request_t *rename_bucket_request_new(
     return req;
 }
 
-static store_decrypt_key_request_t *store_decrypt_key_request_new(
+static prepare_decrypt_key_request_t *prepare_decrypt_key_request_new(
         genaro_http_options_t *http_options,
         genaro_bridge_options_t *options,
         genaro_encrypt_options_t *encrypt_options,
+        uv_loop_t *loop,
         char *method,
         char *path,
         struct json_object *request_body,
@@ -787,9 +925,10 @@ static store_decrypt_key_request_t *store_decrypt_key_request_new(
         const char *bucket_id,
         const char *file_id,
         const char *para,
+        uv_after_work_cb cb,
         void *handle)
 {
-    store_decrypt_key_request_t *req = malloc(sizeof(store_decrypt_key_request_t));
+    prepare_decrypt_key_request_t *req = malloc(sizeof(prepare_decrypt_key_request_t));
     if (!req) {
         return NULL;
     }
@@ -797,6 +936,7 @@ static store_decrypt_key_request_t *store_decrypt_key_request_new(
     req->http_options = http_options;
     req->options = options;
     req->encrypt_options = encrypt_options;
+    req->loop = loop;
     req->method = method;
     req->path = path;
     req->auth = auth;
@@ -805,7 +945,9 @@ static store_decrypt_key_request_t *store_decrypt_key_request_new(
     req->bucket_id = bucket_id;
     req->file_id = file_id;
     req->para = para;
+    req->cb = cb;
     req->index = NULL;
+    req->rsa_public_key = NULL;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -1774,18 +1916,19 @@ GENARO_API int genaro_bridge_store_decrypt_key(genaro_env_t *env,
         return GENARO_MEMORY_ERROR;
     }
 
-    work->data = store_decrypt_key_request_new(env->http_options,
+    work->data = prepare_decrypt_key_request_new(env->http_options,
                                            env->bridge_options,
                                            env->encrypt_options,
+                                           env->loop,
                                            "GET", path, NULL, true, 
-                                           bucket_id, file_id, para, 
+                                           bucket_id, file_id, para, cb,
                                            handle);
 
     if (!work) {
         return GENARO_MEMORY_ERROR;
     }
 
-    return uv_queue_work(env->loop, (uv_work_t*) work, store_decrypt_key_request_worker, cb);
+    return uv_queue_work(env->loop, (uv_work_t*) work, prepare_decrypt_key_request_worker, after_prepare_decrypt_key);
 }
 
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr)

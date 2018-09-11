@@ -1,14 +1,9 @@
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
-#include <openssl/rsa.h>
-#include <openssl/evp.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <stdio.h>
+// #include <stdio.h>
+#include "rsa.h"
 
 #define RSA_PADDING RSA_PKCS1_PADDING
 
-RSA *createRSA(unsigned char *key, int public)
+RSA *createRSA(unsigned char *key, int is_public)
 {
     RSA *rsa = NULL;
     BIO *keybio = NULL;
@@ -17,7 +12,7 @@ RSA *createRSA(unsigned char *key, int public)
     {
         return NULL;
     }
-    if(public)
+    if(is_public)
     {
         rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
     }
