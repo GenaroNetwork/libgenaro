@@ -1200,7 +1200,7 @@ int main(int argc, char **argv)
             .port  = port,
         };
 
-        env = genaro_init_env(&options, NULL, &http_options, &log_options);
+        env = genaro_init_env(&options, NULL, NULL, &http_options, &log_options);
         if (!env) {
             return 1;
         }
@@ -1248,7 +1248,7 @@ int main(int argc, char **argv)
                 .key_len = key_result->key_len,
         };
 
-        env = genaro_init_env(&options, &encrypt_options,
+        env = genaro_init_env(&options, &encrypt_options, NULL,
                              &http_options, &log_options);
         if (!env) {
             status = 1;

@@ -412,7 +412,7 @@ cleanup:
     return NULL;
 }
 
-static store_decrypt_key_request_t *store_decrypt_key_request_new(
+static share_file_request_t *share_file_request_new(
         genaro_http_options_t *http_options,
         genaro_bridge_options_t *options,
         genaro_encrypt_options_t *encrypt_options,
@@ -422,10 +422,9 @@ static store_decrypt_key_request_t *store_decrypt_key_request_new(
         char *path,
         struct json_object *request_body,
         bool auth,
-        const char *key,
         void *handle)
 {
-    store_decrypt_key_request_t *req = malloc(sizeof(store_decrypt_key_request_t));
+    share_file_request_t *req = malloc(sizeof(share_file_request_t));
     if (!req) {
         return NULL;
     }
@@ -438,9 +437,6 @@ static store_decrypt_key_request_t *store_decrypt_key_request_new(
     req->auth = auth;
     req->body = request_body;
     req->response = NULL;
-
-    // this key is the file encryption key that is encrypted with RSA.
-    req->key = key;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -448,13 +444,13 @@ static store_decrypt_key_request_t *store_decrypt_key_request_new(
     return req;
 }
 
-static void store_decrypt_key_request_worker(uv_work_t *work)
+static void share_file_request_worker(uv_work_t *work)
 {
     if(!work) {
         return;
     }
 
-    store_decrypt_key_request_t *req = work->data;
+    share_file_request_t *req = work->data;
 
     if(!req) {
         return;
@@ -480,22 +476,21 @@ static void store_decrypt_key_request_worker(uv_work_t *work)
 
     json_object_put(req->body);
     free(req->path); req->path = NULL;
-    free(req->key); req->key = NULL;
 }
 
-static void queue_store_decrypt_key(genaro_http_options_t *http_options,
-                                    genaro_bridge_options_t *options,
-                                    genaro_encrypt_options_t *encrypt_options,
-                                    int error_code,
-                                    int status_code,
-                                    const char *file_id,
-                                    const char *to_address,
-                                    const char *file_name,
-                                    double price,
-                                    const char *key,
-                                    uv_loop_t *loop,
-                                    void *handle,
-                                    uv_after_work_cb cb)
+static void queue_share_file(genaro_http_options_t *http_options,
+                             genaro_bridge_options_t *options,
+                             genaro_encrypt_options_t *encrypt_options,
+                             int error_code,
+                             int status_code,
+                             const char *file_id,
+                             const char *to_address,
+                             const char *decrypted_file_name,
+                             double price,
+                             const char *key,
+                             uv_loop_t *loop,
+                             void *handle,
+                             uv_after_work_cb cb)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
@@ -511,21 +506,26 @@ static void queue_store_decrypt_key(genaro_http_options_t *http_options,
     json_object_object_add(body, "toAddress", json_object_new_string(to_address));
     json_object_object_add(body, "price", json_object_new_double(price));
     json_object_object_add(body, "bucketEntryId", json_object_new_string(file_id));
-    json_object_object_add(body, "fileName", json_object_new_string(file_name));
+    json_object_object_add(body, "fileName", json_object_new_string(decrypted_file_name));
     json_object_object_add(body, "key", json_object_new_string(key));
+
+    free((void *)to_address); to_address = NULL;
+    free((void *)file_id); file_id = NULL;
+    free((void *)decrypted_file_name); decrypted_file_name = NULL;
+    free((void *)key); key = NULL;
 
     uv_work_t *req = NULL;
 
     if(work) {
-        work->data = store_decrypt_key_request_new(http_options, options, encrypt_options,
+        work->data = share_file_request_new(http_options, options, encrypt_options,
                                                    error_code, status_code, "POST", path, 
-                                                   body, true, key, handle);
+                                                   body, true, handle);
         req = work->data;
     } else {
         req = NULL;
     }
 
-    uv_queue_work(loop, req, store_decrypt_key_request_worker, cb);
+    uv_queue_work(loop, req, share_file_request_worker, cb);
 }
 
 static void after_prepare_decrypt_key(uv_work_t *work, int status)
@@ -560,7 +560,7 @@ static void after_prepare_decrypt_key(uv_work_t *work, int status)
         }
     }
     
-    queue_store_decrypt_key(req->http_options, req->options, req->encrypt_options, 
+    queue_share_file(req->http_options, req->options, req->encrypt_options, 
                             error_code, status_code, req->file_id, req->to_address, req->decrypted_file_name,
                             req->price, (const char *)encrypted, req->loop, req->handle, req->cb);
 
@@ -1029,8 +1029,9 @@ static void log_formatter_error(genaro_log_options_t *options, void *handle,
     va_end(args);
 }
 
-GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
+GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
                                  genaro_encrypt_options_t *encrypt_options,
+                                 genaro_rsa_prikey_options_t *rsaPrikey_options,
                                  genaro_http_options_t *http_options,
                                  genaro_log_options_t *log_options)
 {
@@ -1147,6 +1148,62 @@ GENARO_API struct genaro_env *genaro_init_env(genaro_bridge_options_t *options,
     } else {
         env->tmp_path = NULL;
     }
+
+    // deep copy rsaPrikey options
+    genaro_rsa_prikey_options_t *ro = malloc(sizeof(genaro_rsa_prikey_options_t));
+    if (!ro) {
+        return NULL;
+    }
+
+    if (rsaPrikey_options && rsaPrikey_options->priv_key) {
+        int rsaPrikey_len = strlen(rsaPrikey_options->priv_key);
+        // prevent private key from being swapped unencrypted to disk
+#ifdef _POSIX_MEMLOCK
+        if (rsaPrikey_len >= page_size) {
+            return NULL;
+        }
+
+#ifdef HAVE_ALIGNED_ALLOC
+        ro->priv_key = aligned_alloc(page_size, page_size);
+#elif HAVE_POSIX_MEMALIGN
+        ro->priv_key = NULL;
+        if (posix_memalign((void *)&ro->mnemonic, page_size, page_size)) {
+            return NULL;
+        }
+#else
+        ro->priv_key = malloc(page_size);
+#endif
+
+        if (ro->priv_key == NULL) {
+            return NULL;
+        }
+
+        memset((char *)ro->priv_key, 0, page_size);
+        memcpy((char *)ro->priv_key, rsaPrikey_options->priv_key, rsaPrikey_len);
+        // ro->key_len = rsaPrikey_len;
+        if (mlock(ro->priv_key, rsaPrikey_len)) {
+            return NULL;
+        }
+#elif _WIN32
+        ro->priv_key = VirtualAlloc(NULL, page_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        if (ro->priv_key == NULL) {
+            return NULL;
+        }
+        memset((char *)ro->priv_key, 0, page_size);
+        memcpy((char *)ro->priv_key, rsaPrikey_options->priv_key, rsaPrikey_len);
+        // ro->key_len = rsaPrikey_len;
+        if (!VirtualLock((char *)ro->priv_key, rsaPrikey_len)) {
+            return NULL;
+        }
+#else
+        memcpy((char *)ro->priv_key, rsaPrikey_options->priv_key, rsaPrikey_len);
+        // ro->key_len = rsaPrikey_len;
+#endif
+    } else {
+        ro->priv_key = NULL;
+    }
+
+    env->rsaPrikey_options = ro;
 
     // deep copy the http options
     genaro_http_options_t *ho = malloc(sizeof(genaro_http_options_t));
@@ -1889,14 +1946,14 @@ GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env,
     }
 }
 
-GENARO_API int genaro_bridge_store_decrypt_key(genaro_env_t *env,
-                                               const char *bucket_id,
-                                               const char *file_id,
-                                               const char *decrypted_file_name,
-                                               const char *to_address,
-                                               double price,
-                                               void *handle,
-                                               uv_after_work_cb cb)
+GENARO_API int genaro_bridge_share_file(genaro_env_t *env,
+                                        const char *bucket_id,
+                                        const char *file_id,
+                                        const char *decrypted_file_name,
+                                        const char *to_address,
+                                        double price,
+                                        void *handle,
+                                        uv_after_work_cb cb)
 {
     uv_work_t *work = uv_work_new();
     if(!work) {

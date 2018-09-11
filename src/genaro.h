@@ -159,8 +159,6 @@ typedef struct genaro_encrypt_options {
     size_t key_len;
 } genaro_encrypt_options_t;
 
-
-
 /** @brief HTTP configuration options
  *
  * Settings for making HTTP requests
@@ -173,6 +171,15 @@ typedef struct genaro_http_options {
     uint64_t low_speed_time;
     uint64_t timeout;
 } genaro_http_options_t;
+
+/** @brief RSA private key
+ *
+ * RSA private key used to decrypt the file encryption key shared by others
+ */
+typedef struct genaro_rsa_prikey_options {
+    const char *priv_key;
+    // size_t key_len;
+} genaro_rsa_prikey_options_t;
 
 /** @brief A function signature for logging
  */
@@ -212,6 +219,7 @@ typedef struct genaro_env {
     genaro_encrypt_options_t *encrypt_options;
     genaro_http_options_t *http_options;
     genaro_log_options_t *log_options;
+    genaro_rsa_prikey_options_t *rsaPrikey_options;
     const char *tmp_path;
     uv_loop_t *loop;
     genaro_log_levels_t *log;
@@ -356,7 +364,7 @@ typedef struct {
     int error_code;
     int status_code;
     void *handle;
-} store_decrypt_key_request_t;
+} share_file_request_t;
 
 /** @brief A structure for that describes a bucket entry/file
  */
@@ -650,14 +658,16 @@ GENARO_API void genaro_key_result_to_encrypt_options(key_result_t *key_result, g
  *
  * @param[in] options - Genaro Bridge API options
  * @param[in] encrypt_options - File encryption options
+ * @param[in] rsaPrikey_options - RSA private key options
  * @param[in] http_options - HTTP settings
  * @param[in] log_options - Logging settings
  * @return A null value on error, otherwise a genaro_env pointer.
  */
 GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
-                                      genaro_encrypt_options_t *encrypt_options,
-                                      genaro_http_options_t *http_options,
-                                      genaro_log_options_t *log_options);
+                                         genaro_encrypt_options_t *encrypt_options,
+                                         genaro_rsa_prikey_options_t *rsaPrikey_options,
+                                         genaro_http_options_t *http_options,
+                                         genaro_log_options_t *log_options);
 
 
 /**
@@ -834,7 +844,7 @@ GENARO_API int genaro_bridge_create_bucket_token(genaro_env_t *env,
  *
  * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
- * @param[in] file_id The bucket id
+ * @param[in] file_id The file id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -850,7 +860,7 @@ GENARO_API int genaro_bridge_get_file_pointers(genaro_env_t *env,
  *
  * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
- * @param[in] file_id The bucket id
+ * @param[in] file_id The file id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -918,7 +928,7 @@ GENARO_API int genaro_bridge_delete_frame(genaro_env_t *env,
  *
  * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
- * @param[in] file_id The bucket id
+ * @param[in] file_id The file id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -934,7 +944,7 @@ GENARO_API int genaro_bridge_get_file_info(genaro_env_t *env,
  *
  * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
- * @param[in] file_id The bucket id
+ * @param[in] file_id The file id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -1009,6 +1019,28 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
  */
 GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env, 
                                             const char * const encrypted_name);
+
+/**
+ * @brief Share a file
+ *
+ * @param[in] env The genaro environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_id The file id
+ * @param[in] decrypted_file_name The decrypted file name
+ * @param[in] to_address The address where to share
+ * @param[in] price The price of the shared file
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+GENARO_API int genaro_bridge_share_file(genaro_env_t *env,
+                                        const char *bucket_id,
+                                        const char *file_id,
+                                        const char *decrypted_file_name,
+                                        const char *to_address,
+                                        double price,
+                                        void *handle,
+                                        uv_after_work_cb cb);
 
 /*Curl debug function*/
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr);
