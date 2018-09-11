@@ -122,6 +122,9 @@ extern "C" {
 #define GENARO_LOW_SPEED_TIME 20L
 #define GENARO_HTTP_TIMEOUT 60L
 
+// the max length of the encrypted file encryption key use RSA.
+#define RSA_ENCRYPTED_MAX_LENGTH 4098
+
 typedef struct {
   uint8_t *encryption_ctr;
   uint8_t *encryption_key;
@@ -321,7 +324,9 @@ typedef struct {
     uv_loop_t *loop;
     const char *bucket_id;
     const char *file_id;
-    const char *para;
+    const char *decrypted_file_name;
+    const char *to_address;
+    double price;
     uv_after_work_cb cb;
     const char *index;
     const char *rsa_public_key;
@@ -344,6 +349,7 @@ typedef struct {
     const char *key;
     char *method;
     char *path;
+    char *query_args;
     bool auth;
     struct json_object *body;
     struct json_object *response;

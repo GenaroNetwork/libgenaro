@@ -1143,7 +1143,7 @@ static void determine_decryption_key(genaro_download_state_t *state, char *key)
     } else if(key) {
         // TODO 获取RSA private key
         char *rsa_private_key = "";
-        unsigned char decrypted[4098] = {};
+        unsigned char decrypted[RSA_ENCRYPTED_MAX_LENGTH] = {};
         int decrypted_length = private_decrypt(key, DETERMINISTIC_KEY_SIZE, (unsigned char *)rsa_private_key, decrypted);
         if(decrypted_length == -1) {
             state->error_status = GENARO_RSA_DECRYPTION_ERROR;
