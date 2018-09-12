@@ -437,8 +437,8 @@ static share_file_request_t *share_file_request_new(
     req->auth = auth;
     req->body = request_body;
     req->response = NULL;
-    req->error_code = 0;
-    req->status_code = 0;
+    req->error_code = error_code;
+    req->status_code = status_code;
     req->handle = handle;
 
     return req;
@@ -446,10 +446,6 @@ static share_file_request_t *share_file_request_new(
 
 static void share_file_request_worker(uv_work_t *work)
 {
-    if(!work) {
-        return;
-    }
-
     share_file_request_t *req = work->data;
 
     if(!req) {
@@ -457,7 +453,7 @@ static void share_file_request_worker(uv_work_t *work)
     }
 
     // error_code and status_code from prepare_decrypt_key
-    if(req->error_code || req->status_code) {
+    if(req->error_code || req->status_code != 200) {
         return;
     }
 
@@ -493,39 +489,31 @@ static void queue_share_file(genaro_http_options_t *http_options,
                              uv_after_work_cb cb)
 {
     uv_work_t *work = uv_work_new();
-    if (!work) {
-        if(error_code != 0) {
-            error_code = GENARO_MEMORY_ERROR;
-        }
+
+    char *path = NULL;
+    struct json_object *body = NULL;
+    if(!error_code && status_code == 200) {
+        path = strdup("/shares");
+
+        //TODO(dingyi)
+        body = json_object_new_object();
+        json_object_object_add(body, "toAddress", json_object_new_string(to_address));
+        json_object_object_add(body, "price", json_object_new_double(price));
+        json_object_object_add(body, "bucketEntryId", json_object_new_string(file_id));
+        json_object_object_add(body, "fileName", json_object_new_string(decrypted_file_name));
+        json_object_object_add(body, "key", json_object_new_string(key));
+
+        free((void *)to_address); to_address = NULL;
+        free((void *)file_id); file_id = NULL;
+        free((void *)decrypted_file_name); decrypted_file_name = NULL;
+        free((void *)key); key = NULL;
     }
 
-    char *path = strdup("/shares");
+    work->data = share_file_request_new(http_options, options, encrypt_options,
+                                            error_code, status_code, "POST", path, 
+                                            body, true, handle);
 
-    //TODO(dingyi)
-    struct json_object *body = json_object_new_object();
-    json_object_object_add(body, "toAddress", json_object_new_string(to_address));
-    json_object_object_add(body, "price", json_object_new_double(price));
-    json_object_object_add(body, "bucketEntryId", json_object_new_string(file_id));
-    json_object_object_add(body, "fileName", json_object_new_string(decrypted_file_name));
-    json_object_object_add(body, "key", json_object_new_string(key));
-
-    free((void *)to_address); to_address = NULL;
-    free((void *)file_id); file_id = NULL;
-    free((void *)decrypted_file_name); decrypted_file_name = NULL;
-    free((void *)key); key = NULL;
-
-    uv_work_t *req = NULL;
-
-    if(work) {
-        work->data = share_file_request_new(http_options, options, encrypt_options,
-                                                   error_code, status_code, "POST", path, 
-                                                   body, true, handle);
-        req = work->data;
-    } else {
-        req = NULL;
-    }
-
-    uv_queue_work(loop, req, share_file_request_worker, cb);
+    uv_queue_work(loop, work, share_file_request_worker, cb);
 }
 
 static void after_prepare_decrypt_key(uv_work_t *work, int status)
@@ -540,7 +528,7 @@ static void after_prepare_decrypt_key(uv_work_t *work, int status)
     // TODO(dingyi)
     if (status != 0) {
         error_code = GENARO_QUEUE_ERROR;
-    } else if(!req->status_code && (req->status_code == 200 || req->status_code == 304)) {
+    } else if(!req->error_code && (req->status_code == 200)) {
         if (req->response) {
             json_object_put(req->response);
         }
@@ -585,7 +573,7 @@ static void prepare_decrypt_key_request_worker(uv_work_t *work)
     req->status_code = status_code;
 
     // TODO(dingyi)
-    if(status_code != 200 && status_code != 304) {
+    if(status_code != 200) {
         return;
     }
 
