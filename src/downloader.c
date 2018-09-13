@@ -83,7 +83,6 @@ static void request_replace_pointer(uv_work_t *work)
 
     int status_code = 0;
 
-    int excluded_farmer_ids_len = (req->excluded_farmer_ids) ? strlen(req->excluded_farmer_ids) : 0;
     char *query_args = (char *)calloc(BUFSIZ, sizeof(char));
     snprintf(query_args, BUFSIZ,
              "limit=1&skip=%i&exclude=%s",
@@ -536,7 +535,7 @@ static void queue_request_pointers(genaro_download_state_t *state)
 
             state->pending_work_count++;
             int status = uv_queue_work(state->env->loop,
-                                       (uv_work_t*) work,
+                                       work,
                                        request_replace_pointer,
                                        after_request_replace_pointer);
 
@@ -606,7 +605,7 @@ static void queue_request_pointers(genaro_download_state_t *state)
                      state->total_pointers);
 
     state->pending_work_count++;
-    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+    int status = uv_queue_work(state->env->loop, work,
                                request_pointers, after_request_pointers);
 
     if (status) {
@@ -875,7 +874,7 @@ static void queue_request_shards(genaro_download_state_t *state)
 
             // queue download
             state->pending_work_count++;
-            int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+            int status = uv_queue_work(state->env->loop, work,
                                        request_shard, after_request_shard);
             if (status) {
                 state->error_status = GENARO_QUEUE_ERROR;
@@ -1012,7 +1011,7 @@ static void queue_send_exchange_reports(genaro_download_state_t *state)
             work->data = req;
 
             state->pending_work_count++;
-            int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+            int status = uv_queue_work(state->env->loop, work,
                                        send_exchange_report,
                                        after_send_exchange_report);
             if (status) {
@@ -1128,14 +1127,14 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
 }
 
 // has_key
-static void determine_decryption_key(genaro_download_state_t *state, char *decrypt_key)
+static void determine_decryption_key(genaro_download_state_t *state, uint8_t *decrypt_key)
 {
     if (!state->env->encrypt_options ||
         !state->env->encrypt_options->priv_key) {
         state->decrypt_key = NULL;
         state->decrypt_ctr = NULL;
     } else if(decrypt_key) {
-        state->decrypt_key = (uint8_t *)decrypt_key;
+        state->decrypt_key = decrypt_key;
 
         // get decrypt_ctr
         if (state->info->index) {
@@ -1413,7 +1412,7 @@ static void queue_request_info(genaro_download_state_t *state)
     work->data = req;
 
     state->pending_work_count++;
-    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+    int status = uv_queue_work(state->env->loop, work,
                                request_info,
                                after_request_info);
     if (status) {
@@ -1655,8 +1654,8 @@ decrypt:
         ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
                   AES_BLOCK_SIZE, req->decrypt_ctr,
                   len,
-                  (uint8_t *)data_map + bytes_decrypted,
-                  (uint8_t *)data_map + bytes_decrypted);
+                  data_map + bytes_decrypted,
+                  data_map + bytes_decrypted);
 
         bytes_decrypted += len;
     }
@@ -1798,7 +1797,7 @@ static void queue_recover_shards(genaro_download_state_t *state)
         work->data = req;
 
         state->pending_work_count++;
-        int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+        int status = uv_queue_work(state->env->loop, work,
                                    recover_shards, after_recover_shards);
 
         if (status) {
@@ -1923,7 +1922,7 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
-                                                            const char *decrypt_key,
+                                                            const uint8_t *decrypt_key,
                                                             const char *origin_file_path,
                                                             const char *renamed_file_path,
                                                             FILE *destination,
