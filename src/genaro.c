@@ -3,7 +3,6 @@
 #include "utils.h"
 #include "crypto.h"
 #include "key_file.h"
-#include "rsa_pkcs1.h"
 
 static inline void noop() {};
 
@@ -335,13 +334,13 @@ static void rename_bucket_request_worker(uv_work_t *work)
     req->status_code = status_code;
 }
 
-static uint8_t *get_decryption_key_v1(prepare_decrypt_key_request_t *req)
+static uint8_t *get_decryption_key_v1(share_file_request_t *req)
 {
-    uint8_t *index = NULL;
     char *file_key_as_str = NULL;
 
     file_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!file_key_as_str) {
+        req->error_code = GENARO_MEMORY_ERROR;
         goto cleanup;
     }
 
@@ -366,13 +365,10 @@ cleanup:
     if (file_key_as_str) {
         free(file_key_as_str);
     }
-    if (index) {
-        free(index);
-    }
     return NULL;
 }
 
-static uint8_t *get_decryption_key_v0(prepare_decrypt_key_request_t *req)
+static uint8_t *get_decryption_key_v0(share_file_request_t *req)
 {
     char *file_key = NULL;
     uint8_t *decrypt_key = NULL;
@@ -412,158 +408,9 @@ cleanup:
     return NULL;
 }
 
-static share_file_request_t *share_file_request_new(
-        genaro_http_options_t *http_options,
-        genaro_bridge_options_t *options,
-        genaro_encrypt_options_t *encrypt_options,
-        int error_code,
-        int status_code,
-        char *method,
-        char *path,
-        struct json_object *request_body,
-        bool auth,
-        void *handle)
-{
-    share_file_request_t *req = malloc(sizeof(share_file_request_t));
-    if (!req) {
-        return NULL;
-    }
-
-    req->http_options = http_options;
-    req->options = options;
-    req->encrypt_options = encrypt_options;
-    req->method = method;
-    req->path = path;
-    req->auth = auth;
-    req->body = request_body;
-    req->response = NULL;
-    req->error_code = error_code;
-    req->status_code = status_code;
-    req->handle = handle;
-
-    return req;
-}
-
 static void share_file_request_worker(uv_work_t *work)
 {
     share_file_request_t *req = work->data;
-
-    if(!req) {
-        return;
-    }
-
-    // error_code and status_code from prepare_decrypt_key
-    if(req->error_code || req->status_code != 200) {
-        return;
-    }
-
-    int status_code = 0;
-
-    int request_status = fetch_json(req->http_options, req->encrypt_options,
-                                    req->options, "GET", req->path, NULL, req->body,
-                                    req->auth, &req->response, &status_code);
-
-    // TODO(dingyi)
-    if(status_code != 200) {
-        return;
-    }
-
-    req->status_code = status_code;
-
-    json_object_put(req->body);
-    free(req->path); req->path = NULL;
-}
-
-static void queue_share_file(genaro_http_options_t *http_options,
-                             genaro_bridge_options_t *options,
-                             genaro_encrypt_options_t *encrypt_options,
-                             int error_code,
-                             int status_code,
-                             const char *file_id,
-                             const char *to_address,
-                             const char *decrypted_file_name,
-                             double price,
-                             const char *key,
-                             uv_loop_t *loop,
-                             void *handle,
-                             uv_after_work_cb cb)
-{
-    uv_work_t *work = uv_work_new();
-
-    char *path = NULL;
-    struct json_object *body = NULL;
-    if(!error_code && status_code == 200) {
-        path = strdup("/shares");
-
-        //TODO(dingyi)
-        body = json_object_new_object();
-        json_object_object_add(body, "toAddress", json_object_new_string(to_address));
-        json_object_object_add(body, "price", json_object_new_double(price));
-        json_object_object_add(body, "bucketEntryId", json_object_new_string(file_id));
-        json_object_object_add(body, "fileName", json_object_new_string(decrypted_file_name));
-        json_object_object_add(body, "key", json_object_new_string(key));
-
-        free((void *)to_address); to_address = NULL;
-        free((void *)file_id); file_id = NULL;
-        free((void *)decrypted_file_name); decrypted_file_name = NULL;
-        free((void *)key); key = NULL;
-    }
-
-    work->data = share_file_request_new(http_options, options, encrypt_options,
-                                            error_code, status_code, "POST", path, 
-                                            body, true, handle);
-
-    uv_queue_work(loop, work, share_file_request_worker, cb);
-}
-
-static void after_prepare_decrypt_key(uv_work_t *work, int status)
-{
-    prepare_decrypt_key_request_t *req = work->data;
-    int error_code = req->error_code;
-    int status_code = req->status_code;
-    unsigned char *encrypted = NULL;
-    int encrypted_length = -1;
-    uint8_t *decrypt_key = NULL;
-
-    // TODO(dingyi)
-    if (status != 0) {
-        error_code = GENARO_QUEUE_ERROR;
-    } else if(!req->error_code && (req->status_code == 200)) {
-        if (req->response) {
-            json_object_put(req->response);
-        }
-
-        if(req->index) {
-            decrypt_key = get_decryption_key_v1(req);
-        } else {
-            decrypt_key = get_decryption_key_v0(req);
-        }
-        if(!req->error_code) {
-            encrypted = (unsigned char *)malloc(RSA_ENCRYPTED_MAX_LENGTH * sizeof(unsigned char));
-            // use RSA to encrypt the file encryption key.
-            encrypted_length = public_encrypt((unsigned char *)decrypt_key, DETERMINISTIC_KEY_SIZE, (unsigned char *)req->share_public_key, encrypted);
-            if(encrypted_length == -1) {
-                req->error_code = GENARO_RSA_ENCRYPTION_ERROR;
-            }
-        }
-    }
-    
-    queue_share_file(req->http_options, req->options, req->encrypt_options, 
-                     error_code, status_code, req->file_id, req->to_address, req->decrypted_file_name,
-                     req->price, (const char *)encrypted, req->loop, req->handle, req->cb);
-
-cleanup:
-    free(req->path);
-    req->path = NULL;
-    free(req);
-    req = NULL;
-    free(work);
-    work = NULL;
-}
-
-static void prepare_decrypt_key_request_worker(uv_work_t *work)
-{
-    prepare_decrypt_key_request_t *req = work->data;
     int status_code = 0;
 
     req->error_code = fetch_json(req->http_options, req->encrypt_options,
@@ -572,18 +419,11 @@ static void prepare_decrypt_key_request_worker(uv_work_t *work)
 
     req->status_code = status_code;
 
-    // TODO(dingyi)
-    if(status_code != 200) {
+    if(req->error_code || status_code != 200 || !req->response) {
         return;
     }
 
-    if (!req->response) {
-        req->index = NULL;
-        req->share_public_key = NULL;
-        return;
-    }
-
-    // TODO(dingyi) get the "index" for file decryption
+    // get the "index" for file decryption
     struct json_object *index;
     json_object_object_get_ex(req->response, "index", &index);
     if(index == NULL) {
@@ -592,14 +432,15 @@ static void prepare_decrypt_key_request_worker(uv_work_t *work)
     }
     req->index = json_object_get_string(index);
 
-    // get the RSA public key
-    struct json_object *share_public_key;
-    json_object_object_get_ex(req->response, "sharePublicKey", &share_public_key);
-    if(share_public_key == NULL) {
-        req->error_code = GENARO_BRIDGE_JSON_ERROR;
-        return;
+    uint8_t *decrypt_key = NULL;
+
+    if(req->index) {
+        decrypt_key = get_decryption_key_v1(req);
+    } else {
+        decrypt_key = get_decryption_key_v0(req);
     }
-    req->share_public_key = json_object_get_string(share_public_key);
+
+    req->decrypt_key = (char *)decrypt_key;
 }
 
 static void list_files_request_worker(uv_work_t *work)
@@ -885,24 +726,19 @@ static rename_bucket_request_t *rename_bucket_request_new(
     return req;
 }
 
-static prepare_decrypt_key_request_t *prepare_decrypt_key_request_new(
+static share_file_request_t *share_file_request_new(
         genaro_http_options_t *http_options,
         genaro_bridge_options_t *options,
         genaro_encrypt_options_t *encrypt_options,
-        uv_loop_t *loop,
         char *method,
         char *path,
         struct json_object *request_body,
         bool auth,
         const char *bucket_id,
         const char *file_id,
-        const char *decrypted_file_name,
-        const char *to_address,
-        double price,
-        void *handle,
-        uv_after_work_cb cb)
+        void *handle)
 {
-    prepare_decrypt_key_request_t *req = malloc(sizeof(prepare_decrypt_key_request_t));
+    share_file_request_t *req = malloc(sizeof(share_file_request_t));
     if (!req) {
         return NULL;
     }
@@ -910,7 +746,6 @@ static prepare_decrypt_key_request_t *prepare_decrypt_key_request_new(
     req->http_options = http_options;
     req->options = options;
     req->encrypt_options = encrypt_options;
-    req->loop = loop;
     req->method = method;
     req->path = path;
     req->auth = auth;
@@ -918,12 +753,8 @@ static prepare_decrypt_key_request_t *prepare_decrypt_key_request_new(
     req->response = NULL;
     req->bucket_id = bucket_id;
     req->file_id = file_id;
-    req->decrypted_file_name = decrypted_file_name;
-    req->to_address = to_address;
-    req->price = price;
-    req->cb = cb;
     req->index = NULL;
-    req->share_public_key = NULL;
+    req->decrypt_key = NULL;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -1018,7 +849,6 @@ static void log_formatter_error(genaro_log_options_t *options, void *handle,
 
 GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
                                  genaro_encrypt_options_t *encrypt_options,
-                                 genaro_share_prikey_options_t *rsaPrikey_options,
                                  genaro_http_options_t *http_options,
                                  genaro_log_options_t *log_options)
 {
@@ -1135,62 +965,6 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
     } else {
         env->tmp_path = NULL;
     }
-
-    // deep copy rsaPrikey options
-    genaro_share_prikey_options_t *ro = malloc(sizeof(genaro_share_prikey_options_t));
-    if (!ro) {
-        return NULL;
-    }
-
-    if (rsaPrikey_options && rsaPrikey_options->priv_key) {
-        int rsaPrikey_len = strlen(rsaPrikey_options->priv_key);
-        // prevent private key from being swapped unencrypted to disk
-#ifdef _POSIX_MEMLOCK
-        if (rsaPrikey_len >= page_size) {
-            return NULL;
-        }
-
-#ifdef HAVE_ALIGNED_ALLOC
-        ro->priv_key = aligned_alloc(page_size, page_size);
-#elif HAVE_POSIX_MEMALIGN
-        ro->priv_key = NULL;
-        if (posix_memalign((void *)&ro->mnemonic, page_size, page_size)) {
-            return NULL;
-        }
-#else
-        ro->priv_key = malloc(page_size);
-#endif
-
-        if (ro->priv_key == NULL) {
-            return NULL;
-        }
-
-        memset((char *)ro->priv_key, 0, page_size);
-        memcpy((char *)ro->priv_key, rsaPrikey_options->priv_key, rsaPrikey_len);
-        // ro->key_len = rsaPrikey_len;
-        if (mlock(ro->priv_key, rsaPrikey_len)) {
-            return NULL;
-        }
-#elif _WIN32
-        ro->priv_key = VirtualAlloc(NULL, page_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-        if (ro->priv_key == NULL) {
-            return NULL;
-        }
-        memset((char *)ro->priv_key, 0, page_size);
-        memcpy((char *)ro->priv_key, rsaPrikey_options->priv_key, rsaPrikey_len);
-        // ro->key_len = rsaPrikey_len;
-        if (!VirtualLock((char *)ro->priv_key, rsaPrikey_len)) {
-            return NULL;
-        }
-#else
-        memcpy((char *)ro->priv_key, rsaPrikey_options->priv_key, rsaPrikey_len);
-        // ro->key_len = rsaPrikey_len;
-#endif
-    } else {
-        ro->priv_key = NULL;
-    }
-
-    env->rsaPrikey_options = ro;
 
     // deep copy the http options
     genaro_http_options_t *ho = malloc(sizeof(genaro_http_options_t));
@@ -1936,9 +1710,6 @@ GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env,
 GENARO_API int genaro_bridge_share_file(genaro_env_t *env,
                                         const char *bucket_id,
                                         const char *file_id,
-                                        const char *decrypted_file_name,
-                                        const char *to_address,
-                                        double price,
                                         void *handle,
                                         uv_after_work_cb cb)
 {
@@ -1947,26 +1718,23 @@ GENARO_API int genaro_bridge_share_file(genaro_env_t *env,
         return GENARO_MEMORY_ERROR;
     }
 
-    // TODO(dingyi)
     char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
                                  file_id, "/info");
     if (!path) {
         return GENARO_MEMORY_ERROR;
     }
 
-    work->data = prepare_decrypt_key_request_new(env->http_options,
+    work->data = share_file_request_new(env->http_options,
                                            env->bridge_options,
                                            env->encrypt_options,
-                                           env->loop,
                                            "GET", path, NULL, true, 
-                                           bucket_id, file_id, decrypted_file_name,
-                                           to_address, price, handle, cb);
+                                           bucket_id, file_id, handle);
 
     if (!work) {
         return GENARO_MEMORY_ERROR;
     }
 
-    return uv_queue_work(env->loop, (uv_work_t*) work, prepare_decrypt_key_request_worker, after_prepare_decrypt_key);
+    return uv_queue_work(env->loop, (uv_work_t*) work, share_file_request_worker, cb);
 }
 
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr)

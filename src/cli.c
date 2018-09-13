@@ -607,8 +607,9 @@ static int download_file(genaro_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
+    // TODO: need to pass the fourth para, now it's NULL.
     genaro_download_state_t *state = genaro_bridge_resolve_file(env, bucket_id,
-                                                              file_id, strdup(path), 
+                                                              file_id, NULL, strdup(path), 
                                                               renamed_path, fd, NULL,
                                                               progress_cb,
                                                               download_file_complete);
@@ -1200,7 +1201,7 @@ int main(int argc, char **argv)
             .port  = port,
         };
 
-        env = genaro_init_env(&options, NULL, NULL, &http_options, &log_options);
+        env = genaro_init_env(&options, NULL, &http_options, &log_options);
         if (!env) {
             return 1;
         }
@@ -1248,7 +1249,7 @@ int main(int argc, char **argv)
                 .key_len = key_result->key_len,
         };
 
-        env = genaro_init_env(&options, &encrypt_options, NULL,
+        env = genaro_init_env(&options, &encrypt_options,
                              &http_options, &log_options);
         if (!env) {
             status = 1;

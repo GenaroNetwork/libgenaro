@@ -4,7 +4,7 @@ project(libgenaro VERSION 0.1.0)
 IF(APPLE)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
-# set(CMAKE_C_FLAGS "-gdwarf-2 -g3")
+set(CMAKE_C_FLAGS "-gdwarf-2 -g3")
 
 add_subdirectory(../secp256k1 build-secp256k1)
 add_subdirectory(../libkeccak build-libkeccak)
@@ -28,9 +28,8 @@ add_library(genaro
         src/key_file.c
         src/rs.c
         src/uploader.c
-        src/utils.c
-        src/rsa_pkcs1.c)
-target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a libcrypto.a)
+        src/utils.c)
+target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
 
 add_executable(genaroeden-cli src/cli.c)
 # target_link_libraries(genaroeden-cli genaro uv json-c nettle curl secp256k1 scrypt keccak)
@@ -100,7 +99,7 @@ add_library(genaro
 add_executable(genaroeden-cli src/cli.c)
 
 # nettle must locate behind curl and gnutls，gmp must locate behind gnutls，hogweed must locate behind gnutls.
-target_link_libraries(genaroeden-cli genaro uv json-c curl gnutls nettle hogweed gmp secp256k1 scrypt keccak crypto ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
+target_link_libraries(genaroeden-cli genaro uv json-c curl gnutls nettle hogweed gmp secp256k1 scrypt keccak ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
 
 # add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
 # target_link_libraries(tests genaro uv json-c curl gnutls nettle hogweed gmp microhttpd ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)

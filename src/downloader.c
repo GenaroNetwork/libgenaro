@@ -1128,24 +1128,14 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
 }
 
 // has_key
-static void determine_decryption_key(genaro_download_state_t *state, char *key)
+static void determine_decryption_key(genaro_download_state_t *state, char *decrypt_key)
 {
     if (!state->env->encrypt_options ||
         !state->env->encrypt_options->priv_key) {
-
         state->decrypt_key = NULL;
         state->decrypt_ctr = NULL;
-    } else if(key) {
-        // TODO(dingyi)
-        char *rsa_private_key = state->env->rsaPrikey_options->priv_key;
-        unsigned char decrypted[RSA_ENCRYPTED_MAX_LENGTH] = {};
-        int decrypted_length = private_decrypt(key, DETERMINISTIC_KEY_SIZE, (unsigned char *)rsa_private_key, decrypted);
-        if(decrypted_length == -1) {
-            state->error_status = GENARO_RSA_DECRYPTION_ERROR;
-            return;
-        }
-
-        state->decrypt_key = (uint8_t *)decrypted;
+    } else if(decrypt_key) {
+        state->decrypt_key = (uint8_t *)decrypt_key;
 
         // get decrypt_ctr
         if (state->info->index) {
@@ -1215,7 +1205,7 @@ static void after_request_info(uv_work_t *work, int status)
         }
 
         // Now that we have info we can calculate the decryption key
-        determine_decryption_key(req->state, req->key);
+        determine_decryption_key(req->state, req->state->decrypt_key_from_bridge);
 
     } else if (req->error_status) {
         switch(req->error_status) {
@@ -1322,17 +1312,6 @@ static void request_info(uv_work_t *work)
             req->info->index = strdup(index);
         }
 
-        // TODO(dingyi)
-        struct json_object *key_value;
-        char *key = NULL;
-        if (json_object_object_get_ex(response, "key", &key_value)) {
-            key = (char *)json_object_get_string(key_value);
-        }
-
-        if (key) {
-            req->key = strdup(key);
-        }
-
         struct json_object *size_value;
         char *size = NULL;
         if (json_object_object_get_ex(response, "size", &size_value)) {
@@ -1427,7 +1406,6 @@ static void queue_request_info(genaro_download_state_t *state)
     req->status_code = 0;
     req->bucket_id = state->bucket_id;
     req->file_id = state->file_id;
-    req->key = NULL;
     req->error_status = 0;
     req->info = NULL;
     req->state = state;
@@ -1945,6 +1923,7 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
+                                                            const char *decrypt_key,
                                                             const char *origin_file_path,
                                                             const char *renamed_file_path,
                                                             FILE *destination,
@@ -1994,6 +1973,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->handle = handle;
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
+    state->decrypt_key_from_bridge = decrypt_key ? (decrypt_key[0] ? decrypt_key : NULL) : NULL;
 
     // start download
     queue_next_work(state);

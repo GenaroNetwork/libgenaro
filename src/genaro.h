@@ -172,15 +172,6 @@ typedef struct genaro_http_options {
     uint64_t timeout;
 } genaro_http_options_t;
 
-/** @brief RSA private key
- *
- * RSA private key used to decrypt the file encryption key shared by others
- */
-typedef struct genaro_rsa_prikey_options {
-    const char *priv_key;
-    // size_t key_len;
-} genaro_share_prikey_options_t;
-
 /** @brief A function signature for logging
  */
 typedef void (*genaro_logger_fn)(const char *message, int level, void *handle);
@@ -219,7 +210,6 @@ typedef struct genaro_env {
     genaro_encrypt_options_t *encrypt_options;
     genaro_http_options_t *http_options;
     genaro_log_options_t *log_options;
-    genaro_share_prikey_options_t *rsaPrikey_options;
     const char *tmp_path;
     uv_loop_t *loop;
     genaro_log_levels_t *log;
@@ -329,15 +319,9 @@ typedef struct {
     genaro_http_options_t *http_options;
     genaro_encrypt_options_t *encrypt_options;
     genaro_bridge_options_t *options;
-    uv_loop_t *loop;
     const char *bucket_id;
     const char *file_id;
-    const char *decrypted_file_name;
-    const char *to_address;
-    double price;
-    uv_after_work_cb cb;
     const char *index;
-    const char *share_public_key;
     char *method;
     char *path;
     bool auth;
@@ -345,24 +329,7 @@ typedef struct {
     struct json_object *response;
     int error_code;
     int status_code;
-    void *handle;
-} prepare_decrypt_key_request_t;
-
-/** @brief A structure for queueing store decrypt key request work
- */
-typedef struct {
-    genaro_http_options_t *http_options;
-    genaro_encrypt_options_t *encrypt_options;
-    genaro_bridge_options_t *options;
-    const char *key;
-    char *method;
-    char *path;
-    char *query_args;
-    bool auth;
-    struct json_object *body;
-    struct json_object *response;
-    int error_code;
-    int status_code;
+    char *decrypt_key;
     void *handle;
 } share_file_request_t;
 
@@ -537,6 +504,7 @@ typedef struct genaro_download_state {
     bool requesting_pointers;
     int error_status;
     bool writing;
+    char *decrypt_key_from_bridge;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
     const char *hmac;
@@ -665,7 +633,6 @@ GENARO_API void genaro_key_result_to_encrypt_options(key_result_t *key_result, g
  */
 GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
                                          genaro_encrypt_options_t *encrypt_options,
-                                         genaro_share_prikey_options_t *rsaPrikey_options,
                                          genaro_http_options_t *http_options,
                                          genaro_log_options_t *log_options);
 
@@ -1004,6 +971,7 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
+                                                            const char *decrypt_key,
                                                             const char *origin_file_path,
                                                             const char *renamed_file_path,
                                                             FILE *destination,
@@ -1026,9 +994,6 @@ GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env,
  * @param[in] env The genaro environment struct
  * @param[in] bucket_id The bucket id
  * @param[in] file_id The file id
- * @param[in] decrypted_file_name The decrypted file name
- * @param[in] to_address The address where to share
- * @param[in] price The price of the shared file
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -1036,9 +1001,6 @@ GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env,
 GENARO_API int genaro_bridge_share_file(genaro_env_t *env,
                                         const char *bucket_id,
                                         const char *file_id,
-                                        const char *decrypted_file_name,
-                                        const char *to_address,
-                                        double price,
                                         void *handle,
                                         uv_after_work_cb cb);
 
