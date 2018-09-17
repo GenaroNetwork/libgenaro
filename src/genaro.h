@@ -517,8 +517,8 @@ typedef struct genaro_download_state {
     bool requesting_pointers;
     int error_status;
     bool writing;
-    genaro_decryption_key_ctr_t decryption_key_ctr_from_bridge;
-    genaro_decryption_key_ctr_t decryption_key_ctr;
+    genaro_decryption_key_ctr_t *decryption_key_ctr_from_bridge;
+    genaro_decryption_key_ctr_t *decryption_key_ctr;
     const char *hmac;
     uint32_t pending_work_count;
     genaro_log_levels_t *log;
@@ -999,8 +999,7 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
-                                                            const uint8_t *decryption_key,
-                                                            const uint8_t *decryption_ctr,
+                                                            genaro_decryption_key_ctr_t *decryption_key_ctr,
                                                             const char *file_name,
                                                             const char *temp_file_name,
                                                             FILE *destination,
