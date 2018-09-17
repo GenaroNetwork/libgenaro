@@ -126,10 +126,24 @@ extern "C" {
 #define RSA_ENCRYPTED_MAX_LENGTH 4098
 
 typedef struct {
-  uint8_t *encryption_ctr;
+  uint8_t *key;
+  size_t key_len;
+  uint8_t *ctr;
+  size_t ctr_len;
+} genaro_encryption_key_ctr_t;
+
+typedef struct {
+  uint8_t *key;
+  size_t key_len;
+  uint8_t *ctr;
+  size_t ctr_len;
+} genaro_decryption_key_ctr_t;
+
+typedef struct {
   uint8_t *encryption_key;
+  uint8_t *encryption_ctr;
   struct aes256_ctx *ctx;
-} genaro_encryption_ctx_t ;
+} genaro_encryption_ctx_t;
 
 typedef enum {
     GENARO_REPORT_NOT_PREPARED = 0,
@@ -415,8 +429,8 @@ typedef void (*genaro_progress_download_cb)(double progress,
 
 /** @brief A function signature for a download complete callback
  */
-typedef void (*genaro_finished_download_cb)(int status, const char *origin_file_path, 
-                                            const char *renamed_file_path, FILE *fd, 
+typedef void (*genaro_finished_download_cb)(int status, const char *file_name, 
+                                            const char *temp_file_name, FILE *fd, 
                                             void *handle);
 
 /** @brief A function signature for an upload complete callback
@@ -457,7 +471,6 @@ typedef struct {
     int push_frame_limit;
     int push_shard_limit;
     bool rs;
-    const char *index;
     const char *bucket_id;
     const char *file_name;
     FILE *fd;
@@ -480,8 +493,8 @@ typedef struct genaro_download_state {
     genaro_env_t *env;
     const char *file_id;
     const char *bucket_id;
-    const char *origin_file_path;
-    const char *renamed_file_path;
+    const char *file_name;
+    const char *temp_file_name;
     FILE *destination;
     genaro_progress_download_cb progress_cb;
     genaro_finished_download_cb finished_cb;
@@ -504,9 +517,8 @@ typedef struct genaro_download_state {
     bool requesting_pointers;
     int error_status;
     bool writing;
-    const uint8_t *decrypt_key_from_bridge;
-    uint8_t *decrypt_key;
-    uint8_t *decrypt_ctr;
+    genaro_decryption_key_ctr_t decryption_key_ctr_from_bridge;
+    genaro_decryption_key_ctr_t decryption_key_ctr;
     const char *hmac;
     uint32_t pending_work_count;
     genaro_log_levels_t *log;
@@ -566,8 +578,8 @@ typedef struct genaro_upload_state {
     char *exclude;
     char *frame_id;
     char *hmac_id;
-    uint8_t *encryption_key;
-    uint8_t *encryption_ctr;
+    genaro_encryption_key_ctr_t *encryption_key_ctr;
+    genaro_encryption_key_ctr_t *rsa_encryption_key_ctr;
 
     // TODO: change this to opts or env
     bool rs;
@@ -683,8 +695,8 @@ GENARO_API char *genaro_strerror(int error_code);
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_get_info(genaro_env_t *env,
-                                    void *handle,
-                                    uv_after_work_cb cb);
+                                      void *handle,
+                                      uv_after_work_cb cb);
 
 /**
  * @brief List available buckets for a user.
@@ -695,8 +707,8 @@ GENARO_API int genaro_bridge_get_info(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_get_buckets(genaro_env_t *env,
-                                       void *handle,
-                                       uv_after_work_cb cb);
+                                         void *handle,
+                                         uv_after_work_cb cb);
 
 /**
  * @brief Will free all structs for get buckets request
@@ -715,9 +727,9 @@ GENARO_API void genaro_free_get_buckets_request(get_buckets_request_t *req);
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_create_bucket(genaro_env_t *env,
-                                         const char *name,
-                                         void *handle,
-                                         uv_after_work_cb cb);
+                                           const char *name,
+                                           void *handle,
+                                           uv_after_work_cb cb);
 
 /**
  * @brief Delete a bucket.
@@ -729,9 +741,9 @@ GENARO_API int genaro_bridge_create_bucket(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_delete_bucket(genaro_env_t *env,
-                                         const char *id,
-                                         void *handle,
-                                         uv_after_work_cb cb);
+                                           const char *id,
+                                           void *handle,
+                                           uv_after_work_cb cb);
 
 /**
  * @brief Rename a bucket.
@@ -758,9 +770,9 @@ GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_get_bucket(genaro_env_t *env,
-                                      const char *id,
-                                      void *handle,
-                                      uv_after_work_cb cb);
+                                        const char *id,
+                                        void *handle,
+                                        uv_after_work_cb cb);
 
 /**
  * @brief Will free all structs for get bucket request
@@ -779,9 +791,9 @@ GENARO_API void genaro_free_get_bucket_request(get_bucket_request_t *req);
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_list_files(genaro_env_t *env,
-                                      const char *id,
-                                      void *handle,
-                                      uv_after_work_cb cb);
+                                        const char *id,
+                                        void *handle,
+                                        uv_after_work_cb cb);
 
 /**
  * @brief Will free all structs for list files request
@@ -801,10 +813,10 @@ GENARO_API void genaro_free_list_files_request(list_files_request_t *req);
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_create_bucket_token(genaro_env_t *env,
-                                               const char *bucket_id,
-                                               genaro_bucket_op_t operation,
-                                               void *handle,
-                                               uv_after_work_cb cb);
+                                                 const char *bucket_id,
+                                                 genaro_bucket_op_t operation,
+                                                 void *handle,
+                                                 uv_after_work_cb cb);
 
 /**
  * @brief Get pointers with locations to file shards.
@@ -817,10 +829,10 @@ GENARO_API int genaro_bridge_create_bucket_token(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_get_file_pointers(genaro_env_t *env,
-                                             const char *bucket_id,
-                                             const char *file_id,
-                                             void *handle,
-                                             uv_after_work_cb cb);
+                                               const char *bucket_id,
+                                               const char *file_id,
+                                               void *handle,
+                                               uv_after_work_cb cb);
 
 /**
  * @brief Delete a file in a bucket.
@@ -833,10 +845,10 @@ GENARO_API int genaro_bridge_get_file_pointers(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_delete_file(genaro_env_t *env,
-                                       const char *bucket_id,
-                                       const char *file_id,
-                                       void *handle,
-                                       uv_after_work_cb cb);
+                                         const char *bucket_id,
+                                         const char *file_id,
+                                         void *handle,
+                                         uv_after_work_cb cb);
 
 /**
  * @brief Create a file frame
@@ -847,8 +859,8 @@ GENARO_API int genaro_bridge_delete_file(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_create_frame(genaro_env_t *env,
-                                        void *handle,
-                                        uv_after_work_cb cb);
+                                          void *handle,
+                                          uv_after_work_cb cb);
 
 /**
  * @brief List available file frames
@@ -859,8 +871,8 @@ GENARO_API int genaro_bridge_create_frame(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_get_frames(genaro_env_t *env,
-                                      void *handle,
-                                      uv_after_work_cb cb);
+                                        void *handle,
+                                        uv_after_work_cb cb);
 
 /**
  * @brief Get information for a file frame
@@ -872,9 +884,9 @@ GENARO_API int genaro_bridge_get_frames(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
  GENARO_API int genaro_bridge_get_frame(genaro_env_t *env,
-                                      const char *frame_id,
-                                      void *handle,
-                                      uv_after_work_cb cb);
+                                        const char *frame_id,
+                                        void *handle,
+                                        uv_after_work_cb cb);
 
 /**
  * @brief Delete a file frame
@@ -886,9 +898,9 @@ GENARO_API int genaro_bridge_get_frames(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_delete_frame(genaro_env_t *env,
-                                        const char *frame_id,
-                                        void *handle,
-                                        uv_after_work_cb cb);
+                                          const char *frame_id,
+                                          void *handle,
+                                          uv_after_work_cb cb);
 
 /**
  * @brief Get metadata for a file
@@ -901,10 +913,10 @@ GENARO_API int genaro_bridge_delete_frame(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_get_file_info(genaro_env_t *env,
-                                         const char *bucket_id,
-                                         const char *file_id,
-                                         void *handle,
-                                         uv_after_work_cb cb);
+                                           const char *bucket_id,
+                                           const char *file_id,
+                                           void *handle,
+                                           uv_after_work_cb cb);
 
 /**
  * @brief Get mirror data for a file
@@ -917,10 +929,21 @@ GENARO_API int genaro_bridge_get_file_info(genaro_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
-                                        const char *bucket_id,
-                                        const char *file_id,
-                                        void *handle,
-                                        uv_after_work_cb cb);
+                                          const char *bucket_id,
+                                          const char *file_id,
+                                          void *handle,
+                                          uv_after_work_cb cb);
+
+
+/**
+ * @brief Generate the encryption key and ctr of AES256 CTR.
+ * 
+ * @param[in] env A pointer to environment
+ * @param[in] bucket_id Character array of bucket id
+ * @return A pointer to the encryption key and ctr.
+ */
+GENARO_API genaro_encryption_key_ctr_t *genaro_generate_encryption_key_ctr(genaro_env_t *env,
+                                                                   const char *bucket_id);
 
 /**
  * @brief Will cancel an upload
@@ -934,18 +957,20 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
  * @brief Upload a file
  *
  * @param[in] env A pointer to environment
- * @param[in] state A pointer to the upload state
  * @param[in] opts The options for the upload
+ * @param[in] key The key for encryption with AES256 CTR
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] progress_cb Function called with progress updates
  * @param[in] finished_cb Function called when download finished
- * @return A non-zero error value on failure and 0 on success.
+ * @return A pointer to the upload state.
  */
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
-                                                        genaro_upload_opts_t *opts,
-                                                        void *handle,
-                                                        genaro_progress_upload_cb progress_cb,
-                                                        genaro_finished_upload_cb finished_cb);
+                                                           genaro_upload_opts_t *opts,
+                                                           genaro_encryption_key_ctr_t *encryption_key_ctr,
+                                                           genaro_encryption_key_ctr_t *rsa_encryption_key_ctr,
+                                                           void *handle,
+                                                           genaro_progress_upload_cb progress_cb,
+                                                           genaro_finished_upload_cb finished_cb);
 
 /**
  * @brief Will cancel a download
@@ -959,21 +984,25 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
  * @brief Download a file
  *
  * @param[in] env A pointer to environment
- * @param[in] state A pointer to the download state
  * @param[in] bucket_id Character array of bucket id
  * @param[in] file_id Character array of file id
+ * @param[in] decryption_key The file encryption/decryption key.
+ * @param[in] decryption_ctr The file encryption/decryption ctr.
+ * @param[in] file_name The file name include path.
+ * @param[in] temp_file_name The temp file name include path.
  * @param[in] destination File descriptor of the destination
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] progress_cb Function called with progress updates
  * @param[in] finished_cb Function called when download finished
- * @return A non-zero error value on failure and 0 on success.
+ * @return A pointer to the download state.
  */
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
-                                                            const uint8_t *decrypt_key,
-                                                            const char *origin_file_path,
-                                                            const char *renamed_file_path,
+                                                            const uint8_t *decryption_key,
+                                                            const uint8_t *decryption_ctr,
+                                                            const char *file_name,
+                                                            const char *temp_file_name,
                                                             FILE *destination,
                                                             void *handle,
                                                             genaro_progress_download_cb progress_cb,
@@ -985,24 +1014,8 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
  * @param[in] encrypted_name A pointer to the encrypted name
  * @return NULL on failure and the decrypted name on success.
  */
-GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env, 
-                                            const char * const encrypted_name);
-
-/**
- * @brief Share a file
- *
- * @param[in] env The genaro environment struct
- * @param[in] bucket_id The bucket id
- * @param[in] file_id The file id
- * @param[in] handle A pointer that will be available in the callback
- * @param[in] cb A function called with response when complete
- * @return A non-zero error value on failure and 0 on success.
- */
-GENARO_API int genaro_bridge_share_file(genaro_env_t *env,
-                                        const char *bucket_id,
-                                        const char *file_id,
-                                        void *handle,
-                                        uv_after_work_cb cb);
+GENARO_API char *genaro_decrypt_name(genaro_env_t *env, 
+                                     const char * const encrypted_name);
 
 /*Curl debug function*/
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr);

@@ -34,6 +34,8 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
             return CURL_READFUNC_ABORT;
         }
 
+        body->ctx;
+
         if (body->ctx != NULL) {
             ctr_crypt(body->ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, body->ctx->encryption_ctr, read_bytes,

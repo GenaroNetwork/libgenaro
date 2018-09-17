@@ -432,8 +432,12 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
         progress_cb = file_progress;
     }
 
+    genaro_encryption_key_ctr_t *encryption_key_ctr = genaro_generate_encryption_key_ctr(env, bucket_id);
+    genaro_encryption_key_ctr_t *rsa_encryption_key_ctr = NULL;
     genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
+                                                          encryption_key_ctr,
+                                                          rsa_encryption_key_ctr,
                                                           NULL,
                                                           progress_cb,
                                                           upload_file_complete);
@@ -447,7 +451,7 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
     return state->error_status;
 }
 
-static void download_file_complete(int status, const char *origin_file_path, const char *renamed_file_path, FILE *fd, void *handle)
+static void download_file_complete(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
 {
     printf("\n");
     fclose(fd);
@@ -464,14 +468,14 @@ static void download_file_complete(int status, const char *origin_file_path, con
         }
 
         // delete the temp file.
-        unlink(renamed_file_path);
+        unlink(temp_file_name);
 
         exit(status);
     }
 
     // download success, remove the original file, and rename
     // the downloaded file to the same file name.
-    const char *final_file_path = strdup(origin_file_path);
+    const char *final_file_path = strdup(file_name);
 
     bool getname_failed = true;
 
@@ -534,16 +538,16 @@ static void download_file_complete(int status, const char *origin_file_path, con
 
     if (!getname_failed)
     {
-        rename(renamed_file_path, final_file_path);
+        rename(temp_file_name, final_file_path);
     }
     else
     {
-        unlink(renamed_file_path);
+        unlink(temp_file_name);
     }
 
     free((char *)final_file_path);
-    free((char *)origin_file_path);
-    free((char *)renamed_file_path);
+    free((char *)file_name);
+    free((char *)temp_file_name);
 
     printf("Download Success!\n");
     exit(0);
@@ -607,9 +611,9 @@ static int download_file(genaro_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
-    // TODO: need to pass the fourth para, now it's NULL.
+    // TODO: need to pass the fourth and fifth para, now it's NULL.
     genaro_download_state_t *state = genaro_bridge_resolve_file(env, bucket_id,
-                                                              file_id, NULL, strdup(path), 
+                                                              file_id, NULL, NULL, strdup(path), 
                                                               renamed_path, fd, NULL,
                                                               progress_cb,
                                                               download_file_complete);

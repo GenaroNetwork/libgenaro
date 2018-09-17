@@ -58,8 +58,7 @@ add_library(genaro
         src/key_file.c
         src/rs.c
         src/uploader.c
-        src/utils.c
-        src/rsa_pkcs1.c)
+        src/utils.c)
 target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
 
 add_executable(genaroeden-cli src/cli.c)
@@ -92,8 +91,7 @@ add_library(genaro
         src/key_file.c
         src/rs.c
         src/uploader.c
-        src/utils.c
-        src/rsa_pkcs1.c)
+        src/utils.c)
 # target_link_libraries(genaro secp256k1 scrypt keccak)
 
 add_executable(genaroeden-cli src/cli.c)

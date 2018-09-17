@@ -334,115 +334,6 @@ static void rename_bucket_request_worker(uv_work_t *work)
     req->status_code = status_code;
 }
 
-static uint8_t *get_decryption_key_v1(share_file_request_t *req)
-{
-    char *file_key_as_str = NULL;
-
-    file_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    if (!file_key_as_str) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        goto cleanup;
-    }
-
-    if (generate_file_key(req->encrypt_options->priv_key,
-                          req->encrypt_options->key_len,
-                          req->bucket_id,
-                          req->index, &file_key_as_str)) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        goto cleanup;
-    }
-    file_key_as_str[DETERMINISTIC_KEY_SIZE] = '\0';
-
-    uint8_t *decrypt_key = str2hex(strlen(file_key_as_str), file_key_as_str);
-    if (!decrypt_key) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        goto cleanup;
-    }
-
-    return decrypt_key;
-
-cleanup:
-    if (file_key_as_str) {
-        free(file_key_as_str);
-    }
-    return NULL;
-}
-
-static uint8_t *get_decryption_key_v0(share_file_request_t *req)
-{
-    char *file_key = NULL;
-    uint8_t *decrypt_key = NULL;
-
-    file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    if (!file_key) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        goto cleanup;
-    }
-
-    if (generate_file_key(req->encrypt_options->priv_key,
-                          req->encrypt_options->key_len,
-                          req->bucket_id,
-                          req->file_id, &file_key)) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        goto cleanup;
-    }
-    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
-
-    decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
-    if (!decrypt_key) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        goto cleanup;
-    }
-
-    sha256_of_str((uint8_t *)file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
-    decrypt_key[SHA256_DIGEST_SIZE] = '\0';
-
-    memset_zero(file_key, DETERMINISTIC_KEY_SIZE + 1);
-    free(file_key);
-
-    return decrypt_key;
-
-cleanup:
-    free(file_key);
-    free(decrypt_key);
-    return NULL;
-}
-
-static void share_file_request_worker(uv_work_t *work)
-{
-    share_file_request_t *req = work->data;
-    int status_code = 0;
-
-    req->error_code = fetch_json(req->http_options, req->encrypt_options,
-                                 req->options, req->method, req->path, NULL, req->body,
-                                 req->auth, &req->response, &status_code);
-
-    req->status_code = status_code;
-
-    if(req->error_code || status_code != 200 || !req->response) {
-        return;
-    }
-
-    // get the "index" for file decryption
-    struct json_object *index;
-    json_object_object_get_ex(req->response, "index", &index);
-    if(index == NULL) {
-        req->error_code = GENARO_BRIDGE_JSON_ERROR;
-        return;
-    }
-    req->index = json_object_get_string(index);
-
-    uint8_t *decrypt_key = NULL;
-
-    if(req->index) {
-        decrypt_key = get_decryption_key_v1(req);
-    } else {
-        decrypt_key = get_decryption_key_v0(req);
-    }
-
-    req->decrypt_key = (char *)decrypt_key;
-}
-
 static void list_files_request_worker(uv_work_t *work)
 {
     list_files_request_t *req = work->data;
@@ -723,42 +614,6 @@ static rename_bucket_request_t *rename_bucket_request_new(
     req->encrypted_bucket_name = encrypted_bucket_name;
     req->handle = handle;
     
-    return req;
-}
-
-static share_file_request_t *share_file_request_new(
-        genaro_http_options_t *http_options,
-        genaro_bridge_options_t *options,
-        genaro_encrypt_options_t *encrypt_options,
-        char *method,
-        char *path,
-        struct json_object *request_body,
-        bool auth,
-        const char *bucket_id,
-        const char *file_id,
-        void *handle)
-{
-    share_file_request_t *req = malloc(sizeof(share_file_request_t));
-    if (!req) {
-        return NULL;
-    }
-
-    req->http_options = http_options;
-    req->options = options;
-    req->encrypt_options = encrypt_options;
-    req->method = method;
-    req->path = path;
-    req->auth = auth;
-    req->body = request_body;
-    req->response = NULL;
-    req->bucket_id = bucket_id;
-    req->file_id = file_id;
-    req->index = NULL;
-    req->decrypt_key = NULL;
-    req->error_code = 0;
-    req->status_code = 0;
-    req->handle = handle;
-
     return req;
 }
 
@@ -1663,7 +1518,7 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env, 
+GENARO_API char *genaro_decrypt_name(genaro_env_t *env, 
                                             const char * const encrypted_name)
 {
     // Derive a key based on the master seed
@@ -1707,34 +1562,67 @@ GENARO_API char *genaro_bridge_decrypt_name(genaro_env_t *env,
     }
 }
 
-GENARO_API int genaro_bridge_share_file(genaro_env_t *env,
-                                        const char *bucket_id,
-                                        const char *file_id,
-                                        void *handle,
-                                        uv_after_work_cb cb)
+GENARO_API genaro_encryption_key_ctr_t *genaro_generate_encryption_key_ctr(genaro_env_t *env,
+                                                                   const char *bucket_id)
 {
-    uv_work_t *work = uv_work_new();
-    if(!work) {
-        return GENARO_MEMORY_ERROR;
+    uint8_t *index = NULL;
+    char *key_as_str = NULL;
+
+    // Get random index used for encryption
+    index = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+    if (!index) {
+        return NULL;
+    }
+    random_buffer(index, SHA256_DIGEST_SIZE);
+
+    char *index_as_str = hex2str(SHA256_DIGEST_SIZE, index);
+    if (!index_as_str) {
+        return NULL;
     }
 
-    char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
-                                 file_id, "/info");
-    if (!path) {
-        return GENARO_MEMORY_ERROR;
+    // Caculate the file encryption key based on the index
+    key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    if (!key_as_str) {
+        return NULL;
     }
 
-    work->data = share_file_request_new(env->http_options,
-                                           env->bridge_options,
-                                           env->encrypt_options,
-                                           "GET", path, NULL, true, 
-                                           bucket_id, file_id, handle);
-
-    if (!work) {
-        return GENARO_MEMORY_ERROR;
+    int key_status = generate_file_key(env->encrypt_options->priv_key,
+                                       env->encrypt_options->key_len,
+                                       bucket_id,
+                                       index_as_str,
+                                       &key_as_str);
+    if (key_status) {
+        goto cleanup;
     }
 
-    return uv_queue_work(env->loop, (uv_work_t*) work, share_file_request_worker, cb);
+    uint8_t *encryption_key = str2hex(strlen(key_as_str), key_as_str);
+    if (!encryption_key) {
+        goto cleanup;
+    }
+
+    uint8_t *encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+    if (!encryption_ctr) {
+        goto cleanup;
+    }
+    memcpy(encryption_ctr, index, AES_BLOCK_SIZE);
+
+    genaro_encryption_key_ctr_t *encryption_key_ctr = malloc(sizeof(genaro_encryption_key_ctr_t));
+    encryption_key_ctr->key = encryption_key;
+    encryption_key_ctr->key_len = DETERMINISTIC_KEY_SIZE;
+    encryption_key_ctr->ctr = encryption_ctr;
+    encryption_key_ctr->ctr_len = AES_BLOCK_SIZE;
+
+	return encryption_key_ctr;
+	
+cleanup:
+	if (key_as_str) {
+        free(key_as_str);
+    }
+
+    if (index) {
+        free(index);
+    }
+    return NULL;
 }
 
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr)
