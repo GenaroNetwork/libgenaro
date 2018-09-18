@@ -37,7 +37,7 @@ genaro_log_options_t log_options = {
     int level                   = 0
 };
 
-env = genaro_init_env(&bridge_options, &encrypt_options, &http_options, &log_options);
+env = genaro_init_env(&bridge_options, &encrypt_options, &http_options, &log_options, false);
 ```
 
 note: there are 2 ways to make an env object. Either provide username plus password or provide apikey plus secretkey.

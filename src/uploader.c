@@ -253,6 +253,10 @@ static void cleanup_state(genaro_upload_state_t *state)
         free(state->hmac_id);
     }
 
+    if (state->index) {
+        free(state->index);
+    }
+
     if (state->encrypted_file_name) {
         free((char *)state->encrypted_file_name);
     }
@@ -413,6 +417,9 @@ static void create_bucket_entry(uv_work_t *work)
 
     json_object *file_name = json_object_new_string(state->encrypted_file_name);
     json_object_object_add(body, "filename", file_name);
+
+    json_object *index = json_object_new_string(state->index);
+    json_object_object_add(body, "index", index);
 
     if(state->rsa_encryption_key_ctr && state->rsa_encryption_key_ctr->key && state->rsa_encryption_key_ctr->ctr) {
         json_object *rsa_decryption_key = json_object_new_string_len(state->rsa_encryption_key_ctr->key, state->rsa_encryption_key_ctr->key_len);
@@ -2614,12 +2621,13 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state)
 }
 
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
-                            genaro_upload_opts_t *opts,
-                            genaro_encryption_key_ctr_t *encryption_key_ctr,
-                            genaro_encryption_key_ctr_t *rsa_encryption_key_ctr,
-                            void *handle,
-                            genaro_progress_upload_cb progress_cb,
-                            genaro_finished_upload_cb finished_cb)
+                                                           genaro_upload_opts_t *opts,
+                                                           const char *index,
+                                                           genaro_encryption_key_ctr_t *encryption_key_ctr,
+                                                           genaro_encryption_key_ctr_t *rsa_encryption_key_ctr,
+                                                           void *handle,
+                                                           genaro_progress_upload_cb progress_cb,
+                                                           genaro_finished_upload_cb finished_cb)
 {
     if (!opts->fd) {
         env->log->error(env->log_options, handle, "Invalid File descriptor");
@@ -2649,6 +2657,7 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     state->exclude = NULL;
     state->frame_id = NULL;
     state->hmac_id = NULL;
+    state->index = index;
     state->encryption_key_ctr = encryption_key_ctr;
     state->rsa_encryption_key_ctr = rsa_encryption_key_ctr;
 

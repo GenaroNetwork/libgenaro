@@ -351,11 +351,6 @@ static void list_files_request_worker(uv_work_t *work)
         num_files = json_object_array_length(req->response);
     }
 
-    if (num_files > 0) {
-        req->files = malloc(sizeof(genaro_file_meta_t) * num_files);
-        req->total_files = num_files;
-    }
-
     // Get the bucket key to encrypt the filename from bucket id
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     generate_bucket_key(req->encrypt_options->priv_key,
@@ -386,7 +381,32 @@ static void list_files_request_worker(uv_work_t *work)
     struct json_object *size;
     struct json_object *id;
     struct json_object *created;
+    struct json_object *isShareFile;
+    struct json_object *rsaKey;
+    struct json_object *rsaCtr;
 
+    bool *p_is_share = NULL;
+    if (num_files > 0) {
+        p_is_share = (bool *)malloc(sizeof(bool) * num_files);
+    }
+
+    req->total_files = 0;
+    for (int i = 0; i < num_files; i++) {
+        file = json_object_array_get_idx(req->response, i);
+        json_object_object_get_ex(file, "isShareFile", &isShareFile);
+
+        p_is_share[i] = isShareFile;
+
+        if(req->is_support_share || !isShareFile) {
+            req->total_files++;
+        }
+    }
+
+    if(req->total_files > 0) {
+        req->files = (genaro_file_meta_t *)malloc(sizeof(genaro_file_meta_t) * req->total_files);
+    }
+
+    int file_index = 0;
     for (int i = 0; i < num_files; i++) {
         file = json_object_array_get_idx(req->response, i);
 
@@ -395,18 +415,29 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_object_get_ex(file, "size", &size);
         json_object_object_get_ex(file, "id", &id);
         json_object_object_get_ex(file, "created", &created);
+        json_object_object_get_ex(file, "rsaKey", &rsaKey);
+        json_object_object_get_ex(file, "rsaCtr", &rsaCtr);
 
-        genaro_file_meta_t *file = &req->files[i];
+        // if this file is a shared file but we don't support share.
+        if(!req->is_support_share && p_is_share[i]) {
+            continue;
+        }
 
-        file->created = json_object_get_string(created);
-        file->mimetype = json_object_get_string(mimetype);
-        file->size = json_object_get_int64(size);
-        file->erasure = NULL;
-        file->index = NULL;
-        file->hmac = NULL; // TODO though this value is not needed here
-        file->id = json_object_get_string(id);
-        file->decrypted = false;
-        file->filename = NULL;
+        genaro_file_meta_t *file_meta = file_meta = &req->files[file_index];
+        file_index++;
+
+        file_meta->isShareFile = p_is_share[i];
+        file_meta->created = json_object_get_string(created);
+        file_meta->mimetype = json_object_get_string(mimetype);
+        file_meta->size = json_object_get_int64(size);
+        file_meta->erasure = NULL;
+        file_meta->index = NULL;
+        file_meta->hmac = NULL; // TODO though this value is not needed here
+        file_meta->id = json_object_get_string(id);
+        file_meta->decrypted = false;
+        file_meta->filename = NULL;
+        file_meta->rsaKey = json_object_get_string(rsaKey);
+        file_meta->rsaCtr = json_object_get_string(rsaCtr);
 
         // Attempt to decrypt the filename, otherwise
         // we will default the filename to the encrypted text.
@@ -420,13 +451,15 @@ static void list_files_request_worker(uv_work_t *work)
         int error_status = decrypt_meta(encrypted_file_name, key,
                                         &decrypted_file_name);
         if (!error_status) {
-            file->decrypted = true;
-            file->filename = decrypted_file_name;
+            file_meta->decrypted = true;
+            file_meta->filename = decrypted_file_name;
         } else {
-            file->decrypted = false;
-            file->filename = strdup(encrypted_file_name);
+            file_meta->decrypted = false;
+            file_meta->filename = strdup(encrypted_file_name);
         }
     }
+
+    free(p_is_share);
 }
 
 static json_request_t *json_request_new(
@@ -464,6 +497,7 @@ static list_files_request_t *list_files_request_new(
     genaro_http_options_t *http_options,
     genaro_bridge_options_t *options,
     genaro_encrypt_options_t *encrypt_options,
+    bool is_support_share,
     const char *bucket_id,
     char *method,
     char *path,
@@ -479,6 +513,7 @@ static list_files_request_t *list_files_request_new(
     req->http_options = http_options;
     req->options = options;
     req->encrypt_options = encrypt_options;
+    req->is_support_share = is_support_share;
     req->bucket_id = bucket_id;
     req->method = method;
     req->path = path;
@@ -705,7 +740,8 @@ static void log_formatter_error(genaro_log_options_t *options, void *handle,
 GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
                                  genaro_encrypt_options_t *encrypt_options,
                                  genaro_http_options_t *http_options,
-                                 genaro_log_options_t *log_options)
+                                 genaro_log_options_t *log_options,
+                                 bool is_support_share)
 {
     curl_global_init(CURL_GLOBAL_ALL);
 
@@ -895,6 +931,8 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
         }
     }
 
+    env->is_support_share = is_support_share;
+
     return env;
 }
 
@@ -1055,6 +1093,8 @@ GENARO_API char *genaro_strerror(int error_code)
             return "Unexpected JSON response";
         case GENARO_BRIDGE_FILEINFO_ERROR:
             return "Bridge file info error";
+        case GENARO_BRIDGE_DECRYPTION_KEY_ERROR:
+            return "Bridge request decryption key error";
         case GENARO_FARMER_REQUEST_ERROR:
             return "Farmer request error";
         case GENARO_FARMER_EXHAUSTED_ERROR:
@@ -1322,6 +1362,7 @@ GENARO_API int genaro_bridge_list_files(genaro_env_t *env,
     work->data = list_files_request_new(env->http_options,
                                         env->bridge_options,
                                         env->encrypt_options,
+                                        env->is_support_share,
                                         id, "GET", path,
                                         NULL, true, handle);
 
@@ -1562,7 +1603,7 @@ GENARO_API char *genaro_decrypt_name(genaro_env_t *env,
     }
 }
 
-GENARO_API genaro_encryption_key_ctr_t *genaro_generate_encryption_key_ctr(genaro_env_t *env,
+GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_t *env,
                                                                    const char *bucket_id)
 {
     uint8_t *index = NULL;
@@ -1606,13 +1647,15 @@ GENARO_API genaro_encryption_key_ctr_t *genaro_generate_encryption_key_ctr(genar
     }
     memcpy(encryption_ctr, index, AES_BLOCK_SIZE);
 
-    genaro_encryption_key_ctr_t *encryption_key_ctr = malloc(sizeof(genaro_encryption_key_ctr_t));
-    encryption_key_ctr->key = encryption_key;
-    encryption_key_ctr->key_len = DETERMINISTIC_KEY_SIZE;
-    encryption_key_ctr->ctr = encryption_ctr;
-    encryption_key_ctr->ctr_len = AES_BLOCK_SIZE;
+    genaro_encryption_info_t *encryption_info = (genaro_encryption_info_t *)malloc(sizeof(genaro_encryption_info_t));
+    encryption_info->key_ctr = (genaro_encryption_key_ctr_t *)malloc(sizeof(genaro_encryption_key_ctr_t));
+    encryption_info->key_ctr->key = encryption_key;
+    encryption_info->key_ctr->key_len = DETERMINISTIC_KEY_SIZE;
+    encryption_info->key_ctr->ctr = encryption_ctr;
+    encryption_info->key_ctr->ctr_len = AES_BLOCK_SIZE;
+    encryption_info->index = index_as_str;
 
-	return encryption_key_ctr;
+	return encryption_info;
 	
 cleanup:
 	if (key_as_str) {

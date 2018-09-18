@@ -1051,6 +1051,13 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
 
     state->decryption_key_ctr->key = decrypt_key;
 
+    // printf("decrypt_key: ");
+    // for(int i = 0; i < DETERMINISTIC_KEY_SIZE; i++)
+    // {
+    //     printf(" %x", decrypt_key[i]);
+    // }
+	// printf("\n");
+
     index = str2hex(strlen(state->info->index), (char *)state->info->index);
     if (!index) {
         state->error_status = GENARO_MEMORY_ERROR;
@@ -1237,6 +1244,7 @@ static void request_info(uv_work_t *work)
 
     } else if (status_code == 200 || status_code == 304) {
         req->info = malloc(sizeof(genaro_file_meta_t));
+        req->info->isShareFile = false;
         req->info->created = NULL;
         req->info->filename = NULL;
         req->info->mimetype = NULL;
@@ -1246,6 +1254,22 @@ static void request_info(uv_work_t *work)
         req->info->id = NULL;
         req->info->decrypted = false;
         req->info->index = NULL;
+
+        // need not get rsaKey and rsaCtr, because I can't decrypt it
+        req->info->rsaKey = NULL;
+        req->info->rsaCtr = NULL;
+
+        struct json_object *isShareFile_value;
+        bool isShareFile = false;
+        if (json_object_object_get_ex(response, "isShareFile", &isShareFile_value)) {
+            isShareFile = (bool)json_object_get_boolean(isShareFile_value);
+            req->info->isShareFile = isShareFile;
+        }
+
+        if(isShareFile && !(state->decryption_key_ctr && state->decryption_key_ctr->key_len != 0 && state->decryption_key_ctr->ctr_len != 0)) {
+            state->error_status = GENARO_BRIDGE_DECRYPTION_KEY_ERROR;
+            goto clean_up;
+        }
 
         struct json_object *erasure_obj;
         struct json_object *erasure_value;
@@ -1968,6 +1992,12 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
         }
 
         state->decryption_key_ctr = decryption_key_ctr;
+    } else {
+        state->decryption_key_ctr = (genaro_decryption_key_ctr_t *)malloc(sizeof(genaro_decryption_key_ctr_t));
+        state->decryption_key_ctr->key = NULL;
+        state->decryption_key_ctr->key_len = 0;
+        state->decryption_key_ctr->ctr = NULL;
+        state->decryption_key_ctr->ctr_len = 0;
     }
 
     // start download

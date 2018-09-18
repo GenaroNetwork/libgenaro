@@ -65,6 +65,7 @@ extern "C" {
 #define GENARO_BRIDGE_FILEINFO_ERROR 1012
 #define GENARO_BRIDGE_BUCKET_FILE_EXISTS 1013
 #define GENARO_BRIDGE_OFFER_ERROR 1014
+#define GENARO_BRIDGE_DECRYPTION_KEY_ERROR 1015
 
 // Farmer related errors 2000 to 2999
 #define GENARO_FARMER_REQUEST_ERROR 2000
@@ -102,10 +103,6 @@ extern "C" {
 // Miscellaneous errors
 #define GENARO_HEX_DECODE_ERROR 7000
 
-// RSA encryption/decryption errors
-#define GENARO_RSA_ENCRYPTION_ERROR 8000
-#define GENARO_RSA_DECRYPTION_ERROR 8001
-
 // Exchange report codes
 #define GENARO_REPORT_SUCCESS 1000
 #define GENARO_REPORT_FAILURE 1100
@@ -122,27 +119,29 @@ extern "C" {
 #define GENARO_LOW_SPEED_TIME 20L
 #define GENARO_HTTP_TIMEOUT 60L
 
-// the max length of the encrypted file encryption key use RSA.
-#define RSA_ENCRYPTED_MAX_LENGTH 4098
-
 typedef struct {
-  uint8_t *key;
-  size_t key_len;
-  uint8_t *ctr;
-  size_t ctr_len;
+    uint8_t *key;
+    size_t key_len;
+    uint8_t *ctr;
+    size_t ctr_len;
 } genaro_encryption_key_ctr_t;
 
 typedef struct {
-  uint8_t *key;
-  size_t key_len;
-  uint8_t *ctr;
-  size_t ctr_len;
+    genaro_encryption_key_ctr_t *key_ctr;
+    char *index;
+} genaro_encryption_info_t;
+
+typedef struct {
+    uint8_t *key;
+    size_t key_len;
+    uint8_t *ctr;
+    size_t ctr_len;
 } genaro_decryption_key_ctr_t;
 
 typedef struct {
-  uint8_t *encryption_key;
-  uint8_t *encryption_ctr;
-  struct aes256_ctx *ctx;
+    uint8_t *encryption_key;
+    uint8_t *encryption_ctr;
+    struct aes256_ctx *ctx;
 } genaro_encryption_ctx_t;
 
 typedef enum {
@@ -224,6 +223,7 @@ typedef struct genaro_env {
     genaro_encrypt_options_t *encrypt_options;
     genaro_http_options_t *http_options;
     genaro_log_options_t *log_options;
+    bool is_support_share;
     const char *tmp_path;
     uv_loop_t *loop;
     genaro_log_levels_t *log;
@@ -350,6 +350,7 @@ typedef struct {
 /** @brief A structure for that describes a bucket entry/file
  */
 typedef struct {
+    bool isShareFile;
     const char *created;
     const char *filename;
     const char *mimetype;
@@ -359,6 +360,8 @@ typedef struct {
     const char *id;
     bool decrypted;
     const char *index;
+    const char *rsaKey;
+    const char *rsaCtr;
 } genaro_file_meta_t;
 
 /** @brief A structure for queueing list files request work
@@ -367,6 +370,7 @@ typedef struct {
     genaro_http_options_t *http_options;
     genaro_encrypt_options_t *encrypt_options;
     genaro_bridge_options_t *options;
+    bool is_support_share;
     const char *bucket_id;
     char *method;
     char *path;
@@ -640,12 +644,14 @@ GENARO_API void genaro_key_result_to_encrypt_options(key_result_t *key_result, g
  * @param[in] rsaPrikey_options - RSA private key options
  * @param[in] http_options - HTTP settings
  * @param[in] log_options - Logging settings
+ * @param[in] is_support_share - Whether the feature of file share is support.
  * @return A null value on error, otherwise a genaro_env pointer.
  */
 GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
                                          genaro_encrypt_options_t *encrypt_options,
                                          genaro_http_options_t *http_options,
-                                         genaro_log_options_t *log_options);
+                                         genaro_log_options_t *log_options,
+                                         bool is_support_share);
 
 
 /**
@@ -935,13 +941,13 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
 
 
 /**
- * @brief Generate the encryption key and ctr of AES256 CTR.
+ * @brief Generate the encryption key and ctr of AES256 CTR, and also the index that can regenerate them.
  * 
  * @param[in] env A pointer to environment
  * @param[in] bucket_id Character array of bucket id
- * @return A pointer to the encryption key and ctr.
+ * @return A pointer to the encryption info.
  */
-GENARO_API genaro_encryption_key_ctr_t *genaro_generate_encryption_key_ctr(genaro_env_t *env,
+GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_t *env,
                                                                    const char *bucket_id);
 
 /**
@@ -957,7 +963,9 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
  *
  * @param[in] env A pointer to environment
  * @param[in] opts The options for the upload
- * @param[in] key The key for encryption with AES256 CTR
+ * @param[in] index The index that has generated encryption_key_ctr.
+ * @param[in] encryption_key_ctr The key and ctr for file encryption
+ * @param[in] rsa_encryption_key_ctr The RSA encrypted key and ctr
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] progress_cb Function called with progress updates
  * @param[in] finished_cb Function called when download finished
@@ -965,6 +973,7 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
  */
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
                                                            genaro_upload_opts_t *opts,
+                                                           const char *index,
                                                            genaro_encryption_key_ctr_t *encryption_key_ctr,
                                                            genaro_encryption_key_ctr_t *rsa_encryption_key_ctr,
                                                            void *handle,

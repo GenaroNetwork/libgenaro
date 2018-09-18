@@ -504,7 +504,8 @@ int test_upload()
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
-                                      &log_options);
+                                      &log_options,
+                                      false);
     assert(env != NULL);
 
     char *file_name = "genaro-test-upload.data";
@@ -552,7 +553,8 @@ int test_upload_cancel()
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
-                                      &log_options);
+                                      &log_options,
+                                      false);
     assert(env != NULL);
 
     char *file_name = "genaro-test-upload.data";
@@ -617,7 +619,8 @@ int test_download()
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
-                                      &log_options);
+                                      &log_options,
+                                      false);
     assert(env != NULL);
 
     // resolve file
@@ -659,7 +662,8 @@ int test_download_cancel()
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
-                                      &log_options);
+                                      &log_options,
+                                      false);
     assert(env != NULL);
 
     // resolve file
@@ -719,7 +723,8 @@ int test_api_badauth()
     genaro_env_t *env = genaro_init_env(&bridge_options_bad,
                                       &encrypt_options,
                                       &http_options,
-                                      &log_options);
+                                      &log_options,
+                                      false);
 
     assert(env != NULL);
 
@@ -752,7 +757,8 @@ int test_api()
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
                                       &http_options,
-                                      &log_options);
+                                      &log_options,
+                                      false);
     assert(env != NULL);
 
     int status;

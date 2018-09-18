@@ -432,11 +432,13 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
         progress_cb = file_progress;
     }
 
-    genaro_encryption_key_ctr_t *encryption_key_ctr = genaro_generate_encryption_key_ctr(env, bucket_id);
+    genaro_encryption_info_t *encryption_info = genaro_generate_encryption_info(env, bucket_id);
+
     genaro_encryption_key_ctr_t *rsa_encryption_key_ctr = NULL;
     genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
-                                                          encryption_key_ctr,
+                                                          encryption_info->index,
+                                                          encryption_info->key_ctr,
                                                           rsa_encryption_key_ctr,
                                                           NULL,
                                                           progress_cb,
@@ -1205,7 +1207,7 @@ int main(int argc, char **argv)
             .port  = port,
         };
 
-        env = genaro_init_env(&options, NULL, &http_options, &log_options);
+        env = genaro_init_env(&options, NULL, &http_options, &log_options, false);
         if (!env) {
             return 1;
         }
@@ -1254,7 +1256,7 @@ int main(int argc, char **argv)
         };
 
         env = genaro_init_env(&options, &encrypt_options,
-                             &http_options, &log_options);
+                             &http_options, &log_options, false);
         if (!env) {
             status = 1;
             goto end_program;
