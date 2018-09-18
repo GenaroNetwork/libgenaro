@@ -613,7 +613,7 @@ static int download_file(genaro_env_t *env, char *bucket_id,
 
     // TODO: need to pass the fourth and fifth para, now it's NULL.
     genaro_download_state_t *state = genaro_bridge_resolve_file(env, bucket_id,
-                                                              file_id, NULL, NULL, strdup(path), 
+                                                              file_id, NULL, strdup(path), 
                                                               renamed_path, fd, NULL,
                                                               progress_cb,
                                                               download_file_complete);

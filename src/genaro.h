@@ -517,7 +517,6 @@ typedef struct genaro_download_state {
     bool requesting_pointers;
     int error_status;
     bool writing;
-    genaro_decryption_key_ctr_t *decryption_key_ctr_from_bridge;
     genaro_decryption_key_ctr_t *decryption_key_ctr;
     const char *hmac;
     uint32_t pending_work_count;

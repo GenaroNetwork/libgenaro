@@ -38,17 +38,6 @@ static void free_download_state(genaro_download_state_t *state)
         free(state->decryption_key_ctr);
     }
 
-    if(state->decryption_key_ctr_from_bridge) {
-        if (state->decryption_key_ctr_from_bridge->key) {
-            free(state->decryption_key_ctr_from_bridge->key);
-        }
-
-        if (state->decryption_key_ctr_from_bridge->ctr) {
-            free(state->decryption_key_ctr_from_bridge->ctr);
-        }
-        free(state->decryption_key_ctr_from_bridge);
-    }
-
     if (state->info) {
         if (state->info->erasure) {
             free((char *)state->info->erasure);
@@ -1139,16 +1128,14 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
 }
 
 // has_key
-static void determine_decryption_key(genaro_download_state_t *state, genaro_decryption_key_ctr_t *decryption_key_ctr)
+static void determine_decryption_key(genaro_download_state_t *state)
 {
     if (!state->env->encrypt_options ||
         !state->env->encrypt_options->priv_key) {
         state->decryption_key_ctr->key = NULL;
         state->decryption_key_ctr->ctr = NULL;
-    } else if(decryption_key_ctr && decryption_key_ctr->key && decryption_key_ctr->ctr) {
-        // state->decryption_key_ctr->key = decryption_key_ctr->key;
-        // state->decryption_key_ctr->ctr = decryption_key_ctr->ctr;
-        state->decryption_key_ctr = decryption_key_ctr;
+    } else if(state->decryption_key_ctr && state->decryption_key_ctr->key && state->decryption_key_ctr->ctr) {
+        return;
     } else if (state->info->index) {
         // calculate decryption key based on the index
         determine_decryption_key_v1(state);
@@ -1179,7 +1166,7 @@ static void after_request_info(uv_work_t *work, int status)
         }
 
         // Now that we have info we can calculate the decryption key
-        determine_decryption_key(req->state, req->state->decryption_key_ctr_from_bridge);
+        determine_decryption_key(req->state);
 
     } else if (req->error_status) {
         switch(req->error_status) {
@@ -1945,8 +1932,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->canceled = false;
     state->log = env->log;
     state->handle = handle;
-    state->decryption_key_ctr = (genaro_decryption_key_ctr_t *)malloc(sizeof(genaro_decryption_key_ctr_t));
-    state->decryption_key_ctr_from_bridge = NULL;
+    state->decryption_key_ctr = NULL;
     
     if(decryption_key_ctr && decryption_key_ctr->key && decryption_key_ctr->ctr) {
         size_t key_len = decryption_key_ctr->key_len;
@@ -1981,15 +1967,8 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
             return NULL;
         }
 
-        state->decryption_key_ctr_from_bridge = decryption_key_ctr;
+        state->decryption_key_ctr = decryption_key_ctr;
     }
-
-    printf("genaro_bridge_resolve_file\n");
-	for(int i = 0; i < 64; i++)
-	{
-		printf("%x ", state->decryption_key_ctr_from_bridge->key[i]);
-	}
-	printf("\n");
 
     // start download
     queue_next_work(state);
