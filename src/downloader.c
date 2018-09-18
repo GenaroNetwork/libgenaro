@@ -1052,7 +1052,7 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
     state->decryption_key_ctr->key = decrypt_key;
 
     // printf("decrypt_key: ");
-    // for(int i = 0; i < DETERMINISTIC_KEY_SIZE; i++)
+    // for(int i = 0; i < SHA256_DIGEST_SIZE; i++)
     // {
     //     printf(" %x", decrypt_key[i]);
     // }
@@ -1511,10 +1511,7 @@ static void after_recover_shards(uv_work_t *work, int status)
 
     queue_next_work(state);
 
-    memset_zero(req->decryption_key_ctr.key, SHA256_DIGEST_SIZE);
     free(req->decryption_key_ctr.key);
-
-    memset_zero(req->decryption_key_ctr.ctr, AES_BLOCK_SIZE);
     free(req->decryption_key_ctr.ctr);
 
     free(req->zilch);
@@ -1960,18 +1957,18 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     
     if(decryption_key_ctr && decryption_key_ctr->key && decryption_key_ctr->ctr) {
         size_t key_len = decryption_key_ctr->key_len;
-        if(key_len < DETERMINISTIC_KEY_SIZE) {
-            uint8_t *new_key = (uint8_t *)malloc(DETERMINISTIC_KEY_SIZE * sizeof(uint8_t));
+        if(key_len < SHA256_DIGEST_SIZE) {
+            uint8_t *new_key = (uint8_t *)malloc(SHA256_DIGEST_SIZE * sizeof(uint8_t));
             memcpy(new_key, decryption_key_ctr->key, decryption_key_ctr->key_len);
             free(decryption_key_ctr->key);
 
-            while(key_len < DETERMINISTIC_KEY_SIZE) {
+            while(key_len < SHA256_DIGEST_SIZE) {
                 new_key[key_len] = 0;
                 key_len++;
             }
 
             decryption_key_ctr->key = new_key;
-        } else if(key_len > DETERMINISTIC_KEY_SIZE) {
+        } else if(key_len > SHA256_DIGEST_SIZE) {
             return NULL;
         }
 

@@ -1650,7 +1650,7 @@ GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_
     genaro_encryption_info_t *encryption_info = (genaro_encryption_info_t *)malloc(sizeof(genaro_encryption_info_t));
     encryption_info->key_ctr = (genaro_encryption_key_ctr_t *)malloc(sizeof(genaro_encryption_key_ctr_t));
     encryption_info->key_ctr->key = encryption_key;
-    encryption_info->key_ctr->key_len = DETERMINISTIC_KEY_SIZE;
+    encryption_info->key_ctr->key_len = SHA256_DIGEST_SIZE;
     encryption_info->key_ctr->ctr = encryption_ctr;
     encryption_info->key_ctr->ctr_len = AES_BLOCK_SIZE;
     encryption_info->index = index_as_str;
