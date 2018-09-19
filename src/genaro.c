@@ -390,21 +390,23 @@ static void list_files_request_worker(uv_work_t *work)
         p_is_share = (bool *)malloc(sizeof(bool) * num_files);
     }
 
-    req->total_files = 0;
+    int num_visible_files = 0;
     for (int i = 0; i < num_files; i++) {
         file = json_object_array_get_idx(req->response, i);
         json_object_object_get_ex(file, "isShareFile", &isShareFile);
 
-        p_is_share[i] = isShareFile;
+        p_is_share[i] = json_object_get_boolean(isShareFile);
 
         if(req->is_support_share || !isShareFile) {
-            req->total_files++;
+            num_visible_files++;
         }
     }
 
-    if(req->total_files > 0) {
-        req->files = (genaro_file_meta_t *)malloc(sizeof(genaro_file_meta_t) * req->total_files);
+    if(num_visible_files > 0) {
+        req->files = (genaro_file_meta_t *)malloc(sizeof(genaro_file_meta_t) * num_visible_files);
     }
+    
+    req->total_files = num_visible_files;
 
     int file_index = 0;
     for (int i = 0; i < num_files; i++) {
