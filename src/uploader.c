@@ -421,7 +421,7 @@ static void create_bucket_entry(uv_work_t *work)
     json_object *index = json_object_new_string(state->index);
     json_object_object_add(body, "index", index);
 
-    if(state->rsa_encryption_key_ctr && state->rsa_encryption_key_ctr->key && state->rsa_encryption_key_ctr->ctr) {
+    if(state->rsa_encryption_key_ctr && state->rsa_encryption_key_ctr->key_len != 0 && state->rsa_encryption_key_ctr->ctr_len != 0) {
         json_object *rsa_decryption_key = json_object_new_string_len(state->rsa_encryption_key_ctr->key, state->rsa_encryption_key_ctr->key_len);
         json_object_object_add(body, "rsa_decryption_key", rsa_decryption_key);
 

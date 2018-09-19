@@ -1137,7 +1137,9 @@ static void determine_decryption_key(genaro_download_state_t *state)
     if (!state->env->encrypt_options ||
         !state->env->encrypt_options->priv_key) {
         state->decryption_key_ctr->key = NULL;
+        state->decryption_key_ctr->key_len = 0;
         state->decryption_key_ctr->ctr = NULL;
+        state->decryption_key_ctr->ctr_len = 0;
     } else if(state->decryption_key_ctr && state->decryption_key_ctr->key_len != 0 && state->decryption_key_ctr->ctr_len != 0) {
         return;
     } else if (state->info->index) {
@@ -1251,8 +1253,6 @@ static void request_info(uv_work_t *work)
         req->info->id = NULL;
         req->info->decrypted = false;
         req->info->index = NULL;
-
-        // need not get rsaKey and rsaCtr, because I can't decrypt it
         req->info->rsaKey = NULL;
         req->info->rsaCtr = NULL;
 
@@ -1968,9 +1968,9 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                 new_key[key_len] = 0;
                 key_len++;
             }
-            decryption_key_ctr->key_len = SHA256_DIGEST_SIZE;
-
+            
             decryption_key_ctr->key = new_key;
+            decryption_key_ctr->key_len = SHA256_DIGEST_SIZE;
         } else if(key_len > SHA256_DIGEST_SIZE) {
             return NULL;
         }
@@ -1985,9 +1985,9 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                 new_ctr[ctr_len] = 0;
                 ctr_len++;
             }
-            decryption_key_ctr->ctr_len = AES_BLOCK_SIZE;
 
             decryption_key_ctr->ctr = new_ctr;
+            decryption_key_ctr->ctr_len = AES_BLOCK_SIZE;
         } else if(ctr_len > AES_BLOCK_SIZE) {
             return NULL;
         }
