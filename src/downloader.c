@@ -40,14 +40,14 @@ static void free_download_state(genaro_download_state_t *state)
 
     if (state->info) {
         if (state->info->erasure) {
-            free((char *)state->info->erasure);
+            free((void *)state->info->erasure);
         }
-        free((char *)state->info->hmac);
+        free((void *)state->info->hmac);
         free(state->info);
     }
 
     if (state->hmac)  {
-        free((char *)state->hmac);
+        free((void *)state->hmac);
     }
 
     free(state->pointers);
@@ -1050,7 +1050,6 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
     }
 
     state->decryption_key_ctr->key = decrypt_key;
-    state->decryption_key_ctr->key_len = SHA256_DIGEST_SIZE;
 
     index = str2hex(strlen(state->info->index), (char *)state->info->index);
     if (!index) {
@@ -1066,7 +1065,6 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
 
     memcpy(decrypt_ctr, index, AES_BLOCK_SIZE);
     state->decryption_key_ctr->ctr = decrypt_ctr;
-    state->decryption_key_ctr->ctr_len = AES_BLOCK_SIZE;
 
 cleanup:
     if (file_key_as_str) {
@@ -1107,7 +1105,6 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
     free(file_key);
 
     state->decryption_key_ctr->key = decrypt_key;
-    state->decryption_key_ctr->key_len = SHA256_DIGEST_SIZE;
 
     uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
     if (!file_id_hash) {
@@ -1128,7 +1125,6 @@ static void determine_decryption_key_v0(genaro_download_state_t *state)
     free(file_id_hash);
 
     state->decryption_key_ctr->ctr = decrypt_ctr;
-    state->decryption_key_ctr->ctr_len = AES_BLOCK_SIZE;
 }
 
 // has_key
@@ -1137,10 +1133,8 @@ static void determine_decryption_key(genaro_download_state_t *state)
     if (!state->env->encrypt_options ||
         !state->env->encrypt_options->priv_key) {
         state->decryption_key_ctr->key = NULL;
-        state->decryption_key_ctr->key_len = 0;
         state->decryption_key_ctr->ctr = NULL;
-        state->decryption_key_ctr->ctr_len = 0;
-    } else if(state->decryption_key_ctr && state->decryption_key_ctr->key_len != 0 && state->decryption_key_ctr->ctr_len != 0) {
+    } else if(state->decryption_key_ctr && state->decryption_key_ctr->key && state->decryption_key_ctr->ctr) {
         return;
     } else if (state->info->index) {
         // calculate decryption key based on the index
@@ -1263,7 +1257,7 @@ static void request_info(uv_work_t *work)
             req->info->isShareFile = isShareFile;
         }
 
-        if(isShareFile && !(state->decryption_key_ctr && state->decryption_key_ctr->key_len != 0 && state->decryption_key_ctr->ctr_len != 0)) {
+        if(isShareFile && !(state->decryption_key_ctr && state->decryption_key_ctr->key && state->decryption_key_ctr->ctr)) {
             state->error_status = GENARO_BRIDGE_DECRYPTION_KEY_ERROR;
             goto clean_up;
         }
@@ -1750,7 +1744,7 @@ static void queue_recover_shards(genaro_download_state_t *state)
         req->zilch = zilch;
         req->has_missing = has_missing;
 
-        if (state->decryption_key_ctr && state->decryption_key_ctr->key_len != 0 && state->decryption_key_ctr->ctr_len != 0) {
+        if (state->decryption_key_ctr && state->decryption_key_ctr->key && state->decryption_key_ctr->ctr) {
             req->decryption_key_ctr.key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
             if (!req->decryption_key_ctr.key) {
                 state->error_status = GENARO_MEMORY_ERROR;
@@ -1762,17 +1756,13 @@ static void queue_recover_shards(genaro_download_state_t *state)
                 return;
             }
 
-            memcpy(req->decryption_key_ctr.key, state->decryption_key_ctr->key, state->decryption_key_ctr->key_len);
-            req->decryption_key_ctr.key_len = state->decryption_key_ctr->key_len;
-            memcpy(req->decryption_key_ctr.ctr, state->decryption_key_ctr->ctr, state->decryption_key_ctr->ctr_len);
-            req->decryption_key_ctr.ctr_len = state->decryption_key_ctr->ctr_len;
+            memcpy(req->decryption_key_ctr.key, state->decryption_key_ctr->key, SHA256_DIGEST_SIZE);
+            memcpy(req->decryption_key_ctr.ctr, state->decryption_key_ctr->ctr, AES_BLOCK_SIZE);
 
             increment_ctr_aes_iv(req->decryption_key_ctr.ctr, 0);
         } else {
             req->decryption_key_ctr.key = NULL;
-            req->decryption_key_ctr.key_len = 0;
             req->decryption_key_ctr.ctr = NULL;
-            req->decryption_key_ctr.ctr_len = 0;
         }
 
         req->state = state;
@@ -1906,7 +1896,7 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
-                                                            genaro_decryption_key_ctr_t *decryption_key_ctr,
+                                                            genaro_decryption_key_ctr_as_str_t *key_ctr_as_str,
                                                             const char *file_name,
                                                             const char *temp_file_name,
                                                             FILE *destination,
@@ -1956,49 +1946,24 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->handle = handle;
     state->decryption_key_ctr = NULL;
     
-    // fill 0x00 to the end if the length of key or ctr is invalid.
-    if(state->decryption_key_ctr && state->decryption_key_ctr->key_len != 0 && state->decryption_key_ctr->ctr_len != 0) {
-        size_t key_len = decryption_key_ctr->key_len;
-        if(key_len < SHA256_DIGEST_SIZE) {
-            uint8_t *new_key = (uint8_t *)malloc(SHA256_DIGEST_SIZE * sizeof(uint8_t));
-            memcpy(new_key, decryption_key_ctr->key, decryption_key_ctr->key_len);
-            free(decryption_key_ctr->key);
+    state->decryption_key_ctr = (genaro_decryption_key_ctr_t *)malloc(sizeof(genaro_decryption_key_ctr_t));
+    if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
+        uint8_t *key = str2hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+        uint8_t *ctr = str2hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
 
-            while(key_len < SHA256_DIGEST_SIZE) {
-                new_key[key_len] = 0;
-                key_len++;
-            }
-            
-            decryption_key_ctr->key = new_key;
-            decryption_key_ctr->key_len = SHA256_DIGEST_SIZE;
-        } else if(key_len > SHA256_DIGEST_SIZE) {
+        free(key_ctr_as_str->key_as_str);
+        free(key_ctr_as_str->ctr_as_str);
+        free(key_ctr_as_str);
+
+        if (!key || !ctr) {
             return NULL;
         }
 
-        size_t ctr_len = decryption_key_ctr->ctr_len;
-        if(ctr_len < AES_BLOCK_SIZE) {
-            uint8_t *new_ctr = (uint8_t *)malloc(AES_BLOCK_SIZE * sizeof(uint8_t));
-            memcpy(new_ctr, decryption_key_ctr->ctr, decryption_key_ctr->ctr_len);
-            free(decryption_key_ctr->ctr);
-
-            while(ctr_len < AES_BLOCK_SIZE) {
-                new_ctr[ctr_len] = 0;
-                ctr_len++;
-            }
-
-            decryption_key_ctr->ctr = new_ctr;
-            decryption_key_ctr->ctr_len = AES_BLOCK_SIZE;
-        } else if(ctr_len > AES_BLOCK_SIZE) {
-            return NULL;
-        }
-
-        state->decryption_key_ctr = decryption_key_ctr;
+        state->decryption_key_ctr->key = key;
+        state->decryption_key_ctr->ctr = ctr;
     } else {
-        state->decryption_key_ctr = (genaro_decryption_key_ctr_t *)malloc(sizeof(genaro_decryption_key_ctr_t));
         state->decryption_key_ctr->key = NULL;
-        state->decryption_key_ctr->key_len = 0;
         state->decryption_key_ctr->ctr = NULL;
-        state->decryption_key_ctr->ctr_len = 0;
     }
 
     // start download

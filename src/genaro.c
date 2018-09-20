@@ -943,8 +943,8 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
     int status = 0;
 
     // free and destroy all bridge options
-    free((char *)env->bridge_options->proto);
-    free((char *)env->bridge_options->host);
+    free((void *)env->bridge_options->proto);
+    free((void *)env->bridge_options->host);
 
     free(env->bridge_options);
 
@@ -964,25 +964,25 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
 #endif
 
 #ifdef _WIN32
-        VirtualFree((char *)env->bridge_options, key_len, MEM_RELEASE);
+        VirtualFree((void *)env->bridge_options, key_len, MEM_RELEASE);
 #else
-        free((char *)env->encrypt_options->priv_key);
+        free((void *)env->encrypt_options->priv_key);
 #endif
     }
 
     if (env->tmp_path) {
-        free((char *)env->tmp_path);
+        free((void *)env->tmp_path);
     }
 
     free(env->encrypt_options);
 
     // free all http options
-    free((char *)env->http_options->user_agent);
+    free((void *)env->http_options->user_agent);
     if (env->http_options->proxy_url) {
-        free((char *)env->http_options->proxy_url);
+        free((void *)env->http_options->proxy_url);
     }
     if (env->http_options->cainfo_path) {
-        free((char *)env->http_options->cainfo_path);
+        free((void *)env->http_options->cainfo_path);
     }
     free(env->http_options);
 
@@ -1191,7 +1191,7 @@ GENARO_API void genaro_free_get_buckets_request(get_buckets_request_t *req)
     json_object_put(req->response);
     if (req->buckets && req->total_buckets > 0) {
         for (int i = 0; i < req->total_buckets; i++) {
-            free((char *)req->buckets[i].name);
+            free((void *)req->buckets[i].name);
         }
     }
     free(req->buckets);
@@ -1341,7 +1341,7 @@ GENARO_API void genaro_free_get_bucket_request(get_bucket_request_t *req)
     json_object_put(req->response);
     free(req->path);
     if (req->bucket) {
-        free((char *)req->bucket->name);
+        free((void *)req->bucket->name);
     }
     free(req->bucket);
     free(req);
@@ -1382,7 +1382,7 @@ GENARO_API void genaro_free_list_files_request(list_files_request_t *req)
     free(req->path);
     if (req->files && req->total_files > 0) {
         for (int i = 0; i < req->total_files; i++) {
-            free((char *)req->files[i].filename);
+            free((void *)req->files[i].filename);
         }
     }
     free(req->files);
@@ -1638,10 +1638,10 @@ GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_
         goto cleanup;
     }
 
-    uint8_t *encryption_key = str2hex(strlen(key_as_str), key_as_str);
-    if (!encryption_key) {
-        goto cleanup;
-    }
+    // uint8_t *encryption_key = str2hex(strlen(key_as_str), key_as_str);
+    // if (!encryption_key) {
+    //     goto cleanup;
+    // }
 
     uint8_t *encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
     if (!encryption_ctr) {
@@ -1650,12 +1650,10 @@ GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_
     memcpy(encryption_ctr, index, AES_BLOCK_SIZE);
 
     genaro_encryption_info_t *encryption_info = (genaro_encryption_info_t *)malloc(sizeof(genaro_encryption_info_t));
-    encryption_info->key_ctr = (genaro_encryption_key_ctr_t *)malloc(sizeof(genaro_encryption_key_ctr_t));
-    encryption_info->key_ctr->key = encryption_key;
-    encryption_info->key_ctr->key_len = SHA256_DIGEST_SIZE;
-    encryption_info->key_ctr->ctr = encryption_ctr;
-    encryption_info->key_ctr->ctr_len = AES_BLOCK_SIZE;
     encryption_info->index = index_as_str;
+    encryption_info->key_ctr_as_str = (genaro_encryption_key_ctr_as_str_t *)malloc(sizeof(genaro_encryption_key_ctr_as_str_t));
+    encryption_info->key_ctr_as_str->key_as_str = key_as_str;
+    encryption_info->key_ctr_as_str->ctr_as_str = strdup(index_as_str);
 
 	return encryption_info;
 	

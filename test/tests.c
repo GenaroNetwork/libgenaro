@@ -125,7 +125,7 @@ void check_create_bucket(uv_work_t *work_req, int status)
     pass("genaro_bridge_create_bucket");
 
     json_object_put(req->response);
-    free((char *)req->encrypted_bucket_name);
+    free((void *)req->encrypted_bucket_name);
     free(req->bucket);
     free(req);
     free(work_req);

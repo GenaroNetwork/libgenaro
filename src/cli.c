@@ -434,12 +434,12 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
 
     genaro_encryption_info_t *encryption_info = genaro_generate_encryption_info(env, bucket_id);
 
-    genaro_encryption_key_ctr_t *rsa_encryption_key_ctr = NULL;
+    genaro_encryption_key_ctr_as_str_t *rsa_encryption_key_ctr_as_str = NULL;
     genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
                                                           encryption_info->index,
-                                                          encryption_info->key_ctr,
-                                                          rsa_encryption_key_ctr,
+                                                          encryption_info->key_ctr_as_str,
+                                                          rsa_encryption_key_ctr_as_str,
                                                           NULL,
                                                           progress_cb,
                                                           upload_file_complete);
@@ -516,7 +516,7 @@ static void download_file_complete(int status, const char *file_name, const char
                     break;
                 }
 
-                free((char *)final_file_path);
+                free((void *)final_file_path);
                 final_file_path = str_concat_many(2, path_name, temp_file_name);
 
                 free(temp_file_name);
@@ -547,9 +547,9 @@ static void download_file_complete(int status, const char *file_name, const char
         unlink(temp_file_name);
     }
 
-    free((char *)final_file_path);
-    free((char *)file_name);
-    free((char *)temp_file_name);
+    free((void *)final_file_path);
+    free((void *)file_name);
+    free((void *)temp_file_name);
 
     printf("Download Success!\n");
     exit(0);
@@ -951,7 +951,7 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
 
 clean_variables:
     json_object_put(req->response);
-    free((char *)req->encrypted_bucket_name);
+    free((void *)req->encrypted_bucket_name);
     free(req->bucket);
     free(req);
     free(work_req);
@@ -1009,7 +1009,7 @@ static void rename_bucket_callback(uv_work_t *work_req, int status)
 
 clean_variables:
     json_object_put(req->response);
-    free((char *)req->encrypted_bucket_name);
+    free((void *)req->encrypted_bucket_name);
     free(req);
     free(work_req);
 }

@@ -121,22 +121,28 @@ extern "C" {
 
 typedef struct {
     uint8_t *key;
-    size_t key_len;
     uint8_t *ctr;
-    size_t ctr_len;
 } genaro_encryption_key_ctr_t;
 
 typedef struct {
-    genaro_encryption_key_ctr_t *key_ctr;
+    const char *key_as_str;
+    const char *ctr_as_str;
+} genaro_encryption_key_ctr_as_str_t;
+
+typedef struct {
+    genaro_encryption_key_ctr_as_str_t *key_ctr_as_str;
     char *index;
 } genaro_encryption_info_t;
 
 typedef struct {
     uint8_t *key;
-    size_t key_len;
     uint8_t *ctr;
-    size_t ctr_len;
 } genaro_decryption_key_ctr_t;
+
+typedef struct {
+    const char *key_as_str;
+    const char *ctr_as_str;
+} genaro_decryption_key_ctr_as_str_t;
 
 typedef struct {
     uint8_t *encryption_key;
@@ -582,7 +588,7 @@ typedef struct genaro_upload_state {
     char *frame_id;
     char *hmac_id;
     genaro_encryption_key_ctr_t *encryption_key_ctr;
-    genaro_encryption_key_ctr_t *rsa_encryption_key_ctr;
+    genaro_encryption_key_ctr_as_str_t *rsa_encryption_key_ctr_as_str;
 
     // TODO: change this to opts or env
     bool rs;
@@ -964,8 +970,8 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
  * @param[in] env A pointer to environment
  * @param[in] opts The options for the upload
  * @param[in] index The index that has generated encryption_key_ctr.
- * @param[in] encryption_key_ctr The key and ctr for file encryption
- * @param[in] rsa_encryption_key_ctr The RSA encrypted key and ctr
+ * @param[in] key_ctr_as_str The key and ctr for file encryption
+ * @param[in] rsa_key_ctr_as_str The RSA encrypted key and ctr
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] progress_cb Function called with progress updates
  * @param[in] finished_cb Function called when download finished
@@ -974,8 +980,8 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
                                                            genaro_upload_opts_t *opts,
                                                            const char *index,
-                                                           genaro_encryption_key_ctr_t *encryption_key_ctr,
-                                                           genaro_encryption_key_ctr_t *rsa_encryption_key_ctr,
+                                                           genaro_decryption_key_ctr_as_str_t *key_ctr_as_str,
+                                                           genaro_decryption_key_ctr_as_str_t *rsa_key_ctr_as_str,
                                                            void *handle,
                                                            genaro_progress_upload_cb progress_cb,
                                                            genaro_finished_upload_cb finished_cb);
@@ -1005,15 +1011,15 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
  * @return A pointer to the download state.
  */
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
-                                                            const char *bucket_id,
-                                                            const char *file_id,
-                                                            genaro_decryption_key_ctr_t *decryption_key_ctr,
-                                                            const char *file_name,
-                                                            const char *temp_file_name,
-                                                            FILE *destination,
-                                                            void *handle,
-                                                            genaro_progress_download_cb progress_cb,
-                                                            genaro_finished_download_cb finished_cb);
+                                                               const char *bucket_id,
+                                                               const char *file_id,
+                                                               genaro_decryption_key_ctr_as_str_t *key_ctr_as_str,
+                                                               const char *file_name,
+                                                               const char *temp_file_name,
+                                                               FILE *destination,
+                                                               void *handle,
+                                                               genaro_progress_download_cb progress_cb,
+                                                               genaro_finished_download_cb finished_cb);
 /**
  * @brief Decrypt an encrypted name
  *

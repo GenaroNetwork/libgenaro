@@ -258,7 +258,7 @@ static void cleanup_state(genaro_upload_state_t *state)
     }
 
     if (state->encrypted_file_name) {
-        free((char *)state->encrypted_file_name);
+        free((void *)state->encrypted_file_name);
     }
 
     if (state->exclude) {
@@ -277,16 +277,16 @@ static void cleanup_state(genaro_upload_state_t *state)
         free(state->encryption_key_ctr);
     }
 
-    if(state->rsa_encryption_key_ctr) {
-        if (state->rsa_encryption_key_ctr->ctr) {
-            free(state->rsa_encryption_key_ctr->ctr);
+    if(state->rsa_encryption_key_ctr_as_str) {
+        if (state->rsa_encryption_key_ctr_as_str->ctr_as_str) {
+            free(state->rsa_encryption_key_ctr_as_str->ctr_as_str);
         }
 
-        if (state->rsa_encryption_key_ctr->key) {
-            free(state->rsa_encryption_key_ctr->key);
+        if (state->rsa_encryption_key_ctr_as_str->key_as_str) {
+            free(state->rsa_encryption_key_ctr_as_str->key_as_str);
         }
 
-        free(state->rsa_encryption_key_ctr);
+        free(state->rsa_encryption_key_ctr_as_str);
     }
 
     if (state->parity_file) {
@@ -421,11 +421,11 @@ static void create_bucket_entry(uv_work_t *work)
     json_object *index = json_object_new_string(state->index);
     json_object_object_add(body, "index", index);
 
-    if(state->rsa_encryption_key_ctr && state->rsa_encryption_key_ctr->key_len != 0 && state->rsa_encryption_key_ctr->ctr_len != 0) {
-        json_object *rsa_decryption_key = json_object_new_string_len(state->rsa_encryption_key_ctr->key, state->rsa_encryption_key_ctr->key_len);
+    if(state->rsa_encryption_key_ctr_as_str && state->rsa_encryption_key_ctr_as_str->key_as_str && state->rsa_encryption_key_ctr_as_str->ctr_as_str) {
+        json_object *rsa_decryption_key = json_object_new_string(state->rsa_encryption_key_ctr_as_str->key_as_str);
         json_object_object_add(body, "rsa_decryption_key", rsa_decryption_key);
 
-        json_object *rsa_decryption_ctr = json_object_new_string_len(state->rsa_encryption_key_ctr->ctr, state->rsa_encryption_key_ctr->ctr_len);
+        json_object *rsa_decryption_ctr = json_object_new_string(state->rsa_encryption_key_ctr_as_str->ctr_as_str);
         json_object_object_add(body, "rsa_decryption_ctr", rsa_decryption_ctr);
     }
 
@@ -2623,8 +2623,8 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state)
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
                                                            genaro_upload_opts_t *opts,
                                                            const char *index,
-                                                           genaro_encryption_key_ctr_t *encryption_key_ctr,
-                                                           genaro_encryption_key_ctr_t *rsa_encryption_key_ctr,
+                                                           genaro_decryption_key_ctr_as_str_t *key_ctr_as_str,
+                                                           genaro_decryption_key_ctr_as_str_t *rsa_key_ctr_as_str,
                                                            void *handle,
                                                            genaro_progress_upload_cb progress_cb,
                                                            genaro_finished_upload_cb finished_cb)
@@ -2658,8 +2658,30 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     state->frame_id = NULL;
     state->hmac_id = NULL;
     state->index = index;
-    state->encryption_key_ctr = encryption_key_ctr;
-    state->rsa_encryption_key_ctr = rsa_encryption_key_ctr;
+
+    if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
+        genaro_encryption_key_ctr_t *key_ctr = (genaro_encryption_key_ctr_t *)malloc(sizeof(genaro_encryption_key_ctr_t));
+
+        uint8_t *key = str2hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+        uint8_t *ctr = str2hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
+        
+        free(key_ctr_as_str->key_as_str);
+        free(key_ctr_as_str->ctr_as_str);
+        free(key_ctr_as_str);
+        
+        if (!key || !ctr) {
+            return NULL;
+        }
+
+        key_ctr->key = key;
+        key_ctr->ctr = ctr;
+
+        state->encryption_key_ctr = key_ctr;
+    } else {
+        return NULL;
+    }
+
+    state->rsa_encryption_key_ctr_as_str = rsa_key_ctr_as_str;
 
     state->rs = (opts->rs == false) ? false : true;
     state->awaiting_parity_shards = true;
