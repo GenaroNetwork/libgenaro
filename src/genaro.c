@@ -1638,20 +1638,9 @@ GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_
         goto cleanup;
     }
 
-    // uint8_t *encryption_key = str2hex(strlen(key_as_str), key_as_str);
-    // if (!encryption_key) {
-    //     goto cleanup;
-    // }
-
-    uint8_t *encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
-    if (!encryption_ctr) {
-        goto cleanup;
-    }
-    memcpy(encryption_ctr, index, AES_BLOCK_SIZE);
-
     genaro_encryption_info_t *encryption_info = (genaro_encryption_info_t *)malloc(sizeof(genaro_encryption_info_t));
     encryption_info->index = index_as_str;
-    encryption_info->key_ctr_as_str = (genaro_encryption_key_ctr_as_str_t *)malloc(sizeof(genaro_encryption_key_ctr_as_str_t));
+    encryption_info->key_ctr_as_str = (genaro_key_ctr_as_str_t *)malloc(sizeof(genaro_key_ctr_as_str_t));
     encryption_info->key_ctr_as_str->key_as_str = key_as_str;
     encryption_info->key_ctr_as_str->ctr_as_str = strdup(index_as_str);
 

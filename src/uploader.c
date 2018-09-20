@@ -265,28 +265,28 @@ static void cleanup_state(genaro_upload_state_t *state)
         free(state->exclude);
     }
 
-    if(state->encryption_key_ctr) {
-        if (state->encryption_key_ctr->ctr) {
-            free(state->encryption_key_ctr->ctr);
+    if(state->key_ctr) {
+        if (state->key_ctr->ctr) {
+            free(state->key_ctr->ctr);
         }
 
-        if (state->encryption_key_ctr->key) {
-            free(state->encryption_key_ctr->key);
+        if (state->key_ctr->key) {
+            free(state->key_ctr->key);
         }
 
-        free(state->encryption_key_ctr);
+        free(state->key_ctr);
     }
 
-    if(state->rsa_encryption_key_ctr_as_str) {
-        if (state->rsa_encryption_key_ctr_as_str->ctr_as_str) {
-            free(state->rsa_encryption_key_ctr_as_str->ctr_as_str);
+    if(state->rsa_key_ctr_as_str) {
+        if (state->rsa_key_ctr_as_str->ctr_as_str) {
+            free(state->rsa_key_ctr_as_str->ctr_as_str);
         }
 
-        if (state->rsa_encryption_key_ctr_as_str->key_as_str) {
-            free(state->rsa_encryption_key_ctr_as_str->key_as_str);
+        if (state->rsa_key_ctr_as_str->key_as_str) {
+            free(state->rsa_key_ctr_as_str->key_as_str);
         }
 
-        free(state->rsa_encryption_key_ctr_as_str);
+        free(state->rsa_key_ctr_as_str);
     }
 
     if (state->parity_file) {
@@ -421,11 +421,11 @@ static void create_bucket_entry(uv_work_t *work)
     json_object *index = json_object_new_string(state->index);
     json_object_object_add(body, "index", index);
 
-    if(state->rsa_encryption_key_ctr_as_str && state->rsa_encryption_key_ctr_as_str->key_as_str && state->rsa_encryption_key_ctr_as_str->ctr_as_str) {
-        json_object *rsa_decryption_key = json_object_new_string(state->rsa_encryption_key_ctr_as_str->key_as_str);
+    if(state->rsa_key_ctr_as_str && state->rsa_key_ctr_as_str->key_as_str && state->rsa_key_ctr_as_str->ctr_as_str) {
+        json_object *rsa_decryption_key = json_object_new_string(state->rsa_key_ctr_as_str->key_as_str);
         json_object_object_add(body, "rsa_decryption_key", rsa_decryption_key);
 
-        json_object *rsa_decryption_ctr = json_object_new_string(state->rsa_encryption_key_ctr_as_str->ctr_as_str);
+        json_object *rsa_decryption_ctr = json_object_new_string(state->rsa_key_ctr_as_str->ctr_as_str);
         json_object_object_add(body, "rsa_decryption_ctr", rsa_decryption_ctr);
     }
 
@@ -489,7 +489,7 @@ static void create_bucket_entry(uv_work_t *work)
 static int prepare_bucket_entry_hmac(genaro_upload_state_t *state)
 {
     struct hmac_sha512_ctx hmac_ctx;
-    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->encryption_key_ctr->key);
+    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->key_ctr->key);
 
     for (int i = 0; i < state->total_shards; i++) {
 
@@ -700,8 +700,8 @@ static void push_shard(uv_work_t *work)
     genaro_encryption_ctx_t *encryption_ctx = NULL;
     if (!state->rs) {
         // Initialize the encryption context
-        encryption_ctx = prepare_encryption_ctx(state->encryption_key_ctr->ctr,
-                                                state->encryption_key_ctr->key);
+        encryption_ctx = prepare_encryption_ctx(state->key_ctr->ctr,
+                                                state->key_ctr->key);
         if (!encryption_ctx) {
             state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
@@ -1414,7 +1414,7 @@ static void prepare_frame(uv_work_t *work)
     genaro_encryption_ctx_t *encryption_ctx = NULL;
     if (!state->rs) {
         // Initialize the encryption context
-        encryption_ctx = prepare_encryption_ctx(state->encryption_key_ctr->ctr, state->encryption_key_ctr->key);
+        encryption_ctx = prepare_encryption_ctx(state->key_ctr->ctr, state->key_ctr->key);
         if (!encryption_ctx) {
             state->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
@@ -1589,8 +1589,8 @@ static void create_encrypted_file(uv_work_t *work)
     state->log->info(state->env->log_options, state->handle, "Encrypting file...");
 
     // Initialize the encryption context
-    genaro_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_key_ctr->ctr,
-                                                                     state->encryption_key_ctr->key);
+    genaro_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->key_ctr->ctr,
+                                                                     state->key_ctr->key);
     if (!encryption_ctx) {
         state->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
@@ -2623,8 +2623,8 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state)
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
                                                            genaro_upload_opts_t *opts,
                                                            const char *index,
-                                                           genaro_decryption_key_ctr_as_str_t *key_ctr_as_str,
-                                                           genaro_decryption_key_ctr_as_str_t *rsa_key_ctr_as_str,
+                                                           genaro_key_ctr_as_str_t *key_ctr_as_str,
+                                                           genaro_key_ctr_as_str_t *rsa_key_ctr_as_str,
                                                            void *handle,
                                                            genaro_progress_upload_cb progress_cb,
                                                            genaro_finished_upload_cb finished_cb)
@@ -2660,7 +2660,7 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     state->index = index;
 
     if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
-        genaro_encryption_key_ctr_t *key_ctr = (genaro_encryption_key_ctr_t *)malloc(sizeof(genaro_encryption_key_ctr_t));
+        genaro_key_ctr_t *key_ctr = (genaro_key_ctr_t *)malloc(sizeof(genaro_key_ctr_t));
 
         uint8_t *key = str2hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
         uint8_t *ctr = str2hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
@@ -2676,12 +2676,12 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
         key_ctr->key = key;
         key_ctr->ctr = ctr;
 
-        state->encryption_key_ctr = key_ctr;
+        state->key_ctr = key_ctr;
     } else {
         return NULL;
     }
 
-    state->rsa_encryption_key_ctr_as_str = rsa_key_ctr_as_str;
+    state->rsa_key_ctr_as_str = rsa_key_ctr_as_str;
 
     state->rs = (opts->rs == false) ? false : true;
     state->awaiting_parity_shards = true;

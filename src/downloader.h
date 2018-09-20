@@ -60,7 +60,7 @@ typedef struct {
     uint32_t data_shards;
     uint32_t parity_shards;
     uint64_t shard_size;
-    genaro_decryption_key_ctr_t decryption_key_ctr;
+    genaro_key_ctr_t key_ctr;
     uint8_t *zilch;
     bool has_missing;
     /* state should not be modified in worker threads */

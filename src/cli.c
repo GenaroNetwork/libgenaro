@@ -434,12 +434,12 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
 
     genaro_encryption_info_t *encryption_info = genaro_generate_encryption_info(env, bucket_id);
 
-    genaro_encryption_key_ctr_as_str_t *rsa_encryption_key_ctr_as_str = NULL;
+    genaro_key_ctr_as_str_t *rsa_key_ctr_as_str = NULL;
     genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
                                                           encryption_info->index,
                                                           encryption_info->key_ctr_as_str,
-                                                          rsa_encryption_key_ctr_as_str,
+                                                          rsa_key_ctr_as_str,
                                                           NULL,
                                                           progress_cb,
                                                           upload_file_complete);

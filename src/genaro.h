@@ -122,27 +122,17 @@ extern "C" {
 typedef struct {
     uint8_t *key;
     uint8_t *ctr;
-} genaro_encryption_key_ctr_t;
+} genaro_key_ctr_t;
 
 typedef struct {
     const char *key_as_str;
     const char *ctr_as_str;
-} genaro_encryption_key_ctr_as_str_t;
+} genaro_key_ctr_as_str_t;
 
 typedef struct {
-    genaro_encryption_key_ctr_as_str_t *key_ctr_as_str;
+    genaro_key_ctr_as_str_t *key_ctr_as_str;
     char *index;
 } genaro_encryption_info_t;
-
-typedef struct {
-    uint8_t *key;
-    uint8_t *ctr;
-} genaro_decryption_key_ctr_t;
-
-typedef struct {
-    const char *key_as_str;
-    const char *ctr_as_str;
-} genaro_decryption_key_ctr_as_str_t;
 
 typedef struct {
     uint8_t *encryption_key;
@@ -527,7 +517,7 @@ typedef struct genaro_download_state {
     bool requesting_pointers;
     int error_status;
     bool writing;
-    genaro_decryption_key_ctr_t *decryption_key_ctr;
+    genaro_key_ctr_t *key_ctr;
     const char *hmac;
     uint32_t pending_work_count;
     genaro_log_levels_t *log;
@@ -587,8 +577,8 @@ typedef struct genaro_upload_state {
     char *exclude;
     char *frame_id;
     char *hmac_id;
-    genaro_encryption_key_ctr_t *encryption_key_ctr;
-    genaro_encryption_key_ctr_as_str_t *rsa_encryption_key_ctr_as_str;
+    genaro_key_ctr_t *key_ctr;
+    genaro_key_ctr_as_str_t *rsa_key_ctr_as_str;
 
     // TODO: change this to opts or env
     bool rs;
@@ -969,7 +959,7 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
  *
  * @param[in] env A pointer to environment
  * @param[in] opts The options for the upload
- * @param[in] index The index that has generated encryption_key_ctr.
+ * @param[in] index The index that has generated key_ctr.
  * @param[in] key_ctr_as_str The key and ctr for file encryption
  * @param[in] rsa_key_ctr_as_str The RSA encrypted key and ctr
  * @param[in] handle A pointer that will be available in the callback
@@ -980,8 +970,8 @@ GENARO_API int genaro_bridge_store_file_cancel(genaro_upload_state_t *state);
 GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
                                                            genaro_upload_opts_t *opts,
                                                            const char *index,
-                                                           genaro_decryption_key_ctr_as_str_t *key_ctr_as_str,
-                                                           genaro_decryption_key_ctr_as_str_t *rsa_key_ctr_as_str,
+                                                           genaro_key_ctr_as_str_t *key_ctr_as_str,
+                                                           genaro_key_ctr_as_str_t *rsa_key_ctr_as_str,
                                                            void *handle,
                                                            genaro_progress_upload_cb progress_cb,
                                                            genaro_finished_upload_cb finished_cb);
@@ -1013,7 +1003,7 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
                                                                const char *bucket_id,
                                                                const char *file_id,
-                                                               genaro_decryption_key_ctr_as_str_t *key_ctr_as_str,
+                                                               genaro_key_ctr_as_str_t *key_ctr_as_str,
                                                                const char *file_name,
                                                                const char *temp_file_name,
                                                                FILE *destination,
