@@ -423,10 +423,10 @@ static void create_bucket_entry(uv_work_t *work)
 
     if(state->rsa_key_ctr_as_str && state->rsa_key_ctr_as_str->key_as_str && state->rsa_key_ctr_as_str->ctr_as_str) {
         json_object *rsa_decryption_key = json_object_new_string(state->rsa_key_ctr_as_str->key_as_str);
-        json_object_object_add(body, "rsa_decryption_key", rsa_decryption_key);
+        json_object_object_add(body, "rsaKey", rsa_decryption_key);
 
         json_object *rsa_decryption_ctr = json_object_new_string(state->rsa_key_ctr_as_str->ctr_as_str);
-        json_object_object_add(body, "rsa_decryption_ctr", rsa_decryption_ctr);
+        json_object_object_add(body, "rsaCtr", rsa_decryption_ctr);
     }
 
     struct json_object *hmac = json_object_new_object();

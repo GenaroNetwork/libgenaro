@@ -397,7 +397,7 @@ static void list_files_request_worker(uv_work_t *work)
 
         p_is_share[i] = json_object_get_boolean(isShareFile);
 
-        if(req->is_support_share || !isShareFile) {
+        if(req->is_support_share || !p_is_share[i]) {
             num_visible_files++;
         }
     }
@@ -425,7 +425,7 @@ static void list_files_request_worker(uv_work_t *work)
             continue;
         }
 
-        genaro_file_meta_t *file_meta = file_meta = &req->files[file_index];
+        genaro_file_meta_t *file_meta = &req->files[file_index];
         file_index++;
 
         file_meta->isShareFile = p_is_share[i];
