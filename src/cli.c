@@ -81,7 +81,6 @@ char *RetriveNewName(const char *fileName, const char *extra)
 	}
 
 	int len = strlen(fileName);
-	int extra_len = extra ? strlen(extra) : 0;
 	char *retName = NULL;
 
 	int dotIndex = len;
@@ -613,7 +612,6 @@ static int download_file(genaro_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
-    // TODO: need to pass the fourth and fifth para, now it's NULL.
     genaro_download_state_t *state = genaro_bridge_resolve_file(env, bucket_id,
                                                               file_id, NULL, strdup(path), 
                                                               renamed_path, fd, NULL,
