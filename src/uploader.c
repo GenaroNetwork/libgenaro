@@ -710,6 +710,8 @@ static void push_shard(uv_work_t *work)
         increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
     }
 
+    uint64_t start = get_time_milliseconds();
+
     int req_status = put_shard(req->http_options,
                                shard->pointer->farmer_node_id,
                                "http",
@@ -725,6 +727,11 @@ static void push_shard(uv_work_t *work)
                                &read_code,
                                &req->progress_handle,
                                req->canceled);
+
+    uint64_t end = get_time_milliseconds();
+    if(genaro_debug) {
+        printf("\nupload shard %d to %s:%s(nodeid: %s), time: %.1lfs\n", req->shard_meta_index, shard->pointer->farmer_address, shard->pointer->farmer_port, shard->pointer->farmer_node_id, (end - start) / 1000.0);
+    }
 
     if (read_code != 0) {
         req->log->error(state->env->log_options, state->handle,
@@ -911,7 +918,7 @@ static void after_push_frame(uv_work_t *work, int status)
         // Reset for if we need to get a new pointer later
         state->shard[req->shard_meta_index].push_frame_request_count = 0;
         state->shard[req->shard_meta_index].progress = AWAITING_PUSH_SHARD;
-
+        
         farmer_pointer_t *p = state->shard[req->shard_meta_index].pointer;
 
         // Add token to shard[].pointer
@@ -1578,7 +1585,7 @@ clean_variables:
 
 static void create_encrypted_file(uv_work_t *work)
 {
-    time_t start, end;
+    time_t start = 0, end = 0;
     if(genaro_debug) {
         time(&start);
     }
@@ -1846,7 +1853,7 @@ clean_variables:
 
 static void create_parity_shards(uv_work_t *work)
 {
-    time_t start, end;
+    time_t start = 0, end = 0;
     if(genaro_debug) {
         time(&start);
     }

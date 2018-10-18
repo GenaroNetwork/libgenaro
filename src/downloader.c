@@ -645,6 +645,10 @@ static void request_shard(uv_work_t *work)
 
     req->end = get_time_milliseconds();
 
+    if(genaro_debug) {
+        printf("\ndownload shard %d from %s:%d(nodeid: %s), time: %.1lfs\n", req->pointer_index, req->farmer_host, req->farmer_port, req->farmer_id, (req->end - req->start) / 1000.0);
+    }
+
     if (write_code != 0) {
         req->state->log->error(req->state->env->log_options, req->state->handle,
                         "Put shard read error: %i", write_code);
