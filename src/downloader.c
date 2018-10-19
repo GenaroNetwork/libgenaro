@@ -646,7 +646,7 @@ static void request_shard(uv_work_t *work)
     req->end = get_time_milliseconds();
 
     if(genaro_debug) {
-        printf("\ndownload shard %d from %s:%d(nodeid: %s), time: %.1lfs\n", req->pointer_index, req->farmer_host, req->farmer_port, req->farmer_id, (req->end - req->start) / 1000.0);
+        printf("\nFinish download shard %d from %s:%d(nodeid: %s), time: %.1lfs\n", req->pointer_index, req->farmer_host, req->farmer_port, req->farmer_id, (req->end - req->start) / 1000.0);
     }
 
     if (write_code != 0) {
@@ -712,23 +712,37 @@ static void report_progress(genaro_download_state_t *state)
     // if pointers have not been completely gotten, use the original file size to calculate
     // the bytes that need to be downloaded, the algorithm is the same as upload.
     if(!state->pointers_completed) {
-        bool rs = true;
-        if (state->info->size < MIN_SHARD_SIZE) {
-            rs = false;
-        }
-
         if (state->shard_size) {
             uint32_t total_data_shards = ceil((double)state->info->size / state->shard_size);
-            uint32_t total_parity_shards = rs ? ceil((double)total_data_shards * 2.0 / 3.0) : 0;
-            state->total_shards = total_data_shards + total_parity_shards;
+            uint32_t total_parity_shards = state->rs ? ceil((double)total_data_shards * 2.0 / 3.0) : 0;
 
             total_bytes = state->info->size + total_parity_shards * state->shard_size;
         }
+    }
+
+    static uint64_t lastTime = 0;
+    static uint64_t lastBytes = 0;
+    static double download_speed = 0.0;  // bytes per sec
+    
+    // calculate the speed of uploading
+    if(lastTime != 0) {
+        uint64_t curTime = get_time_milliseconds();
+        uint64_t time_delta = curTime - lastTime;
+        uint64_t bytes_delta = downloaded_bytes - lastBytes;
+        if(time_delta >= 1000) {
+            download_speed = 1000.0 * bytes_delta / time_delta;
+            lastTime = curTime;
+            lastBytes = downloaded_bytes;
+        }
+    } else {
+        lastTime = get_time_milliseconds();
+        lastBytes = downloaded_bytes;
     }
     
     double total_progress = (double)downloaded_bytes / (double)total_bytes;
 
     state->progress_cb(total_progress,
+                       download_speed,
                        state->info->size,
                        state->handle);
 }

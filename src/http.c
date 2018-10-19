@@ -183,13 +183,13 @@ int put_shard(genaro_http_options_t *http_options,
     
     int req = curl_easy_perform(curl);
 
-    if(genaro_debug) {
-        time(&end);
-        double interval = (double)(end - start);
-        if(interval > 10.0) {
-            printf("curl_easy_perform in put_shard: %lfs\n", interval);
-        }
-    }
+    // if(genaro_debug) {
+    //     time(&end);
+    //     double interval = (double)(end - start);
+    //     if(interval > 10.0) {
+    //         printf("curl_easy_perform in put_shard: %lfs\n", interval);
+    //     }
+    // }
 
     curl_slist_free_all(header_list);
     free(header);

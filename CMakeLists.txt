@@ -33,7 +33,7 @@ target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
 
 add_executable(genaroeden-cli src/cli.c)
 # target_link_libraries(genaroeden-cli genaro uv json-c nettle curl secp256k1 scrypt keccak)
-target_link_libraries(genaroeden-cli genaro /usr/local/lib/libuv.a /usr/local/lib/libjson-c.a /usr/local/lib/libnettle.a libcurl.a libsecp256k1.a libscrypt.a libkeccak.a /usr/local/lib/libgmp.a)
+target_link_libraries(genaroeden-cli genaro /usr/local/lib/libuv.a /usr/local/lib/libjson-c.a /usr/local/lib/libnettle.a libcurl.a libsecp256k1.a /usr/local/lib/libscrypt.a libkeccak.a /usr/local/lib/libgmp.a)
 
 # add_executable(tests_rs test/tests_rs.c)
 

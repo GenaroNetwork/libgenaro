@@ -730,7 +730,7 @@ static void push_shard(uv_work_t *work)
 
     uint64_t end = get_time_milliseconds();
     if(genaro_debug) {
-        printf("\nupload shard %d to %s:%s(nodeid: %s), time: %.1lfs\n", req->shard_meta_index, shard->pointer->farmer_address, shard->pointer->farmer_port, shard->pointer->farmer_node_id, (end - start) / 1000.0);
+        printf("\nFinish upload shard %d to %s:%s(nodeid: %s), time: %.1lfs\n", req->shard_meta_index, shard->pointer->farmer_address, shard->pointer->farmer_port, shard->pointer->farmer_node_id, (end - start) / 1000.0);
     }
 
     if (read_code != 0) {
@@ -770,6 +770,25 @@ static void progress_put_shard(uv_async_t* async)
         uploaded_bytes += shard->uploaded_size;
     }
 
+    static uint64_t lastTime = 0;
+    static uint64_t lastBytes = 0;
+    static double upload_speed = 0.0;  // bytes per sec
+
+    // calculate the speed of uploading
+    if(lastTime != 0) {
+        uint64_t curTime = get_time_milliseconds();
+        uint64_t time_delta = curTime - lastTime;
+        uint64_t bytes_delta = uploaded_bytes - lastBytes;
+        if(time_delta >= 1000) {
+            upload_speed = 1000.0 * bytes_delta / time_delta;
+            lastTime = curTime;
+            lastBytes = uploaded_bytes;
+        }
+    } else {
+        lastTime = get_time_milliseconds();
+        lastBytes = uploaded_bytes;
+    }
+
     double total_progress = (double)uploaded_bytes / (double)state->total_bytes;
 
     // will not happen.
@@ -786,6 +805,7 @@ static void progress_put_shard(uv_async_t* async)
     }
 
     state->progress_cb(total_progress,
+                       upload_speed,
                        state->file_size,
                        state->handle);
 }
@@ -2442,7 +2462,7 @@ static void begin_work_queue(uv_work_t *work, int status)
     genaro_upload_state_t *state = work->data;
 
     // Load progress bar
-    state->progress_cb(0.0, state->file_size, state->handle);
+    state->progress_cb(0.0, 0.0, state->file_size, state->handle);
 
     state->pending_work_count -= 1;
     queue_next_work(state);
@@ -2471,7 +2491,7 @@ static void prepare_upload_state(uv_work_t *work)
 #endif
 
     state->file_size = st.st_size;
-    if (state->file_size < MIN_SHARD_SIZE) {
+    if (state->file_size <= MIN_SHARD_SIZE) {
         state->rs = false;
     }
 
