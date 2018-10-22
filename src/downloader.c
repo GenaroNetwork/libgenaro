@@ -720,29 +720,27 @@ static void report_progress(genaro_download_state_t *state)
         }
     }
 
-    static uint64_t lastTime = 0;
-    static uint64_t lastBytes = 0;
-    static double download_speed = 0.0;  // bytes per sec
-    
-    // calculate the speed of uploading
-    if(lastTime != 0) {
-        uint64_t curTime = get_time_milliseconds();
-        uint64_t time_delta = curTime - lastTime;
-        uint64_t bytes_delta = downloaded_bytes - lastBytes;
-        if(time_delta >= 1000) {
-            download_speed = 1000.0 * bytes_delta / time_delta;
-            lastTime = curTime;
-            lastBytes = downloaded_bytes;
-        }
-    } else {
-        lastTime = get_time_milliseconds();
-        lastBytes = downloaded_bytes;
-    }
+    // // calculate the speed of downloading
+    // static uint64_t lastTime = 0;
+    // static uint64_t lastBytes = 0;
+    // static double download_speed = 0.0;  // bytes per sec
+    // if(lastTime != 0) {
+    //     uint64_t curTime = get_time_milliseconds();
+    //     uint64_t time_delta = curTime - lastTime;
+    //     uint64_t bytes_delta = downloaded_bytes - lastBytes;
+    //     if(time_delta >= 1000) {
+    //         download_speed = 1000.0 * bytes_delta / time_delta;
+    //         lastTime = curTime;
+    //         lastBytes = downloaded_bytes;
+    //     }
+    // } else {
+    //     lastTime = get_time_milliseconds();
+    //     lastBytes = downloaded_bytes;
+    // }
     
     double total_progress = (double)downloaded_bytes / (double)total_bytes;
 
     state->progress_cb(total_progress,
-                       download_speed,
                        state->info->size,
                        state->handle);
 }

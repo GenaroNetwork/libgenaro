@@ -415,7 +415,6 @@ typedef struct {
 */
 
 typedef void (*genaro_progress_upload_cb)(double progress,
-                                  double speed,
                                   uint64_t file_bytes,
                                   void *handle);
 
@@ -425,7 +424,6 @@ typedef void (*genaro_progress_upload_cb)(double progress,
                                   void *handle);*/
 
 typedef void (*genaro_progress_download_cb)(double progress,
-                                  double spped,
                                   uint64_t file_bytes,
                                   void *handle);
 
