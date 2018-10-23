@@ -1587,11 +1587,6 @@ int main(void)
     // spin up test farmer server
     struct MHD_Daemon *f = start_farmer_server();
 
-    printf("Test Suite: API\n");
-    test_api();
-    // test_api_badauth();
-    printf("\n");
-
     printf("Test Suite: BIP39\n");
     /*test_mnemonic_check();*/
     test_mnemonic_generate();
@@ -1616,6 +1611,11 @@ int main(void)
     test_get_time_milliseconds();
     test_determine_shard_size();
     test_memory_mapping();
+    printf("\n");
+
+    printf("Test Suite: API\n");
+    test_api();
+    // test_api_badauth();
     printf("\n");
 
     printf("Test Suite: Uploads\n");

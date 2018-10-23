@@ -33,7 +33,6 @@ src/main
 src/genaro
 src/genaro.dSYM/
 src/genaro.exe
-test/*.json.h
 test/test-suite.log
 test/testingdb/
 test/tests

@@ -4,7 +4,6 @@ dist: trusty
 sudo: true
 addons:
 compiler:
-  - clang
   - gcc
 before_script:
   - echo "deb http://us.archive.ubuntu.com/ubuntu/ xenial main" | sudo tee -a /etc/apt/sources.list
@@ -15,13 +14,25 @@ before_script:
   - echo "deb http://security.ubuntu.com/ubuntu xenial-security multiverse" | sudo tee -a /etc/apt/sources.list
   - sudo apt-get update -qq
   - sudo apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev bsdmainutils
-  - sudo apt-get install libcurl4-gnutls-dev nettle-dev libjson-c-dev libuv1-dev libsecp256k1-dev libscrypt-dev
+  - sudo apt-get install libcurl4-gnutls-dev nettle-dev libjson-c-dev libuv1-dev libscrypt-dev
   - sudo apt-get install cmake
   - mkdir /tmp/genaro-test
   - export TMPDIR=/tmp/genaro-test/
+script:
+  - git clone https://github.com/bitcoin-core/secp256k1.git ~/secp256k1
+  - cd ~/secp256k1
+  - ./autogen.sh
+  - ./configure
+  - make
+  - sudo make install
+  - cd -
+  - git clone https://github.com/maandree/libkeccak.git ~/libkeccak
+  - cd ~/libkeccak
+  - make
+  - sudo make install
+  - cd -
   - mkdir build
   - cd build
-script:
   - cmake ..
   - make
   - ./tests
