@@ -1592,8 +1592,6 @@ int main(void)
     // test_api_badauth();
     printf("\n");
 
-    sleep(10);
-
     printf("Test Suite: BIP39\n");
     /*test_mnemonic_check();*/
     test_mnemonic_generate();
