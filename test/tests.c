@@ -19,7 +19,8 @@ genaro_bridge_options_t bridge_options_bad = {
 };
 
 genaro_encrypt_options_t encrypt_options = {
-    .priv_key = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+    .priv_key = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    .key_len = 93
 };
 
 genaro_http_options_t http_options = {
@@ -233,8 +234,7 @@ void check_file_pointers(uv_work_t *work_req, int status)
 }
 
 void check_resolve_file_progress(double progress,
-                                 uint64_t downloaded_bytes,
-                                 uint64_t total_bytes,
+                                 uint64_t file_bytes,
                                  void *handle)
 {
     assert(handle == NULL);
@@ -245,7 +245,7 @@ void check_resolve_file_progress(double progress,
     // TODO check error case
 }
 
-void check_resolve_file(int status, FILE *fd, void *handle)
+void check_resolve_file(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
 {
     fclose(fd);
     assert(handle == NULL);
@@ -257,7 +257,7 @@ void check_resolve_file(int status, FILE *fd, void *handle)
     }
 }
 
-void check_resolve_file_cancel(int status, FILE *fd, void *handle)
+void check_resolve_file_cancel(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
 {
     fclose(fd);
     assert(handle == NULL);
@@ -269,8 +269,7 @@ void check_resolve_file_cancel(int status, FILE *fd, void *handle)
 }
 
 void check_store_file_progress(double progress,
-                               uint64_t uploaded_bytes,
-                               uint64_t total_bytes,
+                               uint64_t file_bytes,
                                void *handle)
 {
     assert(handle == NULL);
@@ -279,10 +278,10 @@ void check_store_file_progress(double progress,
     }
 }
 
-void check_store_file(int error_code, char *file_id, void *handle)
+void check_store_file(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
 {
     assert(handle == NULL);
-    if (error_code == 0) {
+    if (error_status == 0) {
         if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
             pass("genaro_bridge_store_file");
         } else {
@@ -290,20 +289,20 @@ void check_store_file(int error_code, char *file_id, void *handle)
         }
     } else {
         fail("genaro_bridge_store_file(1)");
-        printf("\t\tERROR:   %s\n", genaro_strerror(error_code));
+        printf("\t\tERROR:   %s\n", genaro_strerror(error_status));
     }
 
     free(file_id);
 }
 
-void check_store_file_cancel(int error_code, char *file_id, void *handle)
+void check_store_file_cancel(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
 {
     assert(handle == NULL);
-    if (error_code == GENARO_TRANSFER_CANCELED) {
+    if (error_status == GENARO_TRANSFER_CANCELED) {
         pass("genaro_bridge_store_file_cancel");
     } else {
         fail("genaro_bridge_store_file_cancel");
-        printf("\t\tERROR:   %s\n", genaro_strerror(error_code));
+        printf("\t\tERROR:   %s\n", genaro_strerror(error_status));
     }
 
     free(file_id);
@@ -517,17 +516,24 @@ int test_upload()
 
     create_test_upload_file(file);
 
+    const char *index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692";
+    const char *bucket_id = "368be0816766b28fd5f43af5";
+
     // upload file
-    genaro_upload_opts_t upload_opts = {
-        .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
-        .bucket_id = "368be0816766b28fd5f43af5",
+    genaro_upload_opts_t upload_opts = {\
+        .bucket_id = bucket_id,
         .file_name = file_name,
         .fd = fopen(file, "r"),
         .rs = true
     };
 
+    genaro_encryption_info_t *encryption_info = genaro_generate_encryption_info(env, index, bucket_id);
+    genaro_key_ctr_as_str_t *rsa_key_ctr_as_str = NULL;
     genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
+                                                          encryption_info->index,
+                                                          encryption_info->key_ctr_as_str,
+                                                          rsa_key_ctr_as_str,
                                                           NULL,
                                                           check_store_file_progress,
                                                           check_store_file);
@@ -566,16 +572,22 @@ int test_upload_cancel()
 
     create_test_upload_file(file);
 
+    const char *index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692";
+    const char *bucket_id = "368be0816766b28fd5f43af5";
     // upload file
     genaro_upload_opts_t upload_opts = {
-        .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
-        .bucket_id = "368be0816766b28fd5f43af5",
+        .bucket_id = bucket_id,
         .file_name = file_name,
         .fd = fopen(file, "r")
     };
 
+    genaro_encryption_info_t *encryption_info = genaro_generate_encryption_info(env, index, bucket_id);
+    genaro_key_ctr_as_str_t *rsa_key_ctr_as_str = NULL;
     genaro_upload_state_t *state = genaro_bridge_store_file(env,
                                                           &upload_opts,
+                                                          encryption_info->index,
+                                                          encryption_info->key_ctr_as_str,
+                                                          rsa_key_ctr_as_str,
                                                           NULL,
                                                           check_store_file_progress,
                                                           check_store_file_cancel);
@@ -627,7 +639,12 @@ int test_download()
     char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
     strcpy(download_file, folder);
     strcat(download_file, "genaro-test-download.data");
-    FILE *download_fp = fopen(download_file, "w+");
+
+    char *renamed_file = calloc(strlen(download_file) + 10 + 1, sizeof(char));
+    strcpy(renamed_file, download_file);
+    strcat(renamed_file, ".genarotmp");
+
+    FILE *renamed_fp = fopen(renamed_file, "w+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
@@ -635,7 +652,10 @@ int test_download()
     genaro_download_state_t *state = genaro_bridge_resolve_file(env,
                                                               bucket_id,
                                                               file_id,
-                                                              download_fp,
+                                                              NULL,
+                                                              download_file,
+                                                              renamed_file,
+                                                              renamed_fp,
                                                               NULL,
                                                               check_resolve_file_progress,
                                                               check_resolve_file);
@@ -670,7 +690,12 @@ int test_download_cancel()
     char *download_file = calloc(strlen(folder) + 33 + 1, sizeof(char));
     strcpy(download_file, folder);
     strcat(download_file, "genaro-test-download-canceled.data");
-    FILE *download_fp = fopen(download_file, "w+");
+
+    char *renamed_file = calloc(strlen(download_file) + 10 + 1, sizeof(char));
+    strcpy(renamed_file, download_file);
+    strcat(renamed_file, ".genarotmp");
+
+    FILE *renamed_fp = fopen(renamed_file, "w+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
@@ -678,7 +703,10 @@ int test_download_cancel()
     genaro_download_state_t *state = genaro_bridge_resolve_file(env,
                                                               bucket_id,
                                                               file_id,
-                                                              download_fp,
+                                                              NULL,
+                                                              download_file,
+                                                              renamed_file,
+                                                              renamed_fp,
                                                               NULL,
                                                               check_resolve_file_progress,
                                                               check_resolve_file_cancel);
@@ -759,6 +787,7 @@ int test_api()
                                       &http_options,
                                       &log_options,
                                       false);
+
     assert(env != NULL);
 
     int status;
@@ -1038,7 +1067,7 @@ int test_generate_seed()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *seed = calloc(128 + 1, sizeof(char));
-    char *expected_seed = "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4";
+    char *expected_seed = "9ca82ad4539dc5b861f3859df21051747ba3fadaad76b065219678883e33b6cfd021848d9359ca95eec18ab8dc9f8e3d665b8ac3eaf0eef1b40612e6661bb508";
 
     mnemonic_to_seed(mnemonic, 128, "", &seed);
     seed[128] = '\0';
@@ -1063,7 +1092,7 @@ int test_generate_seed_256()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art";
     char *seed = calloc(128 + 1, sizeof(char));
-    char *expected_seed = "408b285c123836004f4b8842c89324c1f01382450c0d439af345ba7fc49acf705489c6fc77dbd4e3dc1dd8cc6bc9f043db8ada1e243c4a0eafb290d399480840";
+    char *expected_seed = "2facfb042cc06dc665f95578b2b74c682ad05233bb140202dd6aaaebc49177184a2841917b5188ae38e485e4b20add4affb42d77ec447b0c9f96ef3bfdf12cc8";
 
     mnemonic_to_seed(mnemonic, 128, "", &seed);
     seed[128] = '\0';
@@ -1084,12 +1113,11 @@ int test_generate_seed_256()
     return 0;
 }
 
-
 int test_generate_seed_256_trezor()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art";
     char *seed = calloc(128 + 1, sizeof(char));
-    char *expected_seed = "bda85446c68413707090a52022edd26a1c9462295029f2e60cd7c4f2bbd3097170af7a4d73245cafa9c3cca8d561a7c3de6f5d4a10be8ed2a5e608d68f92fcc8";
+    char *expected_seed = "ec8b9350a0671bb7fe0e2134aa850c054ace6375fd8ca2443f422315e17952829bf4d109e2e6f88f76d69cd741a7685fe0c94c57c5db9b4a734f0d4ad9a31407";
 
     mnemonic_to_seed(mnemonic, 128, "TREZOR", &seed);
     seed[128] = '\0';
@@ -1115,7 +1143,7 @@ int test_generate_bucket_key()
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    char *expected_bucket_key = "b2464469e364834ad21e24c64f637c39083af5067693605c84e259447644f6f6";
+    char *expected_bucket_key = "06b02124888a696e1da6a739042a4e7a4fb14e44b752f879f0cb2c5491c701a7";
 
     generate_bucket_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
@@ -1143,7 +1171,7 @@ int test_generate_file_key()
     char *file_name = "samplefile.txt";
     char *index = "150589c9593bbebc0e795d8c4fa97304b42c110d9f0095abfac644763beca66e";
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    char *expected_file_key = "bb3552fc2e16d24a147af4b2d163e3164e6dbd04bbc45fc1c3eab69f384337e9";
+    char *expected_file_key = "90fa3754222d837835de43d16fac901914fabd0598cedc1cb23be337b4203df7";
 
     generate_file_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
 
@@ -1561,18 +1589,10 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_api();
-    test_api_badauth();
+    // test_api_badauth();
     printf("\n");
 
-    printf("Test Suite: Uploads\n");
-    test_upload();
-    test_upload_cancel();
-    printf("\n");
-
-    printf("Test Suite: Downloads\n");
-    test_download();
-    test_download_cancel();
-    printf("\n");
+    sleep(10);
 
     printf("Test Suite: BIP39\n");
     /*test_mnemonic_check();*/
@@ -1598,6 +1618,17 @@ int main(void)
     test_get_time_milliseconds();
     test_determine_shard_size();
     test_memory_mapping();
+    printf("\n");
+
+    printf("Test Suite: Uploads\n");
+    test_upload();
+    test_upload_cancel();
+    printf("\n");
+
+    printf("Test Suite: Downloads\n");
+    test_download();
+    test_download_cancel();
+    printf("\n");
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);

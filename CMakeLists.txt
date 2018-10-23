@@ -29,16 +29,16 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c)
-target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
+target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a /usr/local/lib/libgmp.a)
 
 add_executable(genaroeden-cli src/cli.c)
 # target_link_libraries(genaroeden-cli genaro uv json-c nettle curl secp256k1 scrypt keccak)
 target_link_libraries(genaroeden-cli genaro /usr/local/lib/libuv.a /usr/local/lib/libjson-c.a /usr/local/lib/libnettle.a libcurl.a libsecp256k1.a /usr/local/lib/libscrypt.a libkeccak.a /usr/local/lib/libgmp.a)
 
-# add_executable(tests_rs test/tests_rs.c)
+add_executable(tests_rs test/tests_rs.c)
 
-# add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
-# target_link_libraries(tests genaro uv json-c nettle curl microhttpd)
+add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
+target_link_libraries(tests genaro /usr/local/lib/libuv.a /usr/local/lib/libjson-c.a /usr/local/lib/libnettle.a libcurl.a /usr/local/lib/libmicrohttpd.a)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
@@ -46,8 +46,8 @@ include(CPack)
 
 ELSEIF(UNIX)
 
+set(CMAKE_C_FLAGS "-g3")
 set(CMAKE_C_FLAGS "-pthread")
-# set(CMAKE_C_FLAGS "-g3")
 
 add_library(genaro
         src/genaro.c
@@ -59,16 +59,16 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c)
-target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a)
+target_link_libraries(genaro m libsecp256k1.a libscrypt.a libkeccak.a libgmp.a)
 
 add_executable(genaroeden-cli src/cli.c)
 # target_link_libraries(genaroeden-cli genaro m uv json-c nettle curl secp256k1 scrypt keccak)
 target_link_libraries(genaroeden-cli genaro m libuv.a libjson-c.a libnettle.a curl libsecp256k1.a libscrypt.a libkeccak.a libgmp.a)
 
-# add_executable(tests_rs test/tests_rs.c)
+add_executable(tests_rs test/tests_rs.c)
 
-# add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
-# target_link_libraries(tests genaro uv json-c nettle curl microhttpd)
+add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
+target_link_libraries(tests genaro libuv.a libjson-c.a libnettle.a curl microhttpd)
 
 ELSEIF(WIN32)
 

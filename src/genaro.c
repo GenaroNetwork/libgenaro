@@ -1605,23 +1605,32 @@ GENARO_API char *genaro_decrypt_name(genaro_env_t *env,
     }
 }
 
+// generate key, ctr and index for encryption
 GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_t *env,
-                                                                   const char *bucket_id)
+                                                                     const char *index,
+                                                                     const char *bucket_id)
 {
-    uint8_t *index = NULL;
+    char *index_as_str = NULL;
+
+    if(index && strlen(index) == SHA256_DIGEST_SIZE * 2) {
+        index_as_str = strdup(index);
+    } else {
+        uint8_t *index_new = NULL;
+        
+        // Get random index used for encryption
+        index_new = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+        if (!index) {
+            return NULL;
+        }
+        random_buffer(index_new, SHA256_DIGEST_SIZE);
+
+        index_as_str = hex2str(SHA256_DIGEST_SIZE, index_new);
+        if (!index_as_str) {
+            return NULL;
+        }
+    }
+
     char *key_as_str = NULL;
-
-    // Get random index used for encryption
-    index = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
-    if (!index) {
-        return NULL;
-    }
-    random_buffer(index, SHA256_DIGEST_SIZE);
-
-    char *index_as_str = hex2str(SHA256_DIGEST_SIZE, index);
-    if (!index_as_str) {
-        return NULL;
-    }
 
     // Caculate the file encryption key based on the index
     key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));

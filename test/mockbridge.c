@@ -73,8 +73,10 @@ int mock_bridge_server(void *cls,
 
     int ret;
 
-    char *pass = NULL;
-    char *user = MHD_basic_auth_get_username_password(connection, &pass);
+    // char *pass = NULL;
+    // char *user = MHD_basic_auth_get_username_password(connection, &pass);
+    char *pass = strdup(PASSHASH);
+    char *user = strdup(USER);
 
     if (0 == strcmp(method, "GET")) {
         if (0 == strcmp(url, "/")) {
