@@ -1619,7 +1619,7 @@ GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_
         
         // Get random index used for encryption
         index_new = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
-        if (!index) {
+        if (!index_new) {
             return NULL;
         }
         random_buffer(index_new, SHA256_DIGEST_SIZE);

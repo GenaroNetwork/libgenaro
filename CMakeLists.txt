@@ -6,12 +6,6 @@ IF(APPLE)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
 set(CMAKE_C_FLAGS "-gdwarf-2 -g3")
 
-# add_subdirectory(../secp256k1 build-secp256k1)
-# add_subdirectory(../libkeccak build-libkeccak)
-
-# include_directories(../secp256k1/include)
-# include_directories(../libkeccak)
-
 include(CTest)
 enable_testing()
 
@@ -41,6 +35,9 @@ add_executable(tests_rs test/tests_rs.c)
 add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
 # target_link_libraries(tests genaro uv json-c nettle curl microhttpd)
 target_link_libraries(tests genaro /usr/local/lib/libuv.a /usr/local/lib/libjson-c.a /usr/local/lib/libnettle.a libcurl.a /usr/local/lib/libmicrohttpd.a)
+
+add_executable(test_crypto test/test_crypto.c)
+target_link_libraries(test_crypto genaro /usr/local/lib/libnettle.a) #  /usr/local/lib/libnettle.a /usr/local/lib/libkeccak.a
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

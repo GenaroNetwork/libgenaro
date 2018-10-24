@@ -944,7 +944,7 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
  * @return A pointer to the encryption info.
  */
 GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_t *env,
-                                                                     const char *index_,
+                                                                     const char *index,
                                                                      const char *bucket_id);
 
 /**
