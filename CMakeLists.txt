@@ -6,11 +6,11 @@ IF(APPLE)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
 set(CMAKE_C_FLAGS "-gdwarf-2 -g3")
 
-add_subdirectory(../secp256k1 build-secp256k1)
-add_subdirectory(../libkeccak build-libkeccak)
+# add_subdirectory(../secp256k1 build-secp256k1)
+# add_subdirectory(../libkeccak build-libkeccak)
 
-include_directories(../secp256k1/include)
-include_directories(../libkeccak)
+# include_directories(../secp256k1/include)
+# include_directories(../libkeccak)
 
 include(CTest)
 enable_testing()
@@ -29,7 +29,8 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c)
-target_link_libraries(genaro libsecp256k1.a libscrypt.a libkeccak.a /usr/local/lib/libgmp.a)
+# target_link_libraries(genaro secp256k1 scrypt keccak gmp)
+target_link_libraries(genaro /usr/local/lib/libsecp256k1.a /usr/local/lib/libscrypt.a /usr/local/lib/libkeccak.a /usr/local/lib/libgmp.a)
 
 add_executable(genaroeden-cli src/cli.c)
 # target_link_libraries(genaroeden-cli genaro uv json-c nettle curl secp256k1 scrypt keccak)
@@ -38,6 +39,7 @@ target_link_libraries(genaroeden-cli genaro /usr/local/lib/libuv.a /usr/local/li
 add_executable(tests_rs test/tests_rs.c)
 
 add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
+# target_link_libraries(tests genaro uv json-c nettle curl microhttpd)
 target_link_libraries(tests genaro /usr/local/lib/libuv.a /usr/local/lib/libjson-c.a /usr/local/lib/libnettle.a libcurl.a /usr/local/lib/libmicrohttpd.a)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
