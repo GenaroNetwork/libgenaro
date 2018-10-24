@@ -92,14 +92,17 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c)
-# target_link_libraries(genaro secp256k1 scrypt keccak)
+target_link_libraries(genaro secp256k1 scrypt keccak)
 
 add_executable(genaroeden-cli src/cli.c)
 
 # nettle must locate behind curl and gnutls，gmp must locate behind gnutls，hogweed must locate behind gnutls.
 target_link_libraries(genaroeden-cli genaro uv json-c curl gnutls nettle hogweed gmp secp256k1 scrypt keccak ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
 
-# add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
-# target_link_libraries(tests genaro uv json-c curl gnutls nettle hogweed gmp microhttpd ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
+add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
+target_link_libraries(tests genaro uv json-c curl gnutls nettle hogweed gmp microhttpd ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
+
+set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=gnu99")
+add_executable(tests_rs test/tests_rs.c)
 
 ENDIF()
