@@ -37,3 +37,4 @@ script:
   - make
   - ./tests
   - ./tests_rs
+  
