@@ -31,9 +31,9 @@ script:
   - make
   - sudo make install
   - cd -
+  - sed -i 's/SET(STATIC.*)/SET(STATIC 1)/' CMakeLists.txt
   - mkdir build
   - cd build
-  - sed -i 's/SET(STATIC.*)/SET(STATIC 1)/' CMakeLists.txt
   - cmake ..
   - make
   - ./tests
