@@ -68,19 +68,23 @@ cd /tmp/libkeccak
 ```
 
 Modify the contents of Makefile:
+```Makefile
   # for Linux
   LIBEXT = so
   LIBFLAGS = -shared -Wl,-soname,libkeccak.$(LIBEXT).$(LIB_MAJOR)
   # for Mac OS
   # LIBEXT = dylib
   # LIBFLAGS = -dynamiclib
+```
 to：
+```Makefile
   # for Linux
   # LIBEXT = so
   # LIBFLAGS = -shared -Wl,-soname,libkeccak.$(LIBEXT).$(LIB_MAJOR)
   # for Mac OS
   LIBEXT = dylib
   LIBFLAGS = -dynamiclib
+```
 
 and then:
 ```bash
