@@ -32,6 +32,7 @@ extern "C" {
 #include <string.h>
 #include <uv.h>
 #include <curl/curl.h>
+#include <secp256k1.h>
 
 #include <inttypes.h>
 
@@ -1026,6 +1027,8 @@ int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void
 
 extern int genaro_debug;
 extern char *curl_out_dir;
+
+extern secp256k1_context *g_secp256k1_ctx;
 
 static inline char separator()
 {

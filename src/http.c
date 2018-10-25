@@ -1,6 +1,8 @@
 #include <secp256k1.h>
 #include "http.h"
 
+secp256k1_context *g_secp256k1_ctx = NULL;
+
 static size_t body_ignore_receive(void *buffer, size_t size, size_t nmemb,
                                   void *userp)
 {
@@ -657,21 +659,20 @@ int fetch_json(genaro_http_options_t *http_options,
         sha256_of_str((uint8_t *)hash_msg, hash_msg_len, hash);
 
         // hash -> signature
-        secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
         secp256k1_ecdsa_signature sig;
-        secp256k1_ecdsa_sign(ctx, &sig, hash, encrypt_options->priv_key, NULL, NULL);
+        secp256k1_ecdsa_sign(g_secp256k1_ctx, &sig, hash, encrypt_options->priv_key, NULL, NULL);
 
         // privkey -> pubkey
         secp256k1_pubkey pubkey;
-        secp256k1_ec_pubkey_create(ctx, &pubkey, encrypt_options->priv_key);
+        secp256k1_ec_pubkey_create(g_secp256k1_ctx, &pubkey, encrypt_options->priv_key);
         size_t pubkey_ser_len = 65;
         uint8_t pubkey_ser[65];
-        secp256k1_ec_pubkey_serialize(ctx, pubkey_ser, &pubkey_ser_len, &pubkey, SECP256K1_EC_UNCOMPRESSED);
+        secp256k1_ec_pubkey_serialize(g_secp256k1_ctx, pubkey_ser, &pubkey_ser_len, &pubkey, SECP256K1_EC_UNCOMPRESSED);
 
         // append signature to http header.
         size_t sig_str_len = 74;
         uint8_t sig_str[74];
-        secp256k1_ecdsa_signature_serialize_der(ctx, sig_str, &sig_str_len, &sig);
+        secp256k1_ecdsa_signature_serialize_der(g_secp256k1_ctx, sig_str, &sig_str_len, &sig);
         char *sig_str_hex = hex2str(sig_str_len, sig_str);
 
         const char *h_sig_key = "x-signature: ";

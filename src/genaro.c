@@ -934,6 +934,7 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
     }
 
     env->is_support_share = is_support_share;
+    g_secp256k1_ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
 
     return env;
 }
@@ -993,6 +994,11 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
     free(env);
 
     curl_global_cleanup();
+
+    if(g_secp256k1_ctx) {
+        secp256k1_context_destroy(g_secp256k1_ctx);
+        g_secp256k1_ctx = NULL;
+    }
 
     return status;
 }
