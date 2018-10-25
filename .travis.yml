@@ -33,8 +33,8 @@ script:
   - cd -
   - mkdir build
   - cd build
+  - sed -i 's/SET(STATIC.*)/SET(STATIC 1)/' CMakeLists.txt
   - cmake ..
   - make
   - ./tests
   - ./tests_rs
-  
