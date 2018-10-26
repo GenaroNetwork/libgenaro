@@ -436,7 +436,13 @@ typedef void (*genaro_finished_download_cb)(int status, const char *file_name,
 
 /** @brief A function signature for an upload complete callback
  */
-typedef void (*genaro_finished_upload_cb)(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle);
+typedef void (*genaro_finished_upload_cb)(const char *bucket_id,
+                                          const char *file_name,
+                                          int error_status,
+                                          char *file_id,
+                                          uint64_t total_bytes, // The total bytes after encryption and Reed-Solomn
+                                          uint8_t *sha256,  // The sha256 value after encryption and Reed-Solomn
+                                          void *handle);
 
 /** @brief A structure that represents a pointer to a shard
  *
