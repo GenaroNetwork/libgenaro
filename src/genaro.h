@@ -33,6 +33,7 @@ extern "C" {
 #include <uv.h>
 #include <curl/curl.h>
 #include <secp256k1.h>
+#include <nettle/sha.h>
 
 #include <inttypes.h>
 
@@ -136,7 +137,6 @@ typedef struct {
 } genaro_encryption_info_t;
 
 typedef struct {
-    uint8_t *encryption_key;
     uint8_t *encryption_ctr;
     struct aes256_ctx *ctx;
 } genaro_encryption_ctx_t;
@@ -441,7 +441,7 @@ typedef void (*genaro_finished_upload_cb)(const char *bucket_id,
                                           int error_status,
                                           char *file_id,
                                           uint64_t total_bytes, // The total bytes after encryption and Reed-Solomn
-                                          uint8_t *sha256,  // The sha256 value after encryption and Reed-Solomn
+                                          char *sha256,  // The sha256 value after encryption and Reed-Solomn
                                           void *handle);
 
 /** @brief A structure that represents a pointer to a shard
@@ -624,6 +624,10 @@ typedef struct genaro_upload_state {
     void *handle;
     shard_tracker_t *shard;
     int pending_work_count;
+
+    // used to calculate the sha256 of the whole encrypted file.
+    struct sha256_ctx encrypted_file_sha256_ctx;
+    char *encrypted_file_sha256;
 } genaro_upload_state_t;
 
 typedef struct {

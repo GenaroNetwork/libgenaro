@@ -326,7 +326,7 @@ static void cleanup_state(genaro_upload_state_t *state)
         free(state->shard);
     }
 
-    state->finished_cb(state->bucket_id, state->file_name, state->error_status, state->file_id, state->handle);
+    state->finished_cb(state->bucket_id, state->file_name, state->error_status, state->file_id, state->total_bytes, state->encrypted_file_sha256, state->handle);
 
     free(state);
 }
@@ -335,10 +335,6 @@ static void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
 {
     if (ctx->encryption_ctr) {
         free(ctx->encryption_ctr);
-    }
-
-    if (ctx->encryption_key) {
-        free(ctx->encryption_key);
     }
 
     if (ctx->ctx) {
@@ -1402,7 +1398,7 @@ static void prepare_frame(uv_work_t *work)
         memcpy(shard_meta->challenges[i], buff, 32);
 
         // Convert the uint8_t challenges to character arrays
-        char *challenge_as_str = hex2str(32, buff);
+        char *challenge_as_str = hex_encoding_to_str(32, buff);
         if (!challenge_as_str) {
             req->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
@@ -1485,6 +1481,7 @@ static void prepare_frame(uv_work_t *work)
         }
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
+        sha256_update(&state->encrypted_file_sha256_ctx, read_bytes, cphr_txt);
 
         for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
             sha256_update(&first_sha256_for_leaf[i], read_bytes, cphr_txt);
@@ -1504,7 +1501,7 @@ static void prepare_frame(uv_work_t *work)
     ripemd160_of_str(prehash_sha256, SHA256_DIGEST_SIZE, prehash_ripemd160);
 
     // Shard Hash
-    char *hash = hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
+    char *hash = hex_encoding_to_str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
     if (!hash) {
         req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
@@ -2356,7 +2353,6 @@ static int check_in_progress(genaro_upload_state_t *state, int status)
 static void queue_push_frame_and_shard(genaro_upload_state_t *state)
 {
     for (int index = 0; index < state->total_shards; index++) {
-
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
             state->shard[index].report->send_status == GENARO_REPORT_NOT_PREPARED &&
             check_in_progress(state, PUSHING_FRAME) < state->push_frame_limit) {
@@ -2433,6 +2429,13 @@ static void queue_next_work(genaro_upload_state_t *state)
     if (state->completed_shards == state->total_shards &&
         !state->creating_bucket_entry &&
         !state->completed_upload) {
+        // calculate the sha256 of the whole encrypted file.
+        if(!state->encrypted_file_sha256) {
+            uint8_t sha256[SHA256_DIGEST_SIZE];
+            sha256_digest(&state->encrypted_file_sha256_ctx, SHA256_DIGEST_SIZE, sha256);
+            state->encrypted_file_sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
+        }
+        
         queue_create_bucket_entry(state);
     }
 
@@ -2545,7 +2548,7 @@ static void prepare_upload_state(uv_work_t *work)
                         state->bucket_id,
                         &bucket_key_as_str);
 
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    uint8_t *bucket_key = str_decoding_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
         state->error_status = GENARO_MEMORY_ERROR;
         return;
@@ -2581,6 +2584,9 @@ static void prepare_upload_state(uv_work_t *work)
         state->parity_file_path = create_tmp_name(state, ".parity");
         state->encrypted_file_path = create_tmp_name(state, ".crypt");
     }
+
+    // Initialize context for sha256 of the whole encrypted data
+    sha256_init(&state->encrypted_file_sha256_ctx);
 }
 
 char *create_tmp_name(genaro_upload_state_t *state, char *extension)
@@ -2683,12 +2689,13 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     state->frame_id = NULL;
     state->hmac_id = NULL;
     state->index = index;
+    state->encrypted_file_sha256 = NULL;
 
     if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
         genaro_key_ctr_t *key_ctr = (genaro_key_ctr_t *)malloc(sizeof(genaro_key_ctr_t));
 
-        uint8_t *key = str2hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
-        uint8_t *ctr = str2hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
+        uint8_t *key = str_decoding_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+        uint8_t *ctr = str_decoding_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
         
         free(key_ctr_as_str->key_as_str);
         free(key_ctr_as_str->ctr_as_str);

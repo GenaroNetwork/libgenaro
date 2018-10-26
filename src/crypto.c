@@ -10,7 +10,7 @@ int ripemd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
     ripemd160sha256(data, data_size, ripemd160_digest);
 
     // Convert ripemd160 hex to character array
-    char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
+    char *ripemd160_str = hex_encoding_to_str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
     if (!ripemd160_str) {
         return 1;
     }
@@ -77,7 +77,7 @@ int double_ripemd160sha256_as_string(uint8_t *data, uint64_t data_size,
     }
 
     // Convert ripemd160 hex to character array
-    char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
+    char *ripemd160_str = hex_encoding_to_str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
     if (!ripemd160_str) {
         return 1;
     }
@@ -157,7 +157,7 @@ int get_deterministic_key(const char *key, int key_len,
     sha512input[input_len] = '\0';
 
     // Convert input to hexdata
-    uint8_t *sha512input_as_hex = str2hex(input_len, sha512input);
+    uint8_t *sha512input_as_hex = str_decoding_to_hex(input_len, sha512input);
     if (!sha512input_as_hex) {
         return 2;
     }
@@ -167,7 +167,7 @@ int get_deterministic_key(const char *key, int key_len,
     sha512_of_str(sha512input_as_hex, input_len / 2, sha512_digest);
 
     // Convert Sha512 hex to character array
-    char *sha512_str = hex2str(SHA512_DIGEST_SIZE, sha512_digest);
+    char *sha512_str = hex_encoding_to_str(SHA512_DIGEST_SIZE, sha512_digest);
     if (!sha512_str) {
         return 2;
     }
@@ -292,7 +292,7 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
     }
     size_t enc_len = len / 2;
     size_t data_size = enc_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
-    uint8_t *enc = str2hex(len, (char *)data);
+    uint8_t *enc = str_decoding_to_hex(len, (char *)data);
     if (!enc) {
         free(key);
         return 1;
@@ -396,7 +396,7 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
            &cipher_text, data_size);
 
     // Convert to hex string
-    *result = hex2str(buffer_size, buffer);
+    *result = hex_encoding_to_str(buffer_size, buffer);
     if (!*result) {
         return 1;
     }

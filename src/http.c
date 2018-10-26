@@ -36,8 +36,6 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
             return CURL_READFUNC_ABORT;
         }
 
-        body->ctx;
-
         if (body->ctx != NULL) {
             ctr_crypt(body->ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, body->ctx->encryption_ctr, read_bytes,
@@ -673,7 +671,7 @@ int fetch_json(genaro_http_options_t *http_options,
         size_t sig_str_len = 74;
         uint8_t sig_str[74];
         secp256k1_ecdsa_signature_serialize_der(g_secp256k1_ctx, sig_str, &sig_str_len, &sig);
-        char *sig_str_hex = hex2str(sig_str_len, sig_str);
+        char *sig_str_hex = hex_encoding_to_str(sig_str_len, sig_str);
 
         const char *h_sig_key = "x-signature: ";
         char *h_sig = calloc(strlen(h_sig_key) + strlen(sig_str_hex) + 1, sizeof(char));
@@ -682,7 +680,7 @@ int fetch_json(genaro_http_options_t *http_options,
         header_list = curl_slist_append(header_list, h_sig);
 
         // append public key to http header
-        char *pubkey_str = hex2str(pubkey_ser_len, pubkey_ser);
+        char *pubkey_str = hex_encoding_to_str(pubkey_ser_len, pubkey_ser);
 
         char h_pub[200];
         sprintf(h_pub, "x-pubkey: %s", pubkey_str);

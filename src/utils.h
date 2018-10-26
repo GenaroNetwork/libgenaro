@@ -40,11 +40,13 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 
 int allocatefile(int fd, uint64_t length);
 
-char *hex2str(size_t length, uint8_t *data);
-
 void print_int_array(uint8_t *array, unsigned length);
 
-uint8_t *str2hex(size_t length, char *data);
+char *hex_to_str(size_t length, uint8_t *data);
+
+char *hex_encoding_to_str(size_t length, uint8_t *data);
+
+uint8_t *str_decoding_to_hex(size_t length, char *data);
 
 char *str_concat_many(int count, ...);
 

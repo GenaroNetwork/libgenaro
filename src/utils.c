@@ -1,18 +1,5 @@
 #include "utils.h"
 
-char *hex2str(size_t length, uint8_t *data)
-{
-    size_t encode_len = BASE16_ENCODE_LENGTH(length);
-    uint8_t *result = calloc(encode_len + 1, sizeof(uint8_t));
-    if (!result) {
-        return NULL;
-    }
-
-    base16_encode_update(result, length, data);
-
-    return (char *)result;
-}
-
 void print_int_array(uint8_t *array, unsigned length)
 {
     printf("{");
@@ -25,7 +12,33 @@ void print_int_array(uint8_t *array, unsigned length)
     printf("}\n");
 }
 
-uint8_t *str2hex(size_t length, char *data)
+char *hex_to_str(size_t length, uint8_t *data)
+{
+    char *result = (char *)calloc(length * 2 + 1, sizeof(char));
+
+    char byte[3];
+    for(int i = 0; i < length; i++) {
+        sprintf(byte, "%02x", data[i]);
+        strcat(result, byte);
+    }
+
+    return result;
+}
+
+char *hex_encoding_to_str(size_t length, uint8_t *data)
+{
+    size_t encode_len = BASE16_ENCODE_LENGTH(length);
+    uint8_t *result = calloc(encode_len + 1, sizeof(uint8_t));
+    if (!result) {
+        return NULL;
+    }
+
+    base16_encode_update(result, length, data);
+
+    return (char *)result;
+}
+
+uint8_t *str_decoding_to_hex(size_t length, char *data)
 {
     char *result = calloc(BASE16_DECODE_LENGTH(length) + 1, sizeof(char));
     if (!result) {

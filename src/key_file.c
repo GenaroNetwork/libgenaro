@@ -220,7 +220,7 @@ int extract_key_file_obj(const char *passphrase, key_file_obj_t *key_file_obj, k
     size_t dec_key_len = (size_t) kdfparams_obj->dklen;
     key_result->dec_key = malloc(dec_key_len);
     char *salt = kdfparams_obj->salt;
-    salt_hex = str2hex(strlen(salt), salt);
+    salt_hex = str_decoding_to_hex(strlen(salt), salt);
     int err = libscrypt_scrypt((uint8_t *) passphrase, strlen(passphrase),
                                salt_hex, strlen(salt)/2,
                                (uint64_t) kdfparams_obj->n,
@@ -238,7 +238,7 @@ int extract_key_file_obj(const char *passphrase, key_file_obj_t *key_file_obj, k
     char *ciphertext_str = crypto_obj->ciphertext;
     size_t ciphertext_len = strlen(ciphertext_str);
 
-    ciphertext_raw = str2hex(ciphertext_len, ciphertext_str);
+    ciphertext_raw = str_decoding_to_hex(ciphertext_len, ciphertext_str);
     size_t buf_ciphertext_len = ciphertext_len / 2;
 
     size_t left_len = dec_key_len / 2;
@@ -251,7 +251,7 @@ int extract_key_file_obj(const char *passphrase, key_file_obj_t *key_file_obj, k
     buf_mac_sha3 = malloc(CRYPTO_SHA3_DIGEST_SIZE);
     sha3_256_of_str(buf_mac, (int) buf_mac_len, buf_mac_sha3);
 
-    char *str_mac_sha3 = hex2str(CRYPTO_SHA3_DIGEST_SIZE, buf_mac_sha3);
+    char *str_mac_sha3 = hex_encoding_to_str(CRYPTO_SHA3_DIGEST_SIZE, buf_mac_sha3);
     if (strcmp(str_mac_sha3, crypto_obj->mac) != 0) {
         status = KEY_FILE_ERR_VALID;
         goto clean_variable;
@@ -262,7 +262,7 @@ int extract_key_file_obj(const char *passphrase, key_file_obj_t *key_file_obj, k
 
     char *iv_str = crypto_obj->cipherparams->iv;
     // TODO: must be AES_BLOCK_SIZE=16 bytes
-    uint8_t *iv_raw = str2hex(strlen(iv_str), iv_str);
+    uint8_t *iv_raw = str_decoding_to_hex(strlen(iv_str), iv_str);
 
     struct CTR_CTX(struct aes128_ctx, AES_BLOCK_SIZE) ctx;
     CTR_SET_COUNTER(&ctx, iv_raw);
