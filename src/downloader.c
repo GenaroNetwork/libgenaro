@@ -628,7 +628,8 @@ static void request_shard(uv_work_t *work)
 
     uint64_t file_position = req->pointer_index * req->state->shard_size;
 
-    int error_status = fetch_shard(req->http_options,
+    int error_status = fetch_shard(req->state,
+                                   req->http_options,
                                    req->farmer_id,
                                    req->farmer_proto,
                                    req->farmer_host,
@@ -1541,6 +1542,8 @@ static void recover_shards(uv_work_t *work)
     uint64_t bytes_decrypted = 0;
     size_t len = AES_BLOCK_SIZE * 8;
 
+    uint8_t sha256[SHA256_DIGEST_SIZE];
+
     // Make sure that the file is the correct size before recovering
     // shards in case that the last shard is the one being recovered.
 #ifdef _WIN32
@@ -1569,6 +1572,7 @@ static void recover_shards(uv_work_t *work)
     if (ftruncate(req->fd, req->filesize)) {
         // errno for more details
         req->error_status = GENARO_FILE_RESIZE_ERROR;
+        return;
     }
 #endif
 
@@ -1631,6 +1635,10 @@ static void recover_shards(uv_work_t *work)
     }
 
 decrypt:
+    // Get the sha256 of the undecrypted file
+    sha256_of_str(data_map, req->filesize, sha256);
+    // sha256_of_str(data_map, 6292480,sha256);
+    state->undecrypted_file_sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
 
     aes256_set_encrypt_key(&ctx, req->key_ctr.key);
 
@@ -1695,6 +1703,7 @@ finish:
     if (ftruncate(req->fd, req->data_filesize)) {
         // errno for more details
         req->error_status = GENARO_FILE_RESIZE_ERROR;
+        return;
     }
 #endif
 
@@ -1810,6 +1819,8 @@ static void queue_next_work(genaro_download_state_t *state)
                                state->file_name,
                                state->temp_file_name,
                                state->destination,
+                               0,
+                               NULL,
                                state->handle);
 
             free_download_state(state);
@@ -1841,8 +1852,8 @@ static void queue_next_work(genaro_download_state_t *state)
             }
 
             state->finished = true;
-            state->finished_cb(state->error_status, state->file_name, 
-                state->temp_file_name, state->destination, state->handle);
+            state->finished_cb(state->error_status, state->file_name, state->temp_file_name,
+                state->destination, state->shard_size * state->total_pointers, state->undecrypted_file_sha256, state->handle);
 
             free_download_state(state);
             return;
@@ -1981,6 +1992,8 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
         state->key_ctr->key = NULL;
         state->key_ctr->ctr = NULL;
     }
+
+    state->undecrypted_file_sha256 = NULL;
 
     // start download
     queue_next_work(state);

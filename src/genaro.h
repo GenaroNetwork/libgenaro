@@ -416,8 +416,8 @@ typedef struct {
 */
 
 typedef void (*genaro_progress_upload_cb)(double progress,
-                                  uint64_t file_bytes,
-                                  void *handle);
+                                          uint64_t file_bytes,
+                                          void *handle);
 
 /*typedef void (*genaro_progress_download_cb)(double progress,
                                   uint64_t bytes,
@@ -425,13 +425,17 @@ typedef void (*genaro_progress_upload_cb)(double progress,
                                   void *handle);*/
 
 typedef void (*genaro_progress_download_cb)(double progress,
-                                  uint64_t file_bytes,
-                                  void *handle);
+                                            uint64_t file_bytes,
+                                            void *handle);
 
 /** @brief A function signature for a download complete callback
  */
-typedef void (*genaro_finished_download_cb)(int status, const char *file_name, 
-                                            const char *temp_file_name, FILE *fd, 
+typedef void (*genaro_finished_download_cb)(int status,
+                                            const char *file_name,
+                                            const char *temp_file_name,
+                                            FILE *fd,
+                                            uint64_t total_bytes, // The total bytes before decryption
+                                            char *sha256,  // The sha256 value before decryption
                                             void *handle);
 
 /** @brief A function signature for an upload complete callback
@@ -529,6 +533,9 @@ typedef struct genaro_download_state {
     uint32_t pending_work_count;
     genaro_log_levels_t *log;
     void *handle;
+
+    // the sha256 of the undecrypted file
+    char *undecrypted_file_sha256;
 } genaro_download_state_t;
 
 typedef struct {

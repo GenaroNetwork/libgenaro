@@ -1477,7 +1477,7 @@ static void prepare_frame(uv_work_t *work)
                       (uint8_t *)cphr_txt, (uint8_t *)read_data);
         } else {
             // Just use the already encrypted data
-            memcpy(cphr_txt, read_data, AES_BLOCK_SIZE*256);
+            memcpy(cphr_txt, read_data, AES_BLOCK_SIZE * 256);
         }
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
@@ -2434,6 +2434,8 @@ static void queue_next_work(genaro_upload_state_t *state)
             uint8_t sha256[SHA256_DIGEST_SIZE];
             sha256_digest(&state->encrypted_file_sha256_ctx, SHA256_DIGEST_SIZE, sha256);
             state->encrypted_file_sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
+
+            printf("state->encrypted_file_sha256: %s\n", state->encrypted_file_sha256);
         }
         
         queue_create_bucket_entry(state);

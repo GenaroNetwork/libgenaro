@@ -263,6 +263,14 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
         writelen = (writelen / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
     }
 
+    // FILE *fd = fopen("/Users/dingyi/Genaro/test/download/down.txt", "a");
+    // fprintf(fd, "%d\n", writelen);
+    // fclose(fd);
+
+    static uint64_t totalWriteLen = 0;
+    totalWriteLen += writelen;
+    // printf("totalWriteLen: %lld\n", totalWriteLen);
+
     // Update the hash
     sha256_update(body->sha256_ctx, writelen, (uint8_t *)body->tail);
 
@@ -310,7 +318,8 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
 }
 
 /* shard_data must be allocated for shard_total_bytes */
-int fetch_shard(genaro_http_options_t *http_options,
+int fetch_shard(genaro_download_state_t *state,
+                genaro_http_options_t *http_options,
                 char *farmer_id,
                 char *proto,
                 char *host,
@@ -407,7 +416,7 @@ int fetch_shard(genaro_http_options_t *http_options,
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
 
     time_t start = 0, end = 0;
-    if(genaro_debug) {  
+    if(genaro_debug) {
         time(&start);
     }
     

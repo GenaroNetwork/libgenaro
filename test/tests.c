@@ -245,7 +245,7 @@ void check_resolve_file_progress(double progress,
     // TODO check error case
 }
 
-void check_resolve_file(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
+void check_resolve_file(int status, const char *file_name, const char *temp_file_name, FILE *fd, uint64_t total_bytes, char *sha256, void *handle)
 {
     fclose(fd);
     assert(handle == NULL);
@@ -257,7 +257,7 @@ void check_resolve_file(int status, const char *file_name, const char *temp_file
     }
 }
 
-void check_resolve_file_cancel(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
+void check_resolve_file_cancel(int status, const char *file_name, const char *temp_file_name, FILE *fd, uint64_t total_bytes, char *sha256, void *handle)
 {
     fclose(fd);
     assert(handle == NULL);
@@ -278,10 +278,10 @@ void check_store_file_progress(double progress,
     }
 }
 
-void check_store_file(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
+void check_store_file(const char *bucket_id, const char *file_name, int status, char *file_id, uint64_t total_bytes, char *sha256, void *handle)
 {
     assert(handle == NULL);
-    if (error_status == 0) {
+    if (status == 0) {
         if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
             pass("genaro_bridge_store_file");
         } else {
@@ -289,20 +289,20 @@ void check_store_file(const char *bucket_id, const char *file_name, int error_st
         }
     } else {
         fail("genaro_bridge_store_file(1)");
-        printf("\t\tERROR:   %s\n", genaro_strerror(error_status));
+        printf("\t\tERROR:   %s\n", genaro_strerror(status));
     }
 
     free(file_id);
 }
 
-void check_store_file_cancel(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
+void check_store_file_cancel(const char *bucket_id, const char *file_name, int status, char *file_id, uint64_t total_bytes, char *sha256, void *handle)
 {
     assert(handle == NULL);
-    if (error_status == GENARO_TRANSFER_CANCELED) {
+    if (status == GENARO_TRANSFER_CANCELED) {
         pass("genaro_bridge_store_file_cancel");
     } else {
         fail("genaro_bridge_store_file_cancel");
-        printf("\t\tERROR:   %s\n", genaro_strerror(error_status));
+        printf("\t\tERROR:   %s\n", genaro_strerror(status));
     }
 
     free(file_id);
