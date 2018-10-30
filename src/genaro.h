@@ -532,6 +532,7 @@ typedef struct genaro_download_state {
     const char *hmac;
     uint32_t pending_work_count;
     genaro_log_levels_t *log;
+    bool decrypt;
     void *handle;
 
     // the sha256 of the undecrypted file
@@ -1009,11 +1010,12 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
  * @param[in] env A pointer to environment
  * @param[in] bucket_id Character array of bucket id
  * @param[in] file_id Character array of file id
- * @param[in] decryption_key The file encryption/decryption key.
- * @param[in] decryption_ctr The file encryption/decryption ctr.
- * @param[in] file_name The file name include path.
- * @param[in] temp_file_name The temp file name include path.
+ * @param[in] decryption_key The file encryption/decryption key
+ * @param[in] decryption_ctr The file encryption/decryption ctr
+ * @param[in] file_name The file name include path
+ * @param[in] temp_file_name The temp file name include path
  * @param[in] destination File descriptor of the destination
+ * @param[in] decrypt Wheather to decrypt the file after download
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] progress_cb Function called with progress updates
  * @param[in] finished_cb Function called when download finished
@@ -1026,6 +1028,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                                                                const char *file_name,
                                                                const char *temp_file_name,
                                                                FILE *destination,
+                                                               bool decrypt,
                                                                void *handle,
                                                                genaro_progress_download_cb progress_cb,
                                                                genaro_finished_download_cb finished_cb);

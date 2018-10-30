@@ -403,7 +403,6 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
 
     free(buffer);
 
-
     return 0;
 }
 
@@ -531,6 +530,71 @@ int decrypt_meta(const char *buffer_base64,
         return 1;
     }
     memcpy(*filemeta, &clear_text, length);
+
+    return 0;
+}
+
+int encrypt_meta_hmac_sha512(const char *meta, uint8_t *priv_key, size_t key_len, const char *bucket_id, char **buffer_base64)
+{
+    // Derive a key based on the master seed and bucket name magic number
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(priv_key, key_len, bucket_id, &bucket_key_as_str);
+
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        return 1;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    // Generate the synthetic iv with first half of hmac w/ name
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx2, strlen(meta), (uint8_t *)meta);
+    uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
+
+    free(bucket_key);
+
+    // Encrypt
+    encrypt_meta(meta, key, bucketname_iv, buffer_base64);
+    
+    return 0;
+}
+
+int decrypt_meta_hmac_sha512(const char *buffer_base64, uint8_t *priv_key, size_t key_len, const char *bucket_id, char **meta)
+{
+    // Derive a key based on the master seed
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(priv_key, key_len, bucket_id, &bucket_key_as_str);
+
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        return 1;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    free(bucket_key);
+
+    int error_status = decrypt_meta(buffer_base64, key, meta);
+    if (error_status) {
+        return 1;
+    }
 
     return 0;
 }

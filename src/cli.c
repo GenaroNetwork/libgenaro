@@ -613,7 +613,7 @@ static int download_file(genaro_env_t *env, char *bucket_id,
 
     genaro_download_state_t *state = genaro_bridge_resolve_file(env, bucket_id,
                                                               file_id, NULL, strdup(path), 
-                                                              renamed_path, fd, NULL,
+                                                              renamed_path, fd, true, NULL,
                                                               progress_cb,
                                                               download_file_complete);
     if (!state) {

@@ -656,6 +656,7 @@ int test_download()
                                                               download_file,
                                                               renamed_file,
                                                               renamed_fp,
+                                                              true,
                                                               NULL,
                                                               check_resolve_file_progress,
                                                               check_resolve_file);
@@ -707,6 +708,7 @@ int test_download_cancel()
                                                               download_file,
                                                               renamed_file,
                                                               renamed_fp,
+                                                              true,
                                                               NULL,
                                                               check_resolve_file_progress,
                                                               check_resolve_file_cancel);
@@ -1430,12 +1432,19 @@ int test_increment_ctr_aes_iv()
 int test_meta_encryption_name(char *filename)
 {
 
-    uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
-                               81,126,137,21,253,171,48,217,184,188,8,137,3,
-                               4,83,50,30,251};
-    uint8_t iv[32] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,
-                      82,70,219,247,135,162,7,93,193,44,123,188,234,203,115,
-                      129,82};
+    // uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
+    //                            81,126,137,21,253,171,48,217,184,188,8,137,3,
+    //                            4,83,50,30,251};
+    // uint8_t iv[32] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,
+    //                   82,70,219,247,135,162,7,93,193,44,123,188,234,203,115,
+    //                   129,82};
+
+    uint8_t encrypt_key[32] = {11,22,0,133,172,219,64,35,54,53,171,23,146,160,
+                               81,33,137,21,253,171,48,217,184,188,8,137,3,
+                               4,83,50,33,251};
+    uint8_t iv[32] = {44,219,247,135,162,7,93,193,44,123,188,234,203,115,129,
+                      82,44,219,247,44,162,7,93,193,44,123,188,234,203,115,
+                      12,82};
 
     char *buffer = NULL;
     encrypt_meta(filename, encrypt_key, iv, &buffer);

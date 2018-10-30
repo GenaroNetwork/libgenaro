@@ -24,7 +24,7 @@ For usage, see usage.md for examples, and see genaro.h for api.
 
 ## Build
 
-** OS X / Debian / Ubuntu **
+**OS X / Debian / Ubuntu**
 
 ```bash
 mkdir build
@@ -33,7 +33,7 @@ cmake ..
 make
 ```
 
-** Windows **
+**Windows**
 
 ```cmd
 md build
@@ -92,7 +92,7 @@ make
 sudo make install
 ```
 
-Dependencies:
+and then install dependencies:
 ```bash
 brew install gmp json-c libuv nettle libmicrohttpd libscrypt
 ```

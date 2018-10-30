@@ -237,6 +237,56 @@ int test_meta_encryption()
     return 0;
 }
 
+int test_encrypt_data()
+{
+    char *data = "hello world!你好！";
+    char *encrypted = NULL;
+    encrypt_data("abcdef", "hijk", data, &encrypted);
+
+    printf("encrypted:%s\n", encrypted);
+
+    return 0;
+}
+
+int test_decrypt_data()
+{
+    char *encrypted = "51718eef598ae918b8f41937f8bf51580aaca2ba32059908b332cbcfb6fd44450fd188487cedfb7cfdf3afc76485a68e8bd5288e083ed57c22eee1dc9b62cc7ed639d50fca";
+    char *data = NULL;
+    decrypt_data("abcdef", "hijk", encrypted, &data);
+
+    printf("data:%s\n", data);
+
+    return 0;
+}
+
+int test_encrypt_meta_hmac_sha512()
+{
+    char *meta = "hello world!你好！";
+    uint8_t priv_key[10] = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9};
+    size_t key_len = 10;
+
+    char *encrypted = NULL;
+
+    encrypt_meta_hmac_sha512(meta, priv_key, key_len, BUCKET_NAME_MAGIC, &encrypted);
+
+    printf("encrypted:%s\n", encrypted);
+}
+
+int test_decrypt_meta_hmac_sha512()
+{
+    char *encrypted = "ehi7zNMMvkGQxlJFemKBdyWTclqRLlx7Fth7lqhnV3dJVDRazVqgtqpSqont5MRAt9FH+oPdpBktZ9uZcoF6Bzv3NAj/";
+    uint8_t priv_key[10] = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9};
+    size_t key_len = 10;
+
+    char *data = NULL;
+
+    decrypt_meta_hmac_sha512(encrypted, priv_key, key_len, BUCKET_NAME_MAGIC, &data);
+
+    printf("data:%s\n", data);
+
+    return 0;
+}
+
 int main()
 {
     printf("\n----BEGIN TEST ripemd160sha256_as_string----\n");
@@ -278,6 +328,22 @@ int main()
     printf("\n----BEGIN TEST encrypt_meta/decrypt_meta----\n");
     test_meta_encryption();
     printf("----END TEST encrypt_meta/decrypt_meta----\n");
+
+    printf("\n----BEGIN TEST encrypt_data----\n");
+    test_encrypt_data();
+    printf("----END TEST encrypt_data----\n");
+
+    printf("\n----BEGIN TEST decrypt_data----\n");
+    test_decrypt_data();
+    printf("----END TEST decrypt_data----\n");
+
+    printf("\n----BEGIN TEST encrypt_meta_hmac_sha512----\n");
+    test_encrypt_meta_hmac_sha512();
+    printf("----END TEST encrypt_meta_hmac_sha512----\n");
+
+    printf("\n----BEGIN TEST decrypt_meta_hmac_sha512----\n");
+    test_decrypt_meta_hmac_sha512();
+    printf("----END TEST decrypt_meta_hmac_sha512----\n");
     
     return 0;
 }

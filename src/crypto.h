@@ -181,4 +181,43 @@ int decrypt_meta(const char *buffer_base64,
                  uint8_t *decrypt_key,
                  char **filemeta);
 
+/**
+ * @brief Will encrypt file meta
+ *
+ * This will encrypt file meta information using AES-256-GCM and HMAC-SHA256. The
+ * resulting buffer will concat digest, iv and cipher text as base54
+ * null terminated string.
+ *
+ * @param[in] meta - The null terminated meta
+ * @param[in] priv_key Private key
+ * @param[in] key_len Length of priv_key
+ * @param[in] bucket_id Bucket ID
+ * @param[out] buffer_base64 - The base64 encoded encrypted data including
+ * digest, iv and cipher text
+ * @return A non-zero value on error, zero on success.
+ */
+int encrypt_meta_hmac_sha512(const char *meta,
+                             uint8_t *priv_key,
+                             size_t key_len,
+                             const char *bucket_id,
+                             char **buffer_base64);
+
+/**
+ * @brief Will decrypt file meta
+ *
+ * This will decrypt file meta information.
+ *
+ * @param[in] buffer_base64 - The base64 encrypted data
+ * @param[in] priv_key Private key
+ * @param[in] key_len Length of priv_key
+ * @param[in] bucket_id Bucket ID
+ * @param[out] meta - The null terminated meta
+ * @return A non-zero value on error, zero on success.
+ */
+int decrypt_meta_hmac_sha512(const char *buffer_base64,
+                             uint8_t *priv_key,
+                             size_t key_len,
+                             const char *bucket_id,
+                             char **meta);
+
 #endif /* GENARO_CRYPTO_H */

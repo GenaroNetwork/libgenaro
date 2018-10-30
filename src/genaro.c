@@ -72,41 +72,15 @@ static void create_bucket_request_worker(uv_work_t *work)
     create_bucket_request_t *req = work->data;
     int status_code = 0;
 
-    // Derive a key based on the master seed and bucket name magic number
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->priv_key,
-                        req->encrypt_options->key_len,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
+    char *encrypted_bucket_name = NULL;
+    if (encrypt_meta_hmac_sha512(req->bucket_name,
+                                 req->encrypt_options->priv_key,
+                                 req->encrypt_options->key_len,
+                                 BUCKET_NAME_MAGIC,
+                                 &encrypted_bucket_name)) {
         req->error_code = GENARO_MEMORY_ERROR;
         return;
     }
-
-    free(bucket_key_as_str);
-
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    // Generate the synthetic iv with first half of hmac w/ name
-    struct hmac_sha512_ctx ctx2;
-    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(req->bucket_name),
-                       (uint8_t *)req->bucket_name);
-    uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
-
-    free(bucket_key);
-
-    // Encrypt the bucket name
-    char *encrypted_bucket_name;
-    encrypt_meta(req->bucket_name, key, bucketname_iv, &encrypted_bucket_name);
     req->encrypted_bucket_name = encrypted_bucket_name;
 
     struct json_object *body = json_object_new_object();
@@ -155,30 +129,6 @@ static void get_buckets_request_worker(uv_work_t *work)
         req->total_buckets = num_buckets;
     }
 
-    // Derive a key based on the master seed
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->priv_key,
-                        req->encrypt_options->key_len,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        return;
-    }
-
-    free(bucket_key_as_str);
-
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    free(bucket_key);
-
     struct json_object *bucket_item;
     struct json_object *name;
     struct json_object *created;
@@ -213,17 +163,18 @@ static void get_buckets_request_worker(uv_work_t *work)
         bucket->timeStart = json_object_get_int64(timeStart);
         bucket->timeEnd = json_object_get_int64(timeEnd);
 
-        // Attempt to decrypt the name, otherwise
-        // we will default the name to the encrypted text.
-        // The decrypted flag will be set to indicate the status
-        // of decryption for alternative display.
         const char *encrypted_name = json_object_get_string(name);
         if (!encrypted_name) {
             continue;
         }
-        char *decrypted_name;
-        int error_status = decrypt_meta(encrypted_name, key,
-                                        &decrypted_name);
+
+        char *decrypted_name = NULL;
+        int error_status = decrypt_meta_hmac_sha512(encrypted_name,
+                                                    req->encrypt_options->priv_key,
+                                                    req->encrypt_options->key_len,
+                                                    BUCKET_NAME_MAGIC,
+                                                    &decrypted_name);
+
         if (!error_status) {
             bucket->decrypted = true;
             bucket->name = decrypted_name;
@@ -249,30 +200,6 @@ static void get_bucket_request_worker(uv_work_t *work)
         req->bucket = NULL;
         return;
     }
-
-    // Derive a key based on the master seed
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->priv_key,
-                        req->encrypt_options->key_len,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        return;
-    }
-
-    free(bucket_key_as_str);
-
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    free(bucket_key);
 
     struct json_object *name;
     struct json_object *created;
@@ -303,15 +230,16 @@ static void get_bucket_request_worker(uv_work_t *work)
     req->bucket->timeStart = json_object_get_int64(timeStart);
     req->bucket->timeEnd = json_object_get_int64(timeEnd);
 
-    // Attempt to decrypt the name, otherwise
-    // we will default the name to the encrypted text.
-    // The decrypted flag will be set to indicate the status
-    // of decryption for alternative display.
     const char *encrypted_name = json_object_get_string(name);
     if (encrypted_name) {
-        char *decrypted_name;
-        int error_status = decrypt_meta(encrypted_name, key,
-                                        &decrypted_name);
+        char *decrypted_name = NULL;
+
+        int error_status = decrypt_meta_hmac_sha512(encrypted_name,
+                                                    req->encrypt_options->priv_key,
+                                                    req->encrypt_options->key_len,
+                                                    BUCKET_NAME_MAGIC,
+                                                    &decrypted_name);  
+        
         if (!error_status) {
             req->bucket->decrypted = true;
             req->bucket->name = decrypted_name;
@@ -350,31 +278,7 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_is_type(req->response, json_type_array)) {
         num_files = json_object_array_length(req->response);
     }
-
-    // Get the bucket key to encrypt the filename from bucket id
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->priv_key,
-                        req->encrypt_options->key_len,
-                        req->bucket_id,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
-        req->error_code = GENARO_MEMORY_ERROR;
-        return;
-    }
-
-    free(bucket_key_as_str);
-
-    // Get file name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    free(bucket_key);
-
+    
     struct json_object *file;
     struct json_object *filename;
     struct json_object *mimetype;
@@ -441,17 +345,21 @@ static void list_files_request_worker(uv_work_t *work)
         file_meta->rsaKey = json_object_get_string(rsaKey);
         file_meta->rsaCtr = json_object_get_string(rsaCtr);
 
-        // Attempt to decrypt the filename, otherwise
-        // we will default the filename to the encrypted text.
-        // The decrypted flag will be set to indicate the status
-        // of decryption for alternative display.
         const char *encrypted_file_name = json_object_get_string(filename);
         if (!encrypted_file_name) {
             continue;
         }
-        char *decrypted_file_name;
-        int error_status = decrypt_meta(encrypted_file_name, key,
-                                        &decrypted_file_name);
+
+        char *decrypted_file_name = NULL;
+        printf("encrypted_file_name: %s\n", encrypted_file_name);
+
+        int error_status = decrypt_meta_hmac_sha512(encrypted_file_name,
+                                                    req->encrypt_options->priv_key,
+                                                    req->encrypt_options->key_len,
+                                                    req->bucket_id,
+                                                    &decrypted_file_name);
+        printf("decrypted_file_name: %s, error_status: %d\n", decrypted_file_name, error_status);
+
         if (!error_status) {
             file_meta->decrypted = true;
             file_meta->filename = decrypted_file_name;
@@ -1262,40 +1170,15 @@ GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
         return GENARO_MEMORY_ERROR;
     }
 
-    // Derive a key based on the master seed and bucket name magic number
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(env->encrypt_options->priv_key,
-                        env->encrypt_options->key_len,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-    
-    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
+    // Encrypt the bucket name
+    char *encrypted_bucket_name = NULL;
+    if (encrypt_meta_hmac_sha512(name,
+                                 env->encrypt_options->priv_key,
+                                 env->encrypt_options->key_len,
+                                 BUCKET_NAME_MAGIC,
+                                 &encrypted_bucket_name)) {
         return GENARO_MEMORY_ERROR;
     }
-    
-    free(bucket_key_as_str);
-    
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-    
-    // Generate the synthetic iv with first half of hmac w/ name
-    struct hmac_sha512_ctx ctx2;
-    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(name),
-                       (uint8_t *)name);
-    uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
-    
-    free(bucket_key);
-    
-    // Encrypt the bucket name
-    char *encrypted_bucket_name;
-    encrypt_meta(name, key, bucketname_iv, &encrypted_bucket_name);
     
     struct json_object *body = json_object_new_object();
     json_object *name_json = json_object_new_string(encrypted_bucket_name);
@@ -1568,7 +1451,7 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
 }
 
 GENARO_API char *genaro_decrypt_name(genaro_env_t *env, 
-                                            const char * const encrypted_name)
+                                     const char * const encrypted_name)
 {
     // Derive a key based on the master seed
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));

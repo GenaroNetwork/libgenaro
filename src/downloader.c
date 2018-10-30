@@ -1920,15 +1920,16 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 }
 
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
-                                                            const char *bucket_id,
-                                                            const char *file_id,
-                                                            genaro_key_ctr_as_str_t *key_ctr_as_str,
-                                                            const char *file_name,
-                                                            const char *temp_file_name,
-                                                            FILE *destination,
-                                                            void *handle,
-                                                            genaro_progress_download_cb progress_cb,
-                                                            genaro_finished_download_cb finished_cb)
+                                                               const char *bucket_id,
+                                                               const char *file_id,
+                                                               genaro_key_ctr_as_str_t *key_ctr_as_str,
+                                                               const char *file_name,
+                                                               const char *temp_file_name,
+                                                               FILE *destination,
+                                                               bool decrypt,
+                                                               void *handle,
+                                                               genaro_progress_download_cb progress_cb,
+                                                               genaro_finished_download_cb finished_cb)
 {
     genaro_download_state_t *state = malloc(sizeof(genaro_download_state_t));
     if (!state) {
@@ -1969,6 +1970,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
+    state->decrypt = decrypt;
     state->handle = handle;
     state->key_ctr = NULL;
     
