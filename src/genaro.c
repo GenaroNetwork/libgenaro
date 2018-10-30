@@ -1453,40 +1453,13 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
 GENARO_API char *genaro_decrypt_name(genaro_env_t *env, 
                                      const char * const encrypted_name)
 {
-    // Derive a key based on the master seed
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(env->encrypt_options->priv_key,
-                        env->encrypt_options->key_len,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
-        return NULL;
-    }
-
-    free(bucket_key_as_str);
-
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    free(bucket_key);
-
-    // Attempt to decrypt the name, otherwise
-    // we will default the name to the encrypted text.
-    // The decrypted flag will be set to indicate the status
-    // of decryption for alternative display.
-    if (!encrypted_name) {
-        return NULL;
-    }
-
     char *decrypted_name;
-    int error_status = decrypt_meta(encrypted_name, key,
-                                    &decrypted_name);
+    int error_status = decrypt_meta_hmac_sha512(encrypted_name,
+                                                env->encrypt_options->priv_key,
+                                                env->encrypt_options->key_len,
+                                                BUCKET_NAME_MAGIC,
+                                                &decrypted_name);
+
     if (!error_status) {
         return decrypted_name;
     } else {
