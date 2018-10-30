@@ -25,7 +25,7 @@ char *hex_to_str(size_t length, uint8_t *data)
     return result;
 }
 
-char *hex_encoding_to_str(size_t length, uint8_t *data)
+char *hex_encode_to_str(size_t length, uint8_t *data)
 {
     size_t encode_len = BASE16_ENCODE_LENGTH(length);
     uint8_t *result = calloc(encode_len + 1, sizeof(uint8_t));
@@ -38,7 +38,7 @@ char *hex_encoding_to_str(size_t length, uint8_t *data)
     return (char *)result;
 }
 
-uint8_t *str_decoding_to_hex(size_t length, char *data)
+uint8_t *str_decode_to_hex(size_t length, char *data)
 {
     char *result = calloc(BASE16_DECODE_LENGTH(length) + 1, sizeof(char));
     if (!result) {

@@ -1060,7 +1060,7 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
     }
     file_key_as_str[DETERMINISTIC_KEY_SIZE] = '\0';
 
-    uint8_t *decrypt_key = str_decoding_to_hex(strlen(file_key_as_str), file_key_as_str);
+    uint8_t *decrypt_key = str_decode_to_hex(strlen(file_key_as_str), file_key_as_str);
     if (!decrypt_key) {
         state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
@@ -1068,7 +1068,7 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
 
     state->key_ctr->key = decrypt_key;
 
-    index = str_decoding_to_hex(strlen(state->info->index), (char *)state->info->index);
+    index = str_decode_to_hex(strlen(state->info->index), (char *)state->info->index);
     if (!index) {
         state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
@@ -1637,7 +1637,6 @@ static void recover_shards(uv_work_t *work)
 decrypt:
     // Get the sha256 of the undecrypted file
     sha256_of_str(data_map, req->filesize, sha256);
-    // sha256_of_str(data_map, 6292480,sha256);
     state->undecrypted_file_sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
 
     aes256_set_encrypt_key(&ctx, req->key_ctr.key);
@@ -1975,8 +1974,8 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     
     state->key_ctr = (genaro_key_ctr_t *)malloc(sizeof(genaro_key_ctr_t));
     if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
-        uint8_t *key = str_decoding_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
-        uint8_t *ctr = str_decoding_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
+        uint8_t *key = str_decode_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+        uint8_t *ctr = str_decode_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
 
         free(key_ctr_as_str->key_as_str);
         free(key_ctr_as_str->ctr_as_str);

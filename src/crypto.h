@@ -26,11 +26,11 @@
 
 static const uint8_t BUCKET_META_MAGIC[32] = {66,150,71,16,50,114,88,160,163,35,154,65,162,213,226,215,70,138,57,61,52,19,210,170,38,164,162,200,86,201,2,81};
 
-int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
+int sha256_of_str(const uint8_t *str, size_t str_len, uint8_t *digest);
 
-int sha512_of_str(const uint8_t *str, int str_len, uint8_t *digest);
+int sha512_of_str(const uint8_t *str, size_t str_len, uint8_t *digest);
 
-int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest);
+int ripemd160_of_str(const uint8_t *str, size_t str_len, uint8_t *digest);
 
 int ripemd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
 

@@ -1398,7 +1398,7 @@ static void prepare_frame(uv_work_t *work)
         memcpy(shard_meta->challenges[i], buff, 32);
 
         // Convert the uint8_t challenges to character arrays
-        char *challenge_as_str = hex_encoding_to_str(32, buff);
+        char *challenge_as_str = hex_encode_to_str(32, buff);
         if (!challenge_as_str) {
             req->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
@@ -1501,7 +1501,7 @@ static void prepare_frame(uv_work_t *work)
     ripemd160_of_str(prehash_sha256, SHA256_DIGEST_SIZE, prehash_ripemd160);
 
     // Shard Hash
-    char *hash = hex_encoding_to_str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
+    char *hash = hex_encode_to_str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
     if (!hash) {
         req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
@@ -2550,7 +2550,7 @@ static void prepare_upload_state(uv_work_t *work)
                         state->bucket_id,
                         &bucket_key_as_str);
 
-    uint8_t *bucket_key = str_decoding_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
         state->error_status = GENARO_MEMORY_ERROR;
         return;
@@ -2696,8 +2696,8 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
         genaro_key_ctr_t *key_ctr = (genaro_key_ctr_t *)malloc(sizeof(genaro_key_ctr_t));
 
-        uint8_t *key = str_decoding_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
-        uint8_t *ctr = str_decoding_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
+        uint8_t *key = str_decode_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+        uint8_t *ctr = str_decode_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
         
         free(key_ctr_as_str->key_as_str);
         free(key_ctr_as_str->ctr_as_str);

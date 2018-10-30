@@ -1195,7 +1195,7 @@ int test_str2hex()
 {
     char *data = "632442ba2e5f28a3a4e68dcb0b45d1d8f097d5b47479d74e2259055aa25a08aa";
 
-    uint8_t *buffer = str_decoding_to_hex(64, data);
+    uint8_t *buffer = str_decode_to_hex(64, data);
 
     uint8_t expected[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
                               209,216,240,151,213,180,116,121,215,78,34,89,5,
@@ -1219,15 +1219,15 @@ int test_str2hex()
     return 0;
 }
 
-int test_hex2str()
+int test_hex_to_str()
 {
     uint8_t data[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
                               209,216,240,151,213,180,116,121,215,78,34,89,5,
                               90,162,90,8,170};
 
-    char *result = hex_encoding_to_str(32, data);
+    char *result = hex_encode_to_str(32, data);
     if (!result) {
-        fail("test_hex2str");
+        fail("test_hex_to_str");
         return 0;
     }
 
@@ -1239,9 +1239,9 @@ int test_hex2str()
     }
 
     if (failed) {
-        fail("test_hex2str");
+        fail("test_hex_to_str");
     } else {
-        pass("test_hex2str");
+        pass("test_hex_to_str");
     }
 
     free(result);
@@ -1607,7 +1607,7 @@ int main(void)
 
     printf("Test Suite: Utils\n");
     test_str2hex();
-    test_hex2str();
+    test_hex_to_str();
     test_get_time_milliseconds();
     test_determine_shard_size();
     test_memory_mapping();

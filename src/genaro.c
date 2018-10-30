@@ -79,7 +79,7 @@ static void create_bucket_request_worker(uv_work_t *work)
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
-    uint8_t *bucket_key = str_decoding_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
         req->error_code = GENARO_MEMORY_ERROR;
         return;
@@ -162,7 +162,7 @@ static void get_buckets_request_worker(uv_work_t *work)
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
-    uint8_t *bucket_key = str_decoding_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
         req->error_code = GENARO_MEMORY_ERROR;
         return;
@@ -257,7 +257,7 @@ static void get_bucket_request_worker(uv_work_t *work)
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
-    uint8_t *bucket_key = str_decoding_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
         req->error_code = GENARO_MEMORY_ERROR;
         return;
@@ -358,7 +358,7 @@ static void list_files_request_worker(uv_work_t *work)
                         req->bucket_id,
                         &bucket_key_as_str);
 
-    uint8_t *bucket_key = str_decoding_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
         req->error_code = GENARO_MEMORY_ERROR;
         return;
@@ -1269,7 +1269,7 @@ GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
     
-    uint8_t *bucket_key = str_decoding_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
         return GENARO_MEMORY_ERROR;
     }
@@ -1577,7 +1577,7 @@ GENARO_API char *genaro_decrypt_name(genaro_env_t *env,
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
-    uint8_t *bucket_key = str_decoding_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
     if (!bucket_key) {
         return NULL;
     }
@@ -1630,7 +1630,7 @@ GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_
         }
         random_buffer(index_new, SHA256_DIGEST_SIZE);
 
-        index_as_str = hex_encoding_to_str(SHA256_DIGEST_SIZE, index_new);
+        index_as_str = hex_encode_to_str(SHA256_DIGEST_SIZE, index_new);
         if (!index_as_str) {
             return NULL;
         }
