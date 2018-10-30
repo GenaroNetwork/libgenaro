@@ -563,8 +563,10 @@ int encrypt_meta_hmac_sha512(const char *meta, uint8_t *priv_key, size_t key_len
 
     free(bucket_key);
 
-    // Encrypt
-    encrypt_meta(meta, key, bucketname_iv, buffer_base64);
+    int error_status = encrypt_meta(meta, key, bucketname_iv, buffer_base64);
+    if (error_status) {
+        return 1;
+    }
     
     return 0;
 }
