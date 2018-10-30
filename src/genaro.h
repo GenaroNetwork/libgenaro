@@ -1010,8 +1010,7 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
  * @param[in] env A pointer to environment
  * @param[in] bucket_id Character array of bucket id
  * @param[in] file_id Character array of file id
- * @param[in] decryption_key The file encryption/decryption key
- * @param[in] decryption_ctr The file encryption/decryption ctr
+ * @param[in] key_ctr_as_str The file encryption/decryption key and ctr
  * @param[in] file_name The file name include path
  * @param[in] temp_file_name The temp file name include path
  * @param[in] destination File descriptor of the destination
@@ -1032,15 +1031,38 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                                                                void *handle,
                                                                genaro_progress_download_cb progress_cb,
                                                                genaro_finished_download_cb finished_cb);
+
 /**
- * @brief Decrypt an encrypted name
+ * @brief Encrypt meta information using AES-256-GCM and HMAC-SHA256
  *
  * @param[in] env A pointer to environment
- * @param[in] encrypted_name A pointer to the encrypted name
- * @return NULL on failure and the decrypted name on success.
+ * @param[in] meta A pointer to the meta
+ * @return NULL on failure and the encrypted meta on success.
  */
-GENARO_API char *genaro_decrypt_name(genaro_env_t *env, 
-                                     const char * const encrypted_name);
+GENARO_API char *genaro_encrypt_meta(genaro_env_t *env, 
+                                     const char *meta);
+
+/**
+ * @brief Decrypt an encrypted meta
+ *
+ * @param[in] env A pointer to environment
+ * @param[in] encrypted_meta A pointer to the encrypted meta
+ * @return NULL on failure and the decrypted meta on success.
+ */
+GENARO_API char *genaro_decrypt_meta(genaro_env_t *env, 
+                                     const char *encrypted_meta);
+
+/**
+ * @brief Decrypt a file that hasn't been decrypted
+ *
+ * @param[in] env A pointer to environment
+ * @param[in] file_path The path of the undecrypted file
+ * @param[in] key_ctr_as_str The file encryption/decryption key and ctr 
+ * @return NULL on failure and the decrypted meta on success.
+ */
+GENARO_API char *genaro_decrypt_file(genaro_env_t *env, 
+                                     const char *file_path,
+                                     genaro_key_ctr_as_str_t *key_ctr_as_str);
 
 /*Curl debug function*/
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr);

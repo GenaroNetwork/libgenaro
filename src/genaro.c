@@ -233,7 +233,6 @@ static void get_bucket_request_worker(uv_work_t *work)
     const char *encrypted_name = json_object_get_string(name);
     if (encrypted_name) {
         char *decrypted_name = NULL;
-
         int error_status = decrypt_meta_hmac_sha512(encrypted_name,
                                                     req->encrypt_options->priv_key,
                                                     req->encrypt_options->key_len,
@@ -351,14 +350,11 @@ static void list_files_request_worker(uv_work_t *work)
         }
 
         char *decrypted_file_name = NULL;
-        printf("encrypted_file_name: %s\n", encrypted_file_name);
-
         int error_status = decrypt_meta_hmac_sha512(encrypted_file_name,
                                                     req->encrypt_options->priv_key,
                                                     req->encrypt_options->key_len,
                                                     req->bucket_id,
                                                     &decrypted_file_name);
-        printf("decrypted_file_name: %s, error_status: %d\n", decrypted_file_name, error_status);
 
         if (!error_status) {
             file_meta->decrypted = true;
@@ -934,34 +930,9 @@ GENARO_API int genaro_write_auth(const char *filepath, json_object *key_json_obj
  */
 GENARO_API int genaro_read_auth(const char *filepath, json_object **key_json_obj)
 {
-    FILE *fp;
-    fp = fopen(filepath, "r");
-    if (fp == NULL) {
+    char *buffer = NULL;
+    if(read_file(filepath, &buffer) == 0) {
         return 1;
-    }
-
-    fseek(fp, 0, SEEK_END);
-    size_t fsize = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-
-    char *buffer = calloc(fsize, sizeof(char));
-    if (buffer == NULL) {
-        return 1;
-    }
-
-    size_t read_blocks = 0;
-    while ((!feof(fp)) && (!ferror(fp))) {
-        read_blocks = fread(buffer + read_blocks, 1, fsize, fp);
-        if (read_blocks <= 0) {
-            break;
-        }
-    }
-
-    int error = ferror(fp);
-    fclose(fp);
-
-    if (error) {
-        return error;
     }
 
     *key_json_obj = json_tokener_parse(buffer);
@@ -970,7 +941,6 @@ GENARO_API int genaro_read_auth(const char *filepath, json_object **key_json_obj
         return 1;
     }
     return 0;
-
 }
 
 GENARO_API uint64_t genaro_util_timestamp()
@@ -1450,18 +1420,35 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-GENARO_API char *genaro_decrypt_name(genaro_env_t *env, 
-                                     const char * const encrypted_name)
+GENARO_API char *genaro_encrypt_meta(genaro_env_t *env, 
+                                     const char *meta)
 {
-    char *decrypted_name;
-    int error_status = decrypt_meta_hmac_sha512(encrypted_name,
+    char *encrypted_meta = NULL;
+    int error_status = encrypt_meta_hmac_sha512(meta,
                                                 env->encrypt_options->priv_key,
                                                 env->encrypt_options->key_len,
                                                 BUCKET_NAME_MAGIC,
-                                                &decrypted_name);
+                                                &encrypted_meta);
 
     if (!error_status) {
-        return decrypted_name;
+        return encrypted_meta;
+    } else {
+        return NULL;
+    }
+}
+
+GENARO_API char *genaro_decrypt_meta(genaro_env_t *env, 
+                                     const char *encrypted_meta)
+{
+    char *decrypted_meta = NULL;
+    int error_status = decrypt_meta_hmac_sha512(encrypted_meta,
+                                                env->encrypt_options->priv_key,
+                                                env->encrypt_options->key_len,
+                                                BUCKET_NAME_MAGIC,
+                                                &decrypted_meta);
+
+    if (!error_status) {
+        return decrypted_meta;
     } else {
         return NULL;
     }

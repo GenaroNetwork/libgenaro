@@ -2435,7 +2435,8 @@ static void queue_next_work(genaro_upload_state_t *state)
             sha256_digest(&state->encrypted_file_sha256_ctx, SHA256_DIGEST_SIZE, sha256);
             state->encrypted_file_sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
 
-            printf("state->encrypted_file_sha256: %s\n", state->encrypted_file_sha256);
+            // delete!!!!!!!
+            state->encrypted_file_sha256 = strdup(BUCKET_NAME_MAGIC);
         }
         
         queue_create_bucket_entry(state);

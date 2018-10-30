@@ -241,10 +241,6 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
         return CURL_READFUNC_ABORT;
     }
 
-    if(body->shard_total_bytes != 2097152) {
-        int a = 1;
-    }
-
     if (body->length + body->tail_position + buflen > body->shard_total_bytes) {
         return CURL_READFUNC_ABORT;
     }

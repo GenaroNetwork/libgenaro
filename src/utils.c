@@ -346,3 +346,39 @@ win_finished:
 #endif
     return status;
 }
+
+size_t read_file(const char *file_path, char **buffer)
+{
+    FILE *fp;
+    fp = fopen(file_path, "r");
+    if (fp == NULL) {
+		return 0;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    size_t fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    *buffer = (char *)calloc(fsize + 1, sizeof(char));
+    if (*buffer == NULL) {
+		return 0;
+    }
+
+    size_t read_blocks = 0;
+    while ((!feof(fp)) && (!ferror(fp))) {
+        read_blocks = fread(*buffer + read_blocks, 1, fsize, fp);
+        if (read_blocks <= 0) {
+            break;
+        }
+    }
+
+    int error = ferror(fp);
+    fclose(fp);
+
+    if (error) {
+		free(*buffer);
+		return 0;
+    }
+
+    return fsize;
+}

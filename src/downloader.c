@@ -1638,22 +1638,25 @@ decrypt:
     // Get the sha256 of the undecrypted file
     sha256_of_str(data_map, req->filesize, sha256);
     state->undecrypted_file_sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
+    // delete!!!!!!!!!
+    state->undecrypted_file_sha256 = strdup(BUCKET_NAME_MAGIC);
+    
+    if(state->decrypt) {
+        aes256_set_encrypt_key(&ctx, req->key_ctr.key);
 
-    aes256_set_encrypt_key(&ctx, req->key_ctr.key);
+        while (bytes_decrypted < req->data_filesize) {
+            if (bytes_decrypted + len > req->data_filesize) {
+                len = req->data_filesize - bytes_decrypted;
+            }
 
-    while (bytes_decrypted < req->data_filesize) {
+            ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
+                    AES_BLOCK_SIZE, req->key_ctr.ctr,
+                    len,
+                    data_map + bytes_decrypted,
+                    data_map + bytes_decrypted);
 
-        if (bytes_decrypted + len > req->data_filesize) {
-            len = req->data_filesize - bytes_decrypted;
+            bytes_decrypted += len;
         }
-
-        ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
-                  AES_BLOCK_SIZE, req->key_ctr.ctr,
-                  len,
-                  data_map + bytes_decrypted,
-                  data_map + bytes_decrypted);
-
-        bytes_decrypted += len;
     }
 
 finish:
@@ -1705,7 +1708,6 @@ finish:
         return;
     }
 #endif
-
 }
 
 static void queue_recover_shards(genaro_download_state_t *state)
@@ -2000,4 +2002,44 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     queue_next_work(state);
 
     return state;
+}
+
+GENARO_API char *genaro_decrypt_file(genaro_env_t *env, 
+                                     const char *file_path,
+                                     genaro_key_ctr_as_str_t *key_ctr_as_str)
+{
+    char *file_data = NULL;
+    struct aes256_ctx ctx;
+    uint64_t bytes_decrypted = 0;
+    uint8_t *key = NULL;
+    uint8_t *ctr = NULL;
+    size_t len = AES_BLOCK_SIZE * 8;
+    size_t fsize = 0;
+    
+    if ((fsize = read_file(file_path, &file_data)) == 0) {
+        return NULL;
+    }
+
+    key = str_decode_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+    ctr = str_decode_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
+
+    aes256_set_encrypt_key(&ctx, key);
+
+    while (bytes_decrypted < fsize) {
+        if (bytes_decrypted + len > fsize) {
+            len = fsize - bytes_decrypted;
+        }
+
+        ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
+                AES_BLOCK_SIZE, ctr, len,
+                file_data + bytes_decrypted,
+                file_data + bytes_decrypted);
+
+        bytes_decrypted += len;
+    }
+
+    free(key);
+    free(ctr);
+    
+    return file_data;
 }

@@ -182,9 +182,9 @@ int decrypt_meta(const char *buffer_base64,
                  char **filemeta);
 
 /**
- * @brief Will encrypt file meta
+ * @brief Will encrypt meta
  *
- * This will encrypt file meta information using AES-256-GCM and HMAC-SHA256. The
+ * This will encrypt meta information using AES-256-GCM and HMAC-SHA256. The
  * resulting buffer will concat digest, iv and cipher text as base54
  * null terminated string.
  *
@@ -203,9 +203,9 @@ int encrypt_meta_hmac_sha512(const char *meta,
                              char **buffer_base64);
 
 /**
- * @brief Will decrypt file meta
+ * @brief Will decrypt meta
  *
- * This will decrypt file meta information.
+ * This will decrypt meta information.
  *
  * @param[in] buffer_base64 - The base64 encrypted data
  * @param[in] priv_key Private key

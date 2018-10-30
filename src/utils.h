@@ -64,4 +64,6 @@ int unmap_file(uint8_t *map, uint64_t filesize);
 
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 
+size_t read_file(const char *file_path, char **buffer);
+
 #endif /* GENARO_UTILS_H */
