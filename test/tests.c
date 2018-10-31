@@ -508,9 +508,10 @@ int test_upload()
     assert(env != NULL);
 
     char *file_name = "genaro-test-upload.data";
-    int len = strlen(folder) + strlen(file_name);
+    int len = strlen(folder) + 1 + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
+    strcat(file, "/");
     strcat(file, file_name);
     file[len] = '\0';
 
@@ -564,9 +565,10 @@ int test_upload_cancel()
     assert(env != NULL);
 
     char *file_name = "genaro-test-upload.data";
-    int len = strlen(folder) + strlen(file_name);
+    int len = strlen(folder) + 1 + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
+    strcat(file, "/");
     strcat(file, file_name);
     file[len] = '\0';
 
@@ -1485,9 +1487,10 @@ int test_memory_mapping()
 {
 
     char *file_name = "genaro-memory-map.data";
-    int len = strlen(folder) + strlen(file_name);
+    int len = strlen(folder) + 1 + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
+    strcat(file, "/");
     strcat(file, file_name);
     file[len] = '\0';
 

@@ -434,8 +434,8 @@ typedef void (*genaro_finished_download_cb)(int status,
                                             const char *file_name,
                                             const char *temp_file_name,
                                             FILE *fd,
-                                            uint64_t total_bytes, // The total bytes before decryption
-                                            char *sha256,  // The sha256 value before decryption
+                                            uint64_t file_bytes,
+                                            char *sha256,
                                             void *handle);
 
 /** @brief A function signature for an upload complete callback
@@ -444,8 +444,8 @@ typedef void (*genaro_finished_upload_cb)(const char *bucket_id,
                                           const char *file_name,
                                           int error_status,
                                           char *file_id,
-                                          uint64_t total_bytes, // The total bytes after encryption and Reed-Solomn
-                                          char *sha256,  // The sha256 value after encryption and Reed-Solomn
+                                          uint64_t file_bytes,
+                                          char *sha256_of_encrypted,  // The sha256 value of the encrypted file(not including the parity shards)
                                           void *handle);
 
 /** @brief A structure that represents a pointer to a shard
@@ -535,8 +535,10 @@ typedef struct genaro_download_state {
     bool decrypt;
     void *handle;
 
-    // the sha256 of the undecrypted file
-    char *undecrypted_file_sha256;
+    uint64_t file_size;
+
+    // sha256 of the downloaded file
+    char *sha256;
 } genaro_download_state_t;
 
 typedef struct {
@@ -633,9 +635,9 @@ typedef struct genaro_upload_state {
     shard_tracker_t *shard;
     int pending_work_count;
 
-    // used to calculate the sha256 of the whole encrypted file.
-    struct sha256_ctx encrypted_file_sha256_ctx;
-    char *encrypted_file_sha256;
+    // used to calculate the sha256 of the encrypted file(not including the parity shards)
+    struct sha256_ctx sha256_of_encrypted_ctx;
+    char *sha256_of_encrypted;
 } genaro_upload_state_t;
 
 typedef struct {

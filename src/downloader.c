@@ -1635,12 +1635,6 @@ static void recover_shards(uv_work_t *work)
     }
 
 decrypt:
-    // Get the sha256 of the undecrypted file
-    sha256_of_str(data_map, req->filesize, sha256);
-    state->undecrypted_file_sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
-    // delete!!!!!!!!!
-    state->undecrypted_file_sha256 = strdup(BUCKET_NAME_MAGIC);
-    
     if(state->decrypt) {
         aes256_set_encrypt_key(&ctx, req->key_ctr.key);
 
@@ -1661,6 +1655,10 @@ decrypt:
 
 finish:
     if (data_map) {
+        // Get the sha256 of the downloaded file, the second para is req->data_filesize, not req->filesize!
+        sha256_of_str(data_map, req->data_filesize, sha256);
+        state->sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
+
         error = unmap_file(data_map, req->filesize);
         if (error) {
             req->error_status = GENARO_UNMAPPING_ERROR;
@@ -1770,6 +1768,8 @@ static void queue_recover_shards(genaro_download_state_t *state)
         req->zilch = zilch;
         req->has_missing = has_missing;
 
+        state->file_size = req->data_filesize;
+
         if (state->key_ctr && state->key_ctr->key && state->key_ctr->ctr) {
             req->key_ctr.key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
             if (!req->key_ctr.key) {
@@ -1854,7 +1854,7 @@ static void queue_next_work(genaro_download_state_t *state)
 
             state->finished = true;
             state->finished_cb(state->error_status, state->file_name, state->temp_file_name,
-                state->destination, state->shard_size * state->total_pointers, state->undecrypted_file_sha256, state->handle);
+                state->destination, state->file_size, state->sha256, state->handle);
 
             free_download_state(state);
             return;
@@ -1975,6 +1975,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->decrypt = decrypt;
     state->handle = handle;
     state->key_ctr = NULL;
+    state->file_size = 0;
     
     state->key_ctr = (genaro_key_ctr_t *)malloc(sizeof(genaro_key_ctr_t));
     if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
@@ -1996,7 +1997,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
         state->key_ctr->ctr = NULL;
     }
 
-    state->undecrypted_file_sha256 = NULL;
+    state->sha256 = NULL;
 
     // start download
     queue_next_work(state);
@@ -2040,6 +2041,6 @@ GENARO_API char *genaro_decrypt_file(genaro_env_t *env,
 
     free(key);
     free(ctr);
-    
+
     return file_data;
 }

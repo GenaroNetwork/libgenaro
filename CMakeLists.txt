@@ -58,9 +58,9 @@ ELSE()
   target_link_libraries(test_crypto genaro nettle)
 ENDIF()
 
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack)
+# set(CPACK_PROJECT_NAME ${PROJECT_NAME})
+# set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
+# include(CPack)
 
 ELSEIF(UNIX)
 
@@ -102,6 +102,13 @@ ELSE()
   target_link_libraries(tests genaro uv json-c nettle curl microhttpd)
 ENDIF()
 
+add_executable(test_crypto test/test_crypto.c)
+IF(STATIC)
+  target_link_libraries(test_crypto genaro libnettle.a)
+ELSE()
+  target_link_libraries(test_crypto genaro nettle)
+ENDIF()
+
 ELSEIF(WIN32)
 
 IF(DEBUG)
@@ -136,6 +143,9 @@ target_link_libraries(genaroeden-cli genaro uv json-c curl gnutls nettle hogweed
 
 add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
 target_link_libraries(tests genaro uv json-c curl gnutls nettle hogweed gmp microhttpd ws2_32.lib Kernel32.lib Userenv.lib Psapi.lib Iphlpapi.lib Crypt32.lib)
+
+add_executable(test_crypto test/test_crypto.c)
+target_link_libraries(test_crypto genaro nettle)
 
 IF(DEBUG)
   set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=gnu99 -g")

@@ -326,7 +326,7 @@ static void cleanup_state(genaro_upload_state_t *state)
         free(state->shard);
     }
 
-    state->finished_cb(state->bucket_id, state->file_name, state->error_status, state->file_id, state->total_bytes, state->encrypted_file_sha256, state->handle);
+    state->finished_cb(state->bucket_id, state->file_name, state->error_status, state->file_id, state->file_size, state->sha256_of_encrypted, state->handle);
 
     free(state);
 }
@@ -786,7 +786,7 @@ static void progress_put_shard(uv_async_t* async)
 
     double total_progress = (double)uploaded_bytes / (double)state->total_bytes;
 
-    // will not happen.
+    // will never happen
     if(total_progress > 1.0) {
         total_progress = 1.0;
     }
@@ -1475,13 +1475,14 @@ static void prepare_frame(uv_work_t *work)
             ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
                       (uint8_t *)cphr_txt, (uint8_t *)read_data);
+
+            sha256_update(&state->sha256_of_encrypted_ctx, read_bytes, cphr_txt);
         } else {
             // Just use the already encrypted data
             memcpy(cphr_txt, read_data, AES_BLOCK_SIZE * 256);
         }
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
-        sha256_update(&state->encrypted_file_sha256_ctx, read_bytes, cphr_txt);
 
         for (int i = 0; i < GENARO_SHARD_CHALLENGES; i++ ) {
             sha256_update(&first_sha256_for_leaf[i], read_bytes, cphr_txt);
@@ -1658,6 +1659,7 @@ static void create_encrypted_file(uv_work_t *work)
                   (uint8_t *)cphr_txt, (uint8_t *)read_data);
 
         written_bytes = pwrite(fileno(encrypted_file), cphr_txt, read_bytes, total_read);
+        sha256_update(&state->sha256_of_encrypted_ctx, read_bytes, cphr_txt);
 
         memset_zero(read_data, AES_BLOCK_SIZE * 256);
         memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
@@ -2430,15 +2432,10 @@ static void queue_next_work(genaro_upload_state_t *state)
         !state->creating_bucket_entry &&
         !state->completed_upload) {
         // calculate the sha256 of the whole encrypted file.
-        if(!state->encrypted_file_sha256) {
-            uint8_t sha256[SHA256_DIGEST_SIZE];
-            sha256_digest(&state->encrypted_file_sha256_ctx, SHA256_DIGEST_SIZE, sha256);
-            state->encrypted_file_sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
+        uint8_t sha256[SHA256_DIGEST_SIZE];
+        sha256_digest(&state->sha256_of_encrypted_ctx, SHA256_DIGEST_SIZE, sha256);
+        state->sha256_of_encrypted = hex_to_str(SHA256_DIGEST_SIZE, sha256);
 
-            // delete!!!!!!!
-            state->encrypted_file_sha256 = strdup(BUCKET_NAME_MAGIC);
-        }
-        
         queue_create_bucket_entry(state);
     }
 
@@ -2589,7 +2586,7 @@ static void prepare_upload_state(uv_work_t *work)
     }
 
     // Initialize context for sha256 of the whole encrypted data
-    sha256_init(&state->encrypted_file_sha256_ctx);
+    sha256_init(&state->sha256_of_encrypted_ctx);
 }
 
 char *create_tmp_name(genaro_upload_state_t *state, char *extension)
@@ -2692,7 +2689,7 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     state->frame_id = NULL;
     state->hmac_id = NULL;
     state->index = index;
-    state->encrypted_file_sha256 = NULL;
+    state->sha256_of_encrypted = NULL;
 
     if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
         genaro_key_ctr_t *key_ctr = (genaro_key_ctr_t *)malloc(sizeof(genaro_key_ctr_t));

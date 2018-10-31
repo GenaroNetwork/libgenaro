@@ -1510,7 +1510,7 @@ cleanup:
     }
 
     if (index) {
-        free(index);
+        free((void *)index);
     }
     return NULL;
 }
