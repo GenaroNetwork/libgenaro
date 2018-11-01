@@ -2579,8 +2579,8 @@ static void prepare_upload_state(uv_work_t *work)
     state->encrypted_file_name = encrypted_file_name;
 
     if (state->rs) {
-        state->parity_file_path = create_tmp_name(state, ".parity");
         state->encrypted_file_path = create_tmp_name(state, ".crypt");
+        state->parity_file_path = create_tmp_name(state, ".parity");
     }
 
     // Initialize context for sha256 of the whole encrypted data

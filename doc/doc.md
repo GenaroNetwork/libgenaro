@@ -2,7 +2,7 @@
 
 ## 编译
 
-* CMakeLists.txt文件的"SET(DEBUG xx)"可以设置是否包含调试信息，以便调试器进行调试。
+* CMakeLists.txt文件的"SET(DEBUG xx)"可以设置是否包含调试信息，以便调试。
 * CMakeLists.txt文件的"SET(STATIC xx)"可以设置静态链接某些依赖库还是动态链接（PS：Windows系统中目前都是静态链接）。
 
 ## 调试信息
@@ -58,13 +58,13 @@
 
 ### encrypt_meta_hmac_sha256/decrypt_meta_hmac_sha256
 
-  结合AES-256-GCM和HMAC-SHA512的加密，分别调用了encrypt_meta和decrypt_meta，用于加密bucket名和文件名。
+  结合AES-256-GCM和HMAC-SHA512的加密，分别调用了encrypt_meta和decrypt_meta，用于加解密bucket名和文件名。
 
 ## AES加密和Reed-Solomn
 
   文件的加密用的是AES-256-CTR对称加密算法，文件的容错用Reed-Solomn算法：
   1. 如果文件大于MIN_SHARD_SIZE，那么上传文件前会在系统的临时目录中生成以".crypt"为后缀的文件，该文件是通过AES-256-CTR加密的文件，然后生成以".parity"为后缀的文件，该文件是Reed-Solomn算法生成的文件（大概是源文件的2/3大小），上传时直接读取这两个文件的内容后上传，所以上传的数据大概是5/3原始文件大小。
-  2. 如果文件小于或等于MIN_SHARD_SIZE，不使用Reed-Solomn算法，则会在对每个shard进行prepare_frame时直接加密后上传，所以上传的数据大小就是原始文件大小。
+  2. 如果文件小于或等于MIN_SHARD_SIZE，不使用Reed-Solomn算法，并会在对每个shard进行prepare_frame时直接加密后上传，所以上传的数据大小就是原始文件大小。
 
 ## 上传和下载文件
 

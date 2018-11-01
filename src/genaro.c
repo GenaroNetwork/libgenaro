@@ -132,11 +132,11 @@ static void get_buckets_request_worker(uv_work_t *work)
     }
 
     struct json_object *bucket_item;
+    struct json_object *id;
     struct json_object *name;
     struct json_object *created;
-    struct json_object *id;
     struct json_object *bucketId;
-    
+    struct json_object *type;
     struct json_object *limitStorage;
     struct json_object *usedStorage;
     struct json_object *timeStart;
@@ -149,6 +149,7 @@ static void get_buckets_request_worker(uv_work_t *work)
         json_object_object_get_ex(bucket_item, "name", &name);
         json_object_object_get_ex(bucket_item, "created", &created);
         json_object_object_get_ex(bucket_item, "bucketId", &bucketId);
+        json_object_object_get_ex(bucket_item, "type", &type);
         json_object_object_get_ex(bucket_item, "limitStorage", &limitStorage);
         json_object_object_get_ex(bucket_item, "usedStorage", &usedStorage);
         json_object_object_get_ex(bucket_item, "timeStart", &timeStart);
@@ -159,6 +160,7 @@ static void get_buckets_request_worker(uv_work_t *work)
         bucket->decrypted = false;
         bucket->created = json_object_get_string(created);
         bucket->bucketId = json_object_get_string(bucketId);
+        bucket->type = json_object_get_int(type);
         bucket->name = NULL;
         bucket->limitStorage = json_object_get_int64(limitStorage);
         bucket->usedStorage = json_object_get_int64(usedStorage);
@@ -203,10 +205,11 @@ static void get_bucket_request_worker(uv_work_t *work)
         return;
     }
 
+    struct json_object *id;
     struct json_object *name;
     struct json_object *created;
-    struct json_object *id;
-    
+    struct json_object *bucketId;
+    struct json_object *type;
     struct json_object *limitStorage;
     struct json_object *usedStorage;
     struct json_object *timeStart;
@@ -215,7 +218,8 @@ static void get_bucket_request_worker(uv_work_t *work)
     json_object_object_get_ex(req->response, "id", &id);
     json_object_object_get_ex(req->response, "name", &name);
     json_object_object_get_ex(req->response, "created", &created);
-    
+    json_object_object_get_ex(req->response, "bucketId", &bucketId);
+    json_object_object_get_ex(req->response, "type", &type);
     json_object_object_get_ex(req->response, "limitStorage", &limitStorage);
     json_object_object_get_ex(req->response, "usedStorage", &usedStorage);
     json_object_object_get_ex(req->response, "timeStart", &timeStart);
@@ -225,8 +229,9 @@ static void get_bucket_request_worker(uv_work_t *work)
     req->bucket->id = json_object_get_string(id);
     req->bucket->decrypted = false;
     req->bucket->created = json_object_get_string(created);
+    req->bucket->bucketId = json_object_get_string(bucketId);
+    req->bucket->type = json_object_get_int(type);
     req->bucket->name = NULL;
-    
     req->bucket->limitStorage = json_object_get_int64(limitStorage);
     req->bucket->usedStorage = json_object_get_int64(usedStorage);
     req->bucket->timeStart = json_object_get_int64(timeStart);
