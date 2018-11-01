@@ -27,7 +27,7 @@ void test_generate_bucket_key()
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     // char *expected_bucket_key = "06b02124888a696e1da6a739042a4e7a4fb14e44b752f879f0cb2c5491c701a7";
 
-    generate_bucket_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
+    generate_bucket_key((uint8_t *)mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     printf("\tbucket_key:%s\n", bucket_key);
@@ -43,7 +43,7 @@ void test_generate_file_key()
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     // char *expected_file_key = "90fa3754222d837835de43d16fac901914fabd0598cedc1cb23be337b4203df7";
 
-    generate_file_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
+    generate_file_key((uint8_t *)mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
 
     printf("\tfile_key:%s\n", file_key);
 
@@ -270,6 +270,8 @@ int test_encrypt_meta_hmac_sha512()
     encrypt_meta_hmac_sha512(meta, priv_key, key_len, BUCKET_NAME_MAGIC, &encrypted);
 
     printf("encrypted:%s\n", encrypted);
+    
+    return 0;
 }
 
 int test_decrypt_meta_hmac_sha512()

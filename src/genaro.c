@@ -6,6 +6,8 @@
 
 static inline void noop() {};
 
+static const char *BUCKET_OP[] = { "PUSH", "PULL" };
+
 /*whether to print the debug info if the level of Logging configuration 
 options is set to 0, it will get from the environment GENARO_DEBUG*/
 int genaro_debug = 0;

@@ -19,7 +19,7 @@ genaro_bridge_options_t bridge_options_bad = {
 };
 
 genaro_encrypt_options_t encrypt_options = {
-    .priv_key = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    .priv_key = (uint8_t *)"abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
     .key_len = 93
 };
 
@@ -1073,7 +1073,7 @@ int test_generate_seed()
     char *seed = calloc(128 + 1, sizeof(char));
     char *expected_seed = "9ca82ad4539dc5b861f3859df21051747ba3fadaad76b065219678883e33b6cfd021848d9359ca95eec18ab8dc9f8e3d665b8ac3eaf0eef1b40612e6661bb508";
 
-    mnemonic_to_seed(mnemonic, 128, "", &seed);
+    mnemonic_to_seed((uint8_t *)mnemonic, 128, "", &seed);
     seed[128] = '\0';
 
     int check = memcmp(seed, expected_seed, 128);
@@ -1098,7 +1098,7 @@ int test_generate_seed_256()
     char *seed = calloc(128 + 1, sizeof(char));
     char *expected_seed = "2facfb042cc06dc665f95578b2b74c682ad05233bb140202dd6aaaebc49177184a2841917b5188ae38e485e4b20add4affb42d77ec447b0c9f96ef3bfdf12cc8";
 
-    mnemonic_to_seed(mnemonic, 128, "", &seed);
+    mnemonic_to_seed((uint8_t *)mnemonic, 128, "", &seed);
     seed[128] = '\0';
 
     int check = memcmp(seed, expected_seed, 128);
@@ -1123,7 +1123,7 @@ int test_generate_seed_256_trezor()
     char *seed = calloc(128 + 1, sizeof(char));
     char *expected_seed = "ec8b9350a0671bb7fe0e2134aa850c054ace6375fd8ca2443f422315e17952829bf4d109e2e6f88f76d69cd741a7685fe0c94c57c5db9b4a734f0d4ad9a31407";
 
-    mnemonic_to_seed(mnemonic, 128, "TREZOR", &seed);
+    mnemonic_to_seed((uint8_t *)mnemonic, 128, "TREZOR", &seed);
     seed[128] = '\0';
 
     int check = memcmp(seed, expected_seed, 128);
@@ -1149,7 +1149,7 @@ int test_generate_bucket_key()
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     char *expected_bucket_key = "06b02124888a696e1da6a739042a4e7a4fb14e44b752f879f0cb2c5491c701a7";
 
-    generate_bucket_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
+    generate_bucket_key((uint8_t *)mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     int check = memcmp(expected_bucket_key, bucket_key, DETERMINISTIC_KEY_SIZE);
@@ -1172,12 +1172,11 @@ int test_generate_file_key()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
-    char *file_name = "samplefile.txt";
     char *index = "150589c9593bbebc0e795d8c4fa97304b42c110d9f0095abfac644763beca66e";
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     char *expected_file_key = "90fa3754222d837835de43d16fac901914fabd0598cedc1cb23be337b4203df7";
 
-    generate_file_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
+    generate_file_key((uint8_t *)mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
 
     int check = strcmp(expected_file_key, file_key);
     if (check != 0) {
@@ -1485,7 +1484,6 @@ int test_meta_encryption()
 
 int test_memory_mapping()
 {
-
     char *file_name = "genaro-memory-map.data";
     int len = strlen(folder) + 1 + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));

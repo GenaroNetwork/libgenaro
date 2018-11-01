@@ -1439,7 +1439,7 @@ static int prepare_file_hmac(genaro_download_state_t *state)
                                   &decode_len,
                                   hash,
                                   RIPEMD160_DIGEST_SIZE * 2,
-                                  (uint8_t *)pointer->shard_hash)) {
+                                  pointer->shard_hash)) {
             return 1;
 
         }
@@ -1459,7 +1459,7 @@ static int prepare_file_hmac(genaro_download_state_t *state)
         return 1;
     }
 
-    base16_encode_update((uint8_t *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
+    base16_encode_update((char *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
 
     return 0;
 }
@@ -1982,8 +1982,8 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
         uint8_t *key = str_decode_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
         uint8_t *ctr = str_decode_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
 
-        free(key_ctr_as_str->key_as_str);
-        free(key_ctr_as_str->ctr_as_str);
+        free((void *)key_ctr_as_str->key_as_str);
+        free((void *)key_ctr_as_str->ctr_as_str);
         free(key_ctr_as_str);
 
         if (!key || !ctr) {
@@ -2033,8 +2033,8 @@ GENARO_API char *genaro_decrypt_file(genaro_env_t *env,
 
         ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
                 AES_BLOCK_SIZE, ctr, len,
-                file_data + bytes_decrypted,
-                file_data + bytes_decrypted);
+                (uint8_t *)file_data + bytes_decrypted,
+                (const uint8_t *)file_data + bytes_decrypted);
 
         bytes_decrypted += len;
     }

@@ -386,8 +386,6 @@ typedef enum {
     BUCKET_PULL
 } genaro_bucket_op_t;
 
-static const char *BUCKET_OP[] = { "PUSH", "PULL" };
-
 /** @brief A data structure that represents an exchange report
  *
  * These are sent at the end of an exchange with a farmer to report the

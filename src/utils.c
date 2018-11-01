@@ -33,12 +33,12 @@ char *hex_encode_to_str(size_t length, uint8_t *data)
         return NULL;
     }
 
-    base16_encode_update(result, length, data);
+    base16_encode_update((char *)result, length, data);
 
     return (char *)result;
 }
 
-uint8_t *str_decode_to_hex(size_t length, char *data)
+uint8_t *str_decode_to_hex(size_t length, const char *data)
 {
     char *result = calloc(BASE16_DECODE_LENGTH(length) + 1, sizeof(char));
     if (!result) {
@@ -50,7 +50,7 @@ uint8_t *str_decode_to_hex(size_t length, char *data)
 
     size_t decode_len = 0;
     if (!base16_decode_update(ctx, &decode_len, (uint8_t *)result,
-                              length, (uint8_t *)data)) {
+                              length, data)) {
         free(result);
         free(ctx);
         return NULL;
@@ -95,7 +95,6 @@ char *str_concat_many(int count, ...)
 
 void random_buffer(uint8_t *buf, size_t len)
 {
-    static FILE *frand = NULL;
 #ifdef _WIN32
     HCRYPTPROV hProvider;
     int ret = CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
@@ -104,6 +103,7 @@ void random_buffer(uint8_t *buf, size_t len)
     assert(ret);
     CryptReleaseContext(hProvider, 0);
 #else
+    static FILE *frand = NULL;
     if (!frand) {
         frand = fopen("/dev/urandom", "r");
     }

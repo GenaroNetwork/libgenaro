@@ -254,7 +254,7 @@ static void cleanup_state(genaro_upload_state_t *state)
     }
 
     if (state->index) {
-        free(state->index);
+        free((void *)state->index);
     }
 
     if (state->encrypted_file_name) {
@@ -279,11 +279,11 @@ static void cleanup_state(genaro_upload_state_t *state)
 
     if(state->rsa_key_ctr_as_str) {
         if (state->rsa_key_ctr_as_str->ctr_as_str) {
-            free(state->rsa_key_ctr_as_str->ctr_as_str);
+            free((void *)state->rsa_key_ctr_as_str->ctr_as_str);
         }
 
         if (state->rsa_key_ctr_as_str->key_as_str) {
-            free(state->rsa_key_ctr_as_str->key_as_str);
+            free((void *)state->rsa_key_ctr_as_str->key_as_str);
         }
 
         free(state->rsa_key_ctr_as_str);
@@ -504,7 +504,7 @@ static int prepare_bucket_entry_hmac(genaro_upload_state_t *state)
         uint8_t hash[RIPEMD160_DIGEST_SIZE];
         if (!base16_decode_update(&base16_ctx, &decode_len, hash,
                                   RIPEMD160_DIGEST_SIZE * 2,
-                                  (uint8_t *)shard->meta->hash)) {
+                                  shard->meta->hash)) {
             return 1;
 
         }
@@ -524,7 +524,7 @@ static int prepare_bucket_entry_hmac(genaro_upload_state_t *state)
         return 1;
     }
 
-    base16_encode_update((uint8_t *)state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
+    base16_encode_update(state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
 
     return 0;
 }
@@ -1593,7 +1593,6 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
 
     state->creating_encrypted_file = false;
 
-clean_variables:
     queue_next_work(state);
     free(work->data);
     free(work);
@@ -1862,7 +1861,6 @@ static void after_create_parity_shards(uv_work_t *work, int status)
 
     }
 
-clean_variables:
     queue_next_work(state);
     free(work->data);
     free(work);
@@ -2611,9 +2609,9 @@ char *create_tmp_name(genaro_upload_state_t *state, char *extension)
     uint8_t digest[SHA256_DIGEST_SIZE];
     uint8_t digest_encoded[encode_len + 1];
     sha256_init(&ctx);
-    sha256_update(&ctx, file_name_len, state->encrypted_file_name);
+    sha256_update(&ctx, file_name_len, (const uint8_t *)state->encrypted_file_name);
     sha256_digest(&ctx, SHA256_DIGEST_SIZE, digest);
-    base16_encode_update(digest_encoded, SHA256_DIGEST_SIZE, digest);
+    base16_encode_update((char *)digest_encoded, SHA256_DIGEST_SIZE, digest);
     digest_encoded[encode_len] = '\0';
 
     sprintf(path,
@@ -2697,8 +2695,8 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
         uint8_t *key = str_decode_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
         uint8_t *ctr = str_decode_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
         
-        free(key_ctr_as_str->key_as_str);
-        free(key_ctr_as_str->ctr_as_str);
+        free((void *)key_ctr_as_str->key_as_str);
+        free((void *)key_ctr_as_str->ctr_as_str);
         free(key_ctr_as_str);
         
         if (!key || !ctr) {

@@ -54,7 +54,7 @@ static void setup_test_farmer_data(int shard_bytes, int shard_bytes_sent)
     }
 
     for (int i = 0; i < total_data_shards; i++) {
-        data_blocks[i] = data + i * shard_bytes;
+        data_blocks[i] = (uint8_t *)data + i * shard_bytes;
     }
 
     fec_blocks = (uint8_t**)malloc(total_parity_shards * sizeof(uint8_t *));
@@ -64,7 +64,7 @@ static void setup_test_farmer_data(int shard_bytes, int shard_bytes_sent)
     }
 
     for (int i = 0; i < total_parity_shards; i++) {
-        fec_blocks[i] = data + (total_data_shards + i) * shard_bytes;
+        fec_blocks[i] = (uint8_t *)data + (total_data_shards + i) * shard_bytes;
     }
 
     rs = reed_solomon_new(total_data_shards, total_parity_shards);
@@ -93,9 +93,9 @@ int mock_farmer_shard_server(void *cls,
                              size_t *upload_data_size,
                              void **con_cls)
 {
-    const char *encoding = MHD_lookup_connection_value(connection,
-                                                       MHD_HEADER_KIND,
-                                                       MHD_HTTP_HEADER_CONTENT_TYPE);
+    MHD_lookup_connection_value(connection,
+                                MHD_HEADER_KIND,
+                                MHD_HTTP_HEADER_CONTENT_TYPE);
 
     if (NULL == *con_cls) {
 

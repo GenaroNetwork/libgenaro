@@ -36,7 +36,6 @@ static inline void noop() {};
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
     "  remove-file <bucket-id> <file-id>\n"                             \
-    "  add-bucket <name> \n"                                            \
     "  remove-bucket <bucket-id>\n"                                     \
     "  rename-bucket <bucket-id> <new-bucket-name>\n"                   \
     "  list-mirrors <bucket-id> <file-id>\n\n"                          \
@@ -302,6 +301,7 @@ static int get_password(char *password, int mask)
     return idx; /* number of chars in passwd    */
 }
 
+/*
 static int get_password_verify(char *prompt, char *password, int count)
 {
     printf("%s", prompt);
@@ -328,6 +328,7 @@ static int get_password_verify(char *prompt, char *password, int count)
         return get_password_verify(prompt, password, count);
     }
 }
+*/
 
 void close_signal(uv_handle_t *handle)
 {
@@ -362,7 +363,8 @@ static void file_progress(double progress,
     fflush(stdout);
 }
 
-static void upload_file_complete(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
+static void upload_file_complete(const char *bucket_id, const char *file_name, int error_status, char *file_id,
+                                 uint64_t file_bytes, char *sha256_of_encrypted, void *handle)
 {
     printf("\n");
     if (error_status != 0) {
@@ -451,7 +453,8 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
     return state->error_status;
 }
 
-static void download_file_complete(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
+static void download_file_complete(int status, const char *file_name, const char *temp_file_name,
+                                   FILE *fd, uint64_t file_bytes, char *sha256, void *handle)
 {
     printf("\n");
     fclose(fd);
@@ -645,12 +648,9 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
 
     struct json_object *shard;
     struct json_object *established;
-    struct json_object *available;
     struct json_object *item;
     struct json_object *hash;
     struct json_object *contract;
-    struct json_object *address;
-    struct json_object *port;
     struct json_object *node_id;
 
     for (int i = 0; i < num_mirrors; i++) {
@@ -910,7 +910,7 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
 //        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
 //               bucket->id, bucket->decrypted ? "true" : "false",
 //               bucket->created, bucket->name);
-        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s \tlimitStorage: %ld \tusedStorage: %ld \ttimeStart: %ld \ttimeEnd: %ld\n",
+        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s \tlimitStorage: %" PRIu64 "\tusedStorage: %" PRIu64 "\ttimeStart: %" PRIu64 "\ttimeEnd: %" PRIu64 "\n",
                bucket->id, bucket->decrypted ? "true" : "false",
                bucket->created, bucket->name, bucket->limitStorage, bucket->usedStorage, bucket->timeStart, bucket->timeEnd);
     }
@@ -919,6 +919,7 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+/*
 static void create_bucket_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -953,6 +954,7 @@ clean_variables:
     free(req);
     free(work_req);
 }
+*/
 
 static void get_info_callback(uv_work_t *work_req, int status)
 {
@@ -1298,7 +1300,8 @@ int main(int argc, char **argv)
             }
 
             genaro_bridge_list_files(env, bucket_id, NULL, list_files_callback);
-        } else if (strcmp(command, "add-bucket") == 0) {
+        } 
+        /*else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];
 
             if (!bucket_name) {
@@ -1310,7 +1313,8 @@ int main(int argc, char **argv)
             genaro_bridge_create_bucket(env, bucket_name,
                                        NULL, create_bucket_callback);
 
-        } else if (strcmp(command, "remove-bucket") == 0) {
+        }*/
+        else if (strcmp(command, "remove-bucket") == 0) {
             char *bucket_id = argv[command_index + 1];
 
             if (!bucket_id) {

@@ -134,11 +134,6 @@ static shard_meta_t *shard_meta_new();
 static uv_work_t *shard_meta_work_new(int index, genaro_upload_state_t *state);
 static uv_work_t *frame_work_new(int *index, genaro_upload_state_t *state);
 static uv_work_t *uv_work_new();
-static int prepare_encryption_key(genaro_upload_state_t *state,
-                               char *pre_pass,
-                               int pre_pass_size,
-                               char *pre_salt,
-                               int pre_salt_size);
 
 static int check_in_progress(genaro_upload_state_t *state, int status);
 char *create_tmp_name(genaro_upload_state_t *state, char *extension);
@@ -158,7 +153,6 @@ static void queue_create_bucket_entry(genaro_upload_state_t *state);
 static void queue_send_exchange_report(genaro_upload_state_t *state, int index);
 static void queue_create_encrypted_file(genaro_upload_state_t *state);
 
-static void request_token(uv_work_t *work);
 static void request_frame_id(uv_work_t *work);
 static void prepare_frame(uv_work_t *work);
 static void push_frame(uv_work_t *work);
@@ -167,7 +161,6 @@ static void create_bucket_entry(uv_work_t *work);
 static void send_exchange_report(uv_work_t *work);
 static void create_encrypted_file(uv_work_t *work);
 
-static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame_id(uv_work_t *work, int status);
 static void after_prepare_frame(uv_work_t *work, int status);
 static void after_push_frame(uv_work_t *work, int status);
@@ -177,8 +170,6 @@ static void after_send_exchange_report(uv_work_t *work, int status);
 static void after_create_encrypted_file(uv_work_t *work, int status);
 
 static void queue_verify_bucket_id(genaro_upload_state_t *state);
-static void queue_verify_file_id(genaro_upload_state_t *state);
 static void verify_bucket_id_callback(uv_work_t *work_req, int status);
-static void verify_file_id_callback(uv_work_t *work_req, int status);
 
 #endif /* GENARO_UPLOADER_H */

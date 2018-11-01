@@ -176,10 +176,10 @@ int put_shard(genaro_http_options_t *http_options,
     // Ignore any data sent back, we only need to know the status code
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_ignore_receive);
 
-    time_t start = 0, end = 0;
-    if(genaro_debug) {  
-        time(&start);
-    }
+    // time_t start = 0, end = 0;
+    // if(genaro_debug) {  
+    //     time(&start);
+    // }
     
     int req = curl_easy_perform(curl);
 
@@ -657,13 +657,22 @@ int fetch_json(genaro_http_options_t *http_options,
         uint8_t hash[SHA256_DIGEST_SIZE + 1];
         sha256_of_str((uint8_t *)hash_msg, hash_msg_len, hash);
 
+        int ret = 0;
+
         // hash -> signature
         secp256k1_ecdsa_signature sig;
-        secp256k1_ecdsa_sign(g_secp256k1_ctx, &sig, hash, encrypt_options->priv_key, NULL, NULL);
+        ret = secp256k1_ecdsa_sign(g_secp256k1_ctx, &sig, hash, encrypt_options->priv_key, NULL, NULL);
+        if(!ret) {
+            return 1;
+        }
 
         // privkey -> pubkey
         secp256k1_pubkey pubkey;
-        secp256k1_ec_pubkey_create(g_secp256k1_ctx, &pubkey, encrypt_options->priv_key);
+        ret = secp256k1_ec_pubkey_create(g_secp256k1_ctx, &pubkey, encrypt_options->priv_key);
+        if(!ret) {
+            return 1;
+        }
+
         size_t pubkey_ser_len = 65;
         uint8_t pubkey_ser[65];
         secp256k1_ec_pubkey_serialize(g_secp256k1_ctx, pubkey_ser, &pubkey_ser_len, &pubkey, SECP256K1_EC_UNCOMPRESSED);
@@ -671,7 +680,11 @@ int fetch_json(genaro_http_options_t *http_options,
         // append signature to http header.
         size_t sig_str_len = 74;
         uint8_t sig_str[74];
-        secp256k1_ecdsa_signature_serialize_der(g_secp256k1_ctx, sig_str, &sig_str_len, &sig);
+        ret = secp256k1_ecdsa_signature_serialize_der(g_secp256k1_ctx, sig_str, &sig_str_len, &sig);
+        if(!ret) {
+            return 1;
+        }
+        
         char *sig_str_hex = hex_encode_to_str(sig_str_len, sig_str);
 
         const char *h_sig_key = "x-signature: ";

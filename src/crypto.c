@@ -448,9 +448,9 @@ int encrypt_meta(const char *filemeta,
 
     struct base64_encode_ctx ctx3;
     base64_encode_init(&ctx3);
-    size_t out_len = base64_encode_update(&ctx3, (uint8_t *)*buffer_base64,
+    size_t out_len = base64_encode_update(&ctx3, *buffer_base64,
                                           buf_len, buf);
-    out_len += base64_encode_final(&ctx3, (uint8_t *)*buffer_base64 + out_len);
+    out_len += base64_encode_final(&ctx3, *buffer_base64 + out_len);
 
     return 0;
 }
@@ -470,7 +470,7 @@ int decrypt_meta(const char *buffer_base64,
     struct base64_decode_ctx ctx3;
     base64_decode_init(&ctx3);
     if (!base64_decode_update(&ctx3, &decode_len, buffer,
-                              strlen(buffer_base64), (uint8_t *)buffer_base64)) {
+                              strlen(buffer_base64), buffer_base64)) {
         free(buffer);
         return 1;
     }

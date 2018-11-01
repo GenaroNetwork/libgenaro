@@ -504,14 +504,15 @@ void fec_init(void)
     fec_initialized = 1;
 }
 
-
 #ifdef PROFILE
+/*
 static long long rdtsc(void)
 {
     unsigned long low, hi;
     asm volatile ("rdtsc" : "=d" (hi), "=a" (low));
     return ( (((long long)hi) << 32) | ((long long) low));
 }
+*/
 
 void print_matrix1(gf* matrix, int nrows, int ncols)
 {
@@ -794,7 +795,7 @@ int reed_solomon_decode(reed_solomon* rs,
     uint8_t* outputs[DATA_SHARDS_MAX];
     uint64_t outputsMax[DATA_SHARDS_MAX];
     gf* m = rs->m;
-    int i, j, c, swap, subMatrixRow, dataShards, nos, nshards;
+    int i, j, c, swap, subMatrixRow, dataShards;
 
     /* the erased_blocks should always sorted
      * if sorted, nr_fec_blocks times to check it
@@ -820,8 +821,6 @@ int reed_solomon_decode(reed_solomon* rs,
 
     j = 0;
     subMatrixRow = 0;
-    nos = 0;
-    nshards = 0;
     dataShards = rs->data_shards;
 
     for(i = 0; i < dataShards; i++) {

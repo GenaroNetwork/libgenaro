@@ -46,7 +46,7 @@ char *hex_to_str(size_t length, uint8_t *data);
 
 char *hex_encode_to_str(size_t length, uint8_t *data);
 
-uint8_t *str_decode_to_hex(size_t length, char *data);
+uint8_t *str_decode_to_hex(size_t length, const char *data);
 
 char *str_concat_many(int count, ...);
 
