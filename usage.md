@@ -3,12 +3,14 @@ For detailed method/struct description, please see [genaro.h](./src/genaro.h)
 usage example  
 
 0. include header file
-```
+
+```c
 #include "genaro.h"
 ```
 
 1. first of all make an env object which will be used through most actions.
-```
+
+```c
 genaro_bridge_options_t bridge_options = {
     .proto       = "http",
     .host        = "127.0.0.1",
@@ -36,30 +38,35 @@ env = genaro_init_env(&bridge_options, &encrypt_options, &http_options, &log_opt
 ```
 
 2. create bucket
-```
+
+```c
 char *bucket_name = "new bucket";
 genaro_bridge_create_bucket(env, bucket_name, NULL, create_bucket_callback);
 ```
 
 3. get bucket list
-```
+
+```c
 genaro_bridge_get_buckets(env, NULL, get_buckets_callback);
 ```
 
 4. delete bucket
-```
+
+```c
 char *bucket_id = "abcd...";
 genaro_bridge_delete_bucket(env, bucket_id, NULL, delete_bucket_callback);
 ```
 
 5. list files in a bucket
-```
+
+```c
 char *bucket_id = "abcd...";
 genaro_bridge_list_files(env, bucket_id, NULL, list_files_callback);
 ```
 
 6. delete file
-```
+
+```c
 char *bucket_id = "abcd...";
 char *file_id = "abcd...";
 
@@ -67,7 +74,8 @@ genaro_bridge_delete_file(env, bucket_id, file_id, NULL, delete_file_callback);
 ```
 
 7. download
-```
+
+```c
 char *bucket_id = "abcd..."; 
 char *file_id = "abcd...";
 char *path = "/usr/user/download/download.file";
@@ -83,9 +91,10 @@ genaro_bridge_resolve_file(env, bucket_id, file_id, NULL, path,
 ```
 
 8. upload
-```
-char *bucket_id = "abcd...";
-char *file_id = "abcd...";
+
+```c
+char *bucket_id = "368be0816766b28fd5f43af5";
+char *file_id = "998960317b6725a3f8080c2b";
 char *path = "/usr/user/download/upload.file"; // file full path
 
 FILE *fd = NULL;
@@ -114,6 +123,7 @@ genaro_bridge_store_file(env, &upload_opts, encryption_info->index,
 ```
 
 9. get basic information
-```
+
+```c
 genaro_bridge_get_info(env, NULL, get_info_callback);
 ```
