@@ -355,6 +355,14 @@ static void after_request_pointers(uv_work_t *work, int status)
     } else if (req->status_code == 429 || req->status_code == 420) {
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
     } else if (req->status_code != 200) {
+        struct json_object *error_value;
+        if (json_object_object_get_ex(req->response, "error", &error_value)) {
+            state->error_from_bridge = (char *)json_object_get_string(error_value);
+            state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+        } else {
+            state->error_from_bridge = NULL;
+        }
+        
         if (req->status_code > 0 && req->status_code < 500) {
             state->error_status = GENARO_BRIDGE_POINTER_ERROR;
         } else {
@@ -408,6 +416,14 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     } else if (req->status_code == 429 || req->status_code == 420) {
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
     } else if (req->status_code != 200) {
+        struct json_object *error_value;
+        if (json_object_object_get_ex(req->response, "error", &error_value)) {
+            state->error_from_bridge = (char *)json_object_get_string(error_value);
+            state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+        } else {
+            state->error_from_bridge = NULL;
+        }
+
         if (req->status_code > 0 && req->status_code < 500) {
             state->pointers[req->pointer_index].status = POINTER_MISSING;
         } else {
@@ -768,7 +784,6 @@ static void after_request_shard(uv_work_t *work, int status)
     pointer->report->end = req->end;
 
     if (req->error_status) {
-
         req->state->log->warn(req->state->env->log_options,
                               req->state->handle,
                               "Error downloading shard: %s, reason: %s",
@@ -1184,7 +1199,6 @@ static void after_request_info(uv_work_t *work, int status)
 
         // Now that we have info we can calculate the decryption key
         determine_decryption_key(req->state);
-
     } else if (req->error_status) {
         switch(req->error_status) {
             case GENARO_BRIDGE_REQUEST_ERROR:
@@ -1239,6 +1253,14 @@ static void request_info(uv_work_t *work)
                                     true,
                                     &response,
                                     &status_code);
+
+    struct json_object *error_value;
+    if (json_object_object_get_ex(response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
 
     req->status_code = status_code;
 
@@ -1360,7 +1382,6 @@ static void request_info(uv_work_t *work)
         }
         char *hmac = (char *)json_object_get_string(hmac_value);
         req->info->hmac = strdup(hmac);
-
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = GENARO_BRIDGE_AUTH_ERROR;
     } else if (status_code == 404 || status_code == 400) {
@@ -1965,6 +1986,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->pointer_fail_count = 0;
     state->requesting_pointers = false;
     state->error_status = GENARO_TRANSFER_OK;
+    state->error_from_bridge = NULL;
     state->writing = false;
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;

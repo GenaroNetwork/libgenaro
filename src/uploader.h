@@ -98,6 +98,7 @@ typedef struct {
     char *frame_id;
     int status_code;
     int error_status;
+    struct json_object *response;
 
     // Add shard to frame
     int shard_meta_index;

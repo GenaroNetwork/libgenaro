@@ -330,7 +330,7 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_object_get_ex(file, "rsaKey", &rsaKey);
         json_object_object_get_ex(file, "rsaCtr", &rsaCtr);
 
-        // if this file is a shared file but we don't support share.
+        // if this file is a shared file but we don't support share
         if(!req->is_support_share && p_is_share[i]) {
             continue;
         }
@@ -828,6 +828,9 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
                 genaro_debug = atoi(genaro_debug_str);
                 if(genaro_debug) {
                     log->debug = log_formatter_debug;
+                    log->info = log_formatter_info;
+                    log->warn = log_formatter_warn;
+                    log->error = log_formatter_error;
                 }
             }
             break;

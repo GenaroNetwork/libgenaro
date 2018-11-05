@@ -104,3 +104,7 @@ TBD.
 2. GET /buckets/:bucket_id/files/:file_id/info（获取文件大小等信息，和bridge）
 3. GET /shards/:shard_hash（下载shard，和farmer）
 4. POST /reports/exchanges（发送报告，和bridge）
+
+## 文件分享
+
+为实现文件分享功能，在genaro_file_meta_t结构体中添加了rsaKey和rsaCtr字段，分别是经过RSA加密（也可以是其他加密方式）后的key/ctr（文件加解密的AES密钥），还有一个isShareFile字段，用于表示是否是通过分享得到的文件，目前cli程序暂不支持文件分享功能。

@@ -526,6 +526,7 @@ typedef struct genaro_download_state {
     uint32_t pointer_fail_count;
     bool requesting_pointers;
     int error_status;
+    char *error_from_bridge;
     bool writing;
     genaro_key_ctr_t *key_ctr;
     const char *hmac;
@@ -629,6 +630,7 @@ typedef struct genaro_upload_state {
     genaro_progress_upload_cb progress_cb;
     genaro_finished_upload_cb finished_cb;
     int error_status;
+    char *error_from_bridge;
     genaro_log_levels_t *log;
     void *handle;
     shard_tracker_t *shard;

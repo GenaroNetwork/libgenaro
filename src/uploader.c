@@ -67,6 +67,7 @@ static uv_work_t *frame_work_new(int *index, genaro_upload_state_t *state)
     req->error_status = 0;
     req->status_code = 0;
     req->log = state->log;
+    req->response = NULL;
 
     if (index != NULL) {
         req->shard_meta_index = *index;
@@ -359,6 +360,14 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
 
     state->add_bucket_entry_count += 1;
     state->creating_bucket_entry = false;
+
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
 
     if (req->error_status) {
         state->error_status = req->error_status;
@@ -921,10 +930,16 @@ static void after_push_frame(uv_work_t *work, int status)
     // Increment request count every request for retry counts
     state->shard[req->shard_meta_index].push_frame_request_count += 1;
 
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
+
     if (req->status_code == 429 || req->status_code == 420) {
-
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
-
     } else if ((req->status_code == 200 || req->status_code == 201) &&
         pointer->token != NULL) {
         // Check if we got a 200 status and token
@@ -1017,6 +1032,11 @@ static void after_push_frame(uv_work_t *work, int status)
 
 clean_variables:
     queue_next_work(state);
+
+    if (req->response) {
+        json_object_put(req->response);
+    }
+
     if (pointer) {
         pointer_cleanup(pointer);
     }
@@ -1106,7 +1126,6 @@ static void push_frame(uv_work_t *work)
                     "fn[push_frame] - JSON body: %s", json_object_to_json_string(body));
 
     int status_code;
-    struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
                                     req->encrypt_options,
                                     req->options,
@@ -1115,12 +1134,12 @@ static void push_frame(uv_work_t *work)
                                     NULL,
                                     body,
                                     true,
-                                    &response,
+                                    &req->response,
                                     &status_code);
 
     req->log->debug(state->env->log_options, state->handle,
                     "fn[push_frame] - JSON Response: %s",
-                    json_object_to_json_string(response));
+                    json_object_to_json_string(req->response));
 
     if (request_status) {
         req->log->warn(state->env->log_options, state->handle,
@@ -1130,13 +1149,13 @@ static void push_frame(uv_work_t *work)
     }
 
     struct json_object *obj_token;
-    if (!json_object_object_get_ex(response, "token", &obj_token)) {
+    if (!json_object_object_get_ex(req->response, "token", &obj_token)) {
         req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
     struct json_object *obj_farmer;
-    if (!json_object_object_get_ex(response, "farmer", &obj_farmer)) {
+    if (!json_object_object_get_ex(req->response, "farmer", &obj_farmer)) {
         req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
@@ -1256,9 +1275,6 @@ static void push_frame(uv_work_t *work)
     req->status_code = status_code;
 
 clean_variables:
-    if (response) {
-        json_object_put(response);
-    }
     if (body) {
         json_object_put(body);
     }
@@ -1729,12 +1745,17 @@ static void after_request_frame_id(uv_work_t *work, int status)
 
     state->frame_request_count += 1;
 
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
+
     if (req->status_code == 429 || req->status_code == 420) {
-
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
-
     } else if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
-
         state->log->info(state->env->log_options, state->handle,
                          "Successfully retrieved frame id: %s", req->frame_id);
 
@@ -2183,6 +2204,14 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 
     state->pending_work_count -= 1;
     state->bucket_verify_count += 1;
+    
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
 
     if (req->status_code == 200) {
         state->bucket_verified = true;
@@ -2224,6 +2253,14 @@ static void verify_file_name_callback(uv_work_t *work_req, int status)
 
     state->pending_work_count -= 1;
     state->file_verify_count += 1;
+    
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
 
     if (req->status_code == 404) {
         state->file_verified = true;
@@ -2719,6 +2756,7 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->error_status = 0;
+    state->error_from_bridge = NULL;
     state->log = env->log;
     state->handle = handle;
     state->shard = NULL;
