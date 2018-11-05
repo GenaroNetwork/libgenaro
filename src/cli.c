@@ -55,7 +55,7 @@ static inline void noop() {};
     "environment variables:\n"                                          \
     "  GENARO_BRIDGE                  the bridge host "
 
-#define CLI_VERSION "libgenaro-2.0.0-beta"
+#define CLI_VERSION "libgenaro-4.0.0"
 
 static void json_logger(const char *message, int level, void *handle)
 {
