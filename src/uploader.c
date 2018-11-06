@@ -1930,7 +1930,6 @@ static void create_parity_shards(uv_work_t *work)
     uint64_t parity_size = state->total_shards * state->shard_size - state->file_size;
 
     // determine parity shard location
-    char *tmp_folder = NULL;
     if (!state->parity_file_path) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
@@ -2012,10 +2011,6 @@ clean_variables:
 
     if (fec_blocks) {
         free(fec_blocks);
-    }
-
-    if (tmp_folder) {
-        free(tmp_folder);
     }
 
     if (map) {

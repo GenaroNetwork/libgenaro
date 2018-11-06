@@ -1,19 +1,29 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(libgenaro VERSION 0.1.0)
 
-SET(DEBUG 1)
+SET(DEBUG 0)
 SET(STATIC 0)
+SET(COVERAGE 0)
+
+IF(COVERAGE)
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -fprofile-arcs -ftest-coverage")
+ENDIF()
 
 IF(APPLE)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
 
 IF(DEBUG)
-  set(CMAKE_C_FLAGS "-gdwarf-2 -g3")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -gdwarf-2 -g3")
 ENDIF()
 
-include(CTest)
-enable_testing()
+IF(COVERAGE)
+# SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -coverage")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -fprofile-arcs -ftest-coverage")
+ENDIF()
+
+# include(CTest)
+# enable_testing()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -64,10 +74,15 @@ ENDIF()
 
 ELSEIF(UNIX)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
+
 IF(DEBUG)
-  set(CMAKE_C_FLAGS "-g3 -pthread")
-ELSE()
-  set(CMAKE_C_FLAGS "-pthread")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3")
+ENDIF()
+
+IF(COVERAGE)
+# SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -coverage")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -fprofile-arcs -ftest-coverage")
 ENDIF()
 
 add_library(genaro
@@ -111,10 +126,10 @@ ENDIF()
 
 ELSEIF(WIN32)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCURL_STATICLIB -std=c99")
+
 IF(DEBUG)
-  set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99 -g")
-ELSE()
-  set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=c99")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 ENDIF()
 
 include_directories("C:/Program Files/Mingw-w64/opt/include")
@@ -148,9 +163,9 @@ add_executable(test_crypto test/test_crypto.c)
 target_link_libraries(test_crypto genaro nettle)
 
 IF(DEBUG)
-  set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=gnu99 -g")
+  set(CMAKE_C_FLAGS "-DCURL_STATICLIB -std=gnu99 -g")
 ELSE()
-  set(CMAKE_C_FLAGS "-DCURL_STATICLIB -Wall -std=gnu99")
+  set(CMAKE_C_FLAGS "-DCURL_STATICLIB -std=gnu99")
 ENDIF()
 
 add_executable(tests_rs test/tests_rs.c)

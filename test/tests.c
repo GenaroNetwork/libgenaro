@@ -742,7 +742,6 @@ int test_download_cancel()
 
     } while (more == true);
 
-
     free(download_file);
     genaro_destroy_env(env);
 
