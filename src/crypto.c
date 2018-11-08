@@ -278,7 +278,6 @@ uint8_t *key_from_passphrase(const char *passphrase, const char *salt)
 int decrypt_data(const char *passphrase, const char *salt, const char *data,
                  char **result)
 {
-
     uint8_t *key = key_from_passphrase(passphrase, salt);
     if (!key) {
         return 1;

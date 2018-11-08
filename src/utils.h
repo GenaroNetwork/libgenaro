@@ -40,7 +40,7 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 
 int allocatefile(int fd, uint64_t length);
 
-void print_int_array(uint8_t *array, unsigned length);
+void print_int_array(uint8_t *array, unsigned length, bool is_hex);
 
 char *hex_to_str(size_t length, uint8_t *data);
 

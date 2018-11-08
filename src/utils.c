@@ -1,10 +1,13 @@
 #include "utils.h"
 
-void print_int_array(uint8_t *array, unsigned length)
+void print_int_array(uint8_t *array, unsigned length, bool is_hex)
 {
     printf("{");
     for (int i = 0; i < length; i++) {
-        printf("%i", array[i]);
+        if(is_hex)
+            printf("%02x", array[i]);
+        else
+            printf("%i", array[i]);
         if (i != length - 1) {
             printf(",");
         }

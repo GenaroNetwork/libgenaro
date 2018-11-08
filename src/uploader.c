@@ -1686,7 +1686,6 @@ static void create_encrypted_file(uv_work_t *work)
         if (written_bytes != read_bytes) {
             goto clean_variables;
         }
-
     } while(total_read < state->file_size && read_bytes > 0);
 
 clean_variables:

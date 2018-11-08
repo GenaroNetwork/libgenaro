@@ -498,7 +498,6 @@ int create_test_upload_file(char *filepath)
 
 int test_upload()
 {
-
     // initialize event loop and environment
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
@@ -680,7 +679,6 @@ int test_download()
 
 int test_download_cancel()
 {
-
     // initialize event loop and environment
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
@@ -1563,6 +1561,290 @@ int test_memory_mapping()
     return 0;
 }
 
+static genaro_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
+{
+    genaro_encryption_ctx_t *ctx = calloc(sizeof(genaro_encryption_ctx_t), sizeof(char));
+    if (!ctx) {
+        return NULL;
+    }
+
+    ctx->ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+    if (!ctx->ctx) {
+        return NULL;
+    }
+
+    ctx->encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
+    if (!ctx->encryption_ctr) {
+        return NULL;
+    }
+
+    memcpy(ctx->encryption_ctr, ctr, AES_BLOCK_SIZE);
+
+    aes256_set_encrypt_key(ctx->ctx, pass);
+
+    return ctx;
+}
+
+static void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
+{
+    if (ctx->encryption_ctr) {
+        free(ctx->encryption_ctr);
+    }
+
+    if (ctx->ctx) {
+        free(ctx->ctx);
+    }
+
+    free(ctx);
+}
+
+static int encrypt_file(char *file_path, char *encrypted_file_path, uint8_t *key, uint8_t *ctr)
+{
+    int ret = 0;
+
+    // Initialize the encryption context
+    genaro_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(ctr, key);
+    if (!encryption_ctx) {
+        return 1;
+    }
+
+    uint8_t cphr_txt[AES_BLOCK_SIZE * 256];
+    memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
+    char read_data[AES_BLOCK_SIZE * 256];
+    memset_zero(read_data, AES_BLOCK_SIZE * 256);
+    unsigned long int read_bytes = 0;
+    unsigned long int written_bytes = 0;
+    uint64_t total_read = 0;
+    uint64_t file_size = 0;
+
+    FILE *original_file = fopen(file_path, "r");
+    FILE *encrypted_file = fopen(encrypted_file_path, "w+");
+
+    if (original_file == NULL || encrypted_file == NULL) {
+        ret = 2;
+        goto clean_variables;
+    }
+
+#ifdef _WIN32
+    struct _stati64 st;
+
+    if(_fstati64(fileno(original_file), &st) != 0) {
+        ret = 3;
+        goto clean_variables;
+    }
+#else
+    struct stat st;
+    if(fstat(fileno(original_file), &st) != 0) {
+        ret = 3;
+        goto clean_variables;
+    }
+#endif
+
+    file_size = st.st_size;
+
+    do {
+        read_bytes = pread(fileno(original_file),
+                           read_data, AES_BLOCK_SIZE * 256,
+                           total_read);
+
+        if (read_bytes == -1) {
+            ret = 4;
+            goto clean_variables;
+        }
+
+        // Encrypt data
+        ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
+                  (uint8_t *)cphr_txt, (uint8_t *)read_data);
+
+        written_bytes = pwrite(fileno(encrypted_file), cphr_txt, read_bytes, total_read);
+
+        memset_zero(read_data, AES_BLOCK_SIZE * 256);
+        memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
+
+        total_read += read_bytes;
+
+        if (written_bytes != read_bytes) {
+            ret = 4;
+            goto clean_variables;
+        }
+    } while(total_read < file_size && read_bytes > 0);
+
+clean_variables:
+    if (original_file) {
+        fclose(original_file);
+    }
+    if (encrypted_file) {
+        fclose(encrypted_file);
+    }
+    if (encryption_ctx) {
+        free_encryption_ctx(encryption_ctx);
+    }
+
+    return ret;
+}
+
+static int decrypt_file(char *encrypted_file_path, char *decrypted_file_path, uint8_t *key, uint8_t *ctr)
+{
+    int ret = 0;
+    uint64_t file_size = 0;
+    uint8_t *data_map = NULL;
+    struct aes256_ctx ctx;
+    uint64_t bytes_decrypted = 0;
+    size_t len = AES_BLOCK_SIZE * 8;
+
+    int encrypted_fd = open(encrypted_file_path, O_RDWR);
+    FILE *decrypted_file = fopen(decrypted_file_path, "w+");
+
+    if (encrypted_fd == -1 || decrypted_file == NULL) {
+        ret = 1;
+        goto clean_variables;
+    }
+
+#ifdef _WIN32
+    struct _stati64 st;
+
+    if(_fstati64(encrypted_fd, &st) != 0) {
+        ret = 2;
+        goto clean_variables;
+    }
+#else
+    struct stat st;
+    if(fstat(encrypted_fd, &st) != 0) {
+        ret = 2;
+        goto clean_variables;
+    }
+#endif
+
+    file_size = st.st_size;
+    // int error = map_file(encrypted_fd, file_size, &data_map, false);
+    data_map = (uint8_t *)malloc(file_size);
+    size_t read_bytes = read(encrypted_fd, data_map, file_size);
+    if (read_bytes != file_size) {
+        ret = 3;
+        goto clean_variables;
+    }
+
+    aes256_set_encrypt_key(&ctx, key);
+
+    while (bytes_decrypted < file_size) {
+        if (bytes_decrypted + len > file_size) {
+            len = file_size - bytes_decrypted;
+        }
+
+        ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
+                AES_BLOCK_SIZE, ctr,
+                len,
+                data_map + bytes_decrypted,
+                data_map + bytes_decrypted);
+
+        bytes_decrypted += len;
+    }
+
+    size_t write_bytes = fwrite(data_map, 1, file_size, decrypted_file);
+    free(data_map);
+    if (write_bytes != file_size) {
+        ret = 4;
+        goto clean_variables;
+    }
+
+clean_variables:
+    if (encrypted_fd >= 0) {
+        close(encrypted_fd);
+    }
+    if (decrypted_file) {
+        fclose(decrypted_file);
+    }
+
+    return ret;
+}
+
+int test_encrypt_and_decrypt_file()
+{
+    uint8_t key[AES_BLOCK_SIZE] = {0x01, 0xd8, 0xca, 0x24, 0xeb, 0x31, 0x1f, 0xd3,
+                                   0x04, 0x37, 0x16, 0x71, 0x2b, 0x84, 0xfe, 0x68};
+
+    uint8_t ctr[AES_BLOCK_SIZE] = {0xc5, 0xe7, 0x09, 0xe0, 0x5b, 0x29, 0x31, 0x1f,
+                                   0x11, 0xe4, 0xd2, 0x10, 0x99, 0xd8, 0x6d, 0xf6};
+
+    char *file_name = "test_encrypt_and_decrypt_file.txt";
+    char *encrypted_file_path = "encrypted.data";
+    char *decrypted_file_path = "decrypted.data";
+
+    FILE *new_file = fopen(file_name, "w+");
+    if(!new_file) {
+        printf("failed to open file: %s\n", file_name);
+        return 1;
+    }
+
+    size_t file_size = 3 * 1024 * 1024;  // bytes
+    char *data = (char *)malloc((file_size + 1) * sizeof(char));
+    if(!data) {
+        printf("failed to malloc\n");
+        return 1;
+    }
+    memset(data, '1', file_size);
+    data[file_size] = 0;
+    fprintf(new_file, "%s", data);
+    free(data);
+    fclose(new_file);
+
+    int error = encrypt_file(file_name, encrypted_file_path, key, ctr);
+    if(error) {
+        printf("failed to encrypt file: %s\n", file_name);
+        fail("test_encrypt_and_decrypt_file");
+        return 1;
+    }
+
+    error = decrypt_file(encrypted_file_path, decrypted_file_path, key, ctr);
+    if(error) {
+        printf("failed to decrypt file: %s, ret: %d\n", file_name, error);
+        fail("test_encrypt_and_decrypt_file");
+        return 1;
+    }
+
+    FILE *original_file = fopen(file_name, "rb");
+    if(!original_file) {
+        printf("failed to open file: %s\n", file_name);
+        return 1;
+    }
+
+    FILE *decrypted_file = fopen(decrypted_file_path, "rb");
+    if(!decrypted_file) {
+        printf("failed to open file: %s\n", decrypted_file_path);
+        return 1;
+    }
+
+    uint8_t *original_data = (uint8_t *)malloc(file_size);
+    if(!original_data) {
+        printf("failed to malloc\n");
+        return 1;
+    }
+
+    uint8_t *decrypted_data = (uint8_t *)malloc(file_size);
+    if(!decrypted_data) {
+        printf("failed to malloc\n");
+        return 1;
+    }
+
+    fread(original_data, 1, file_size, original_file);
+    fread(decrypted_data, 1, file_size, decrypted_file);
+    fclose(original_file);
+    fclose(decrypted_file);
+
+    error = memcmp(original_data, decrypted_data, file_size);
+    free(original_data);
+    free(decrypted_data);
+    if(error) {
+        printf("the decrypted file is not the same as the original file\n");
+        fail("test_encrypt_and_decrypt_file");
+        return 1;
+    }
+
+    pass("test_encrypt_and_decrypt_file");
+    return 0;
+}
+
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
@@ -1612,6 +1894,7 @@ int main(void)
     test_increment_ctr_aes_iv();
     /*test_read_write_encrypted_file();*/
     test_meta_encryption();
+    test_encrypt_and_decrypt_file();
     printf("\n");
 
     printf("Test Suite: Utils\n");

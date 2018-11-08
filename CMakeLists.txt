@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(libgenaro VERSION 0.1.0)
 
-SET(DEBUG 0)
+SET(DEBUG 1)
 SET(STATIC 0)
 SET(COVERAGE 0)
 
