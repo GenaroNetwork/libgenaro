@@ -8,7 +8,8 @@ static inline void noop() {};
 
 static const char *BUCKET_OP[] = { "PUSH", "PULL" };
 
-/*The debug level, it will get from the environment GENARO_DEBUG*/
+/*the value of ENV:GENARO_DEBUG, the debug level(4:debug, 3:info, 2:warn, 1:error), 
+it's prior to log_level of log_options*/
 int genaro_debug = 0;
 
 /*Curl info output directory, used only for debug*/

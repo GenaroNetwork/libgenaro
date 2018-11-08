@@ -8,7 +8,7 @@
 ## 调试信息
 
 * 通过设置genaro_init_env函数的第四个参数log_options结构体（类型为genaro_log_options_t *）的level，可以设置调试信息的输出级别。
-* 设置环境变量GENARO_DEBUG为1可以打印更多额外信息。
+* 设置环境变量GENARO_DEBUG的值为1, 2, 3或4，可打印调试信息，级别分别为error, warn, info和debug（debug级别的调试信息最详细）。
 * 设置环境GENARO_CURL_OUT_DIR可以将curl进行http通讯的过程打印到相应目录的_genaro_curl_debug.log文件中。
 
 ## 链接的库
