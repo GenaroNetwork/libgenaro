@@ -8,8 +8,7 @@ static inline void noop() {};
 
 static const char *BUCKET_OP[] = { "PUSH", "PULL" };
 
-/*whether to print the debug info if the level of Logging configuration 
-options is set to 0, it will get from the environment GENARO_DEBUG*/
+/*The debug level, it will get from the environment GENARO_DEBUG*/
 int genaro_debug = 0;
 
 /*Curl info output directory, used only for debug*/
@@ -813,7 +812,19 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
     log->warn = (genaro_logger_format_fn)noop;
     log->error = (genaro_logger_format_fn)noop;
 
-    switch(log_options->level) {
+    char *genaro_debug_str = getenv("GENARO_DEBUG");
+    if(genaro_debug_str) {
+        genaro_debug = atoi(genaro_debug_str);
+        if(genaro_debug) {
+        }
+    }
+
+    int level = log_options->level;
+    if(genaro_debug != 0) {
+        level = genaro_debug;
+    }
+
+    switch(level) {
         case 4:
             log->debug = log_formatter_debug;
         case 3:
@@ -822,19 +833,8 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
             log->warn = log_formatter_warn;
         case 1:
             log->error = log_formatter_error;
-        case 0: {
-            char *genaro_debug_str = getenv("GENARO_DEBUG");
-            if(genaro_debug_str) {
-                genaro_debug = atoi(genaro_debug_str);
-                if(genaro_debug) {
-                    log->debug = log_formatter_debug;
-                    log->info = log_formatter_info;
-                    log->warn = log_formatter_warn;
-                    log->error = log_formatter_error;
-                }
-            }
+        default:
             break;
-        }
     }
 
     env->log = log;

@@ -662,9 +662,8 @@ static void request_shard(uv_work_t *work)
 
     req->end = get_time_milliseconds();
 
-    if(genaro_debug) {
-        printf("\nFinish download shard %d from %s:%d(nodeid: %s), time: %.1lfs\n", req->pointer_index, req->farmer_host, req->farmer_port, req->farmer_id, (req->end - req->start) / 1000.0);
-    }
+    req->state->log->debug(req->state->env->log_options, req->state->handle, "Finish download shard %d from %s:%d(nodeid: %s), time: %.1lfs", 
+                          req->pointer_index, req->farmer_host, req->farmer_port, req->farmer_id, (req->end - req->start) / 1000.0);
 
     if (write_code != 0) {
         req->state->log->error(req->state->env->log_options, req->state->handle,

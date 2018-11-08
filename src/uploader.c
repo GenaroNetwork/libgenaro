@@ -734,9 +734,11 @@ static void push_shard(uv_work_t *work)
                                req->canceled);
 
     uint64_t end = get_time_milliseconds();
-    if(genaro_debug) {
-        printf("\nFinish upload shard %d to %s:%s(nodeid: %s), time: %.1lfs\n", req->shard_meta_index, shard->pointer->farmer_address, shard->pointer->farmer_port, shard->pointer->farmer_node_id, (end - start) / 1000.0);
-    }
+
+
+    state->log->debug(state->env->log_options, state->handle, "Finish upload shard %d to %s:%s(nodeid: %s), time: %.1lfs", 
+                      req->shard_meta_index, shard->pointer->farmer_address, shard->pointer->farmer_port,
+                      shard->pointer->farmer_node_id, (end - start) / 1000.0);
 
     if (read_code != 0) {
         req->log->error(state->env->log_options, state->handle,
@@ -1699,7 +1701,7 @@ clean_variables:
         time(&end);
         double interval = (double)(end - start);
         if(interval > 10.0) {
-            printf("time of create_encrypted_file: %lfs\n", interval);
+            printf("Time of create_encrypted_file: %lfs\n", interval);
         }
     }
 }
@@ -2033,7 +2035,7 @@ clean_variables:
         time(&end);
         double interval = (double)(end - start);
         if(interval > 10.0) {
-            printf("time of create_parity_shards: %lfs\n", interval);
+            printf("Time of create_parity_shards: %lfs\n", interval);
         }
     }
 }
