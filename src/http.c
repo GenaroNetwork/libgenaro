@@ -418,7 +418,7 @@ int fetch_shard(genaro_download_state_t *state,
         time(&end);
         double interval = (double)(end - start);
         if(interval > 10.0) {
-            printf("curl_easy_perform in fetch_shard: %lfs\n", interval);
+            printf("Time of curl_easy_perform in fetch_shard: %lfs\n", interval);
         }
     }
 
@@ -741,7 +741,7 @@ int fetch_json(genaro_http_options_t *http_options,
         time(&end);
         double interval = (double)(end - start);
         if(interval > 10.0) {
-            printf("curl_easy_perform in fetch_json: %lfs\n", interval);
+            printf("Time of curl_easy_perform in fetch_json: %lfs\n", interval);
         }
     }
 
