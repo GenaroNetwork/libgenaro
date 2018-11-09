@@ -62,9 +62,10 @@
 
 ## AES加密和Reed-Solomn
 
-  文件的加密用的是AES-256-CTR对称加密算法，文件的容错用Reed-Solomn算法：
-  1. 如果文件大于MIN_SHARD_SIZE，那么上传文件前会在系统的临时目录中生成以".crypt"为后缀的文件，该文件是通过AES-256-CTR加密的文件，然后生成以".parity"为后缀的文件，该文件是Reed-Solomn算法生成的文件（大概是源文件的2/3大小），上传时直接读取这两个文件的内容后上传，所以上传的数据大概是5/3原始文件大小。
-  2. 如果文件小于或等于MIN_SHARD_SIZE，不使用Reed-Solomn算法，并会在对每个shard进行prepare_frame时直接加密后上传，所以上传的数据大小就是原始文件大小。
+  文件的加密用的是AES-256-CTR对称加密算法，文件的纠错用的是FEC编码算法中的Reed-Solomn算法：
+  1. 如果文件小于或等于MIN_SHARD_SIZE，不使用Reed-Solomn算法，并会在对每个shard进行prepare_frame时直接加密后上传，所以上传的数据大小就是原始文件大小。
+  2. 如果文件大于MIN_SHARD_SIZE，那么上传文件前会在系统的临时目录中生成以".crypt"为后缀的文件，该文件是通过AES-256-CTR加密的文件，然后生成以".parity"为后缀的文件，该文件是Reed-Solomn算法生成的文件（大约是源文件的2/3大小），上传时直接读取这两个文件的内容后上传，所以上传的数据大概是5/3原始文件大小。
+  3. 如果下载过程中，shard存在丢失的情况，用Reed-Solomn算法
 
 ## 上传和下载文件
 
@@ -96,7 +97,13 @@
 
 下载逻辑：
 
-TBD.
+1. request_pointers: 向bridge请求获取pointers（1个pointer代表1个shard），并保存到state->pointers变量中。（GET /buckets/:bucket_id/files/:file_id）
+2. request_info: 向bridge请求获取文件大小等信息。（GET /buckets/:bucket_id/files/:file_id/info）
+3. request_shard: 在request_info执行完成，向farmer请求下载shard数据，获取的数据直接写到下载的文件中的相应位置中，每次下载完1个shard后判断下载后的每个shard的哈希值是否和bridge中存储的hash值相等，如果不相等，将相应pointer的status置为POINTER_ERROR。（GET /shards/:shard_hash）
+4. recover_shards：在所有shard下载完毕后，判断是否存在丢失（pointer状态为POINTER_MISSING）的shard，如果不存在则直接进行解密和truncate操作，如果存在且丢失的shard数小于等于total_parity_shards，那么用Reed-Solomn算法恢复数据，然后进行解密和truncate操作，如果丢失的shard数大于total_parity_shards，则无法恢复。
+5. send_exchange_report：以上执行完毕后，对于每个pointer向bridge发送一个报告。（POST /reports/exchanges）
+
+PS：pointer的报告发送给bridge后，将相应pointer的status置为POINTER_ERROR_REPORTED，然后再次queue_request_pointers时判断存在校验失败的shard，便调用request_replace_pointer向bridge请求替换的pointer，请求过程中会告诉bridge排除相应farmer，如果获取不到可替换的pointer或者经过多次替换pointer后下载得到的shard都校验失败，那么将pinter的status置为POINTER_MISSING。
 
 下载过程中和bridge, farmer的http接口：
 

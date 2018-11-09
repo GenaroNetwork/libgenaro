@@ -47,7 +47,6 @@ void pass(char *msg)
     tests_ran += 1;
 }
 
-
 void check_bridge_get_info(uv_work_t *work_req, int status)
 {
     assert(status == 0);

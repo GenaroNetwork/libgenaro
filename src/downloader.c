@@ -452,7 +452,6 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
                               true);
 
         if (state->pointers[req->pointer_index].index != req->pointer_index) {
-
             state->log->error(state->env->log_options,
                               state->handle,
                               "Replacement shard index %i does not match %i",
@@ -478,7 +477,6 @@ static void queue_request_pointers(genaro_download_state_t *state)
 
     // queue request to replace pointer if any pointers have failure
     for (int i = 0; i < state->total_pointers; i++) {
-
         genaro_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->replace_count >= GENARO_DEFAULT_MIRRORS) {
@@ -799,9 +797,7 @@ static void after_request_shard(uv_work_t *work, int status)
                 pointer->report->code = GENARO_REPORT_FAILURE;
                 pointer->report->message = GENARO_REPORT_DOWNLOAD_ERROR;
         }
-
     } else {
-
         req->state->log->info(req->state->env->log_options,
                               req->state->handle,
                               "Finished downloading shard: %s",
@@ -1010,7 +1006,6 @@ static void queue_send_exchange_reports(genaro_download_state_t *state)
     }
 
     for (int i = 0; i < state->total_pointers; i++) {
-
         genaro_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->report->send_status < 1 &&
@@ -1596,6 +1591,7 @@ static void recover_shards(uv_work_t *work)
     }
 #endif
 
+    // req->filesize includes the parity parts
     error = map_file(req->fd, req->filesize, &data_map, false);
     if (error) {
         req->error_status = GENARO_MAPPING_ERROR;
@@ -1620,6 +1616,7 @@ static void recover_shards(uv_work_t *work)
         goto finish;
     }
 
+    // fec: Forward Error Correction
     fec_blocks = (uint8_t**)malloc(req->parity_shards * sizeof(uint8_t *));
     if (!fec_blocks) {
         req->error_status = GENARO_MEMORY_ERROR;
@@ -1698,7 +1695,6 @@ finish:
     }
 
 #ifdef _WIN32
-
     HANDLE file = (HANDLE)_get_osfhandle(req->fd);
     if (file == INVALID_HANDLE_VALUE) {
         req->error_status = GENARO_FILE_RESIZE_ERROR;
@@ -1718,7 +1714,6 @@ finish:
         req->error_status = GENARO_FILE_RESIZE_ERROR;
         return;
     }
-
 #else
     if (ftruncate(req->fd, req->data_filesize)) {
         // errno for more details
@@ -1731,7 +1726,6 @@ finish:
 static void queue_recover_shards(genaro_download_state_t *state)
 {
     if (!state->recovering_shards && state->pointers_completed) {
-
         int total_missing = 0;
         bool has_missing = false;
         bool is_ready = true;
@@ -1753,7 +1747,6 @@ static void queue_recover_shards(genaro_download_state_t *state)
                                   state->handle,
                                   "Pointer %i not ready with status: %i",
                                   i, pointer->status);
-
             }
         }
 
@@ -1914,7 +1907,6 @@ static void queue_next_work(genaro_download_state_t *state)
     queue_send_exchange_reports(state);
 
 finish_up:
-
     state->log->debug(state->env->log_options, state->handle,
                       "Pending work count: %d", state->pending_work_count);
 }

@@ -430,7 +430,6 @@ int fetch_shard(genaro_download_state_t *state,
         *write_code = body->error_code;
     }
 
-
     int error_code = 0;
     if (req != CURLE_OK) {
         // TODO include the actual http error code
