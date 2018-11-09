@@ -1561,43 +1561,6 @@ int test_memory_mapping()
     return 0;
 }
 
-static genaro_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
-{
-    genaro_encryption_ctx_t *ctx = calloc(sizeof(genaro_encryption_ctx_t), sizeof(char));
-    if (!ctx) {
-        return NULL;
-    }
-
-    ctx->ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
-    if (!ctx->ctx) {
-        return NULL;
-    }
-
-    ctx->encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
-    if (!ctx->encryption_ctr) {
-        return NULL;
-    }
-
-    memcpy(ctx->encryption_ctr, ctr, AES_BLOCK_SIZE);
-
-    aes256_set_encrypt_key(ctx->ctx, pass);
-
-    return ctx;
-}
-
-static void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
-{
-    if (ctx->encryption_ctr) {
-        free(ctx->encryption_ctr);
-    }
-
-    if (ctx->ctx) {
-        free(ctx->ctx);
-    }
-
-    free(ctx);
-}
-
 static int encrypt_file(char *file_path, char *encrypted_file_path, uint8_t *key, uint8_t *ctr)
 {
     int ret = 0;
@@ -1625,22 +1588,9 @@ static int encrypt_file(char *file_path, char *encrypted_file_path, uint8_t *key
         goto clean_variables;
     }
 
-#ifdef _WIN32
-    struct _stati64 st;
-
-    if(_fstati64(fileno(original_file), &st) != 0) {
-        ret = 3;
-        goto clean_variables;
-    }
-#else
-    struct stat st;
-    if(fstat(fileno(original_file), &st) != 0) {
-        ret = 3;
-        goto clean_variables;
-    }
-#endif
-
-    file_size = st.st_size;
+    fseek(original_file, 0, SEEK_END);
+    file_size = ftell(original_file);
+    fseek(original_file, 0, SEEK_SET);
 
     do {
         read_bytes = pread(fileno(original_file),
@@ -1658,16 +1608,15 @@ static int encrypt_file(char *file_path, char *encrypted_file_path, uint8_t *key
                   (uint8_t *)cphr_txt, (uint8_t *)read_data);
 
         written_bytes = pwrite(fileno(encrypted_file), cphr_txt, read_bytes, total_read);
+        if (written_bytes != read_bytes) {
+            ret = 4;
+            goto clean_variables;
+        }
 
         memset_zero(read_data, AES_BLOCK_SIZE * 256);
         memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
 
         total_read += read_bytes;
-
-        if (written_bytes != read_bytes) {
-            ret = 4;
-            goto clean_variables;
-        }
     } while(total_read < file_size && read_bytes > 0);
 
 clean_variables:
@@ -1684,7 +1633,7 @@ clean_variables:
     return ret;
 }
 
-static int decrypt_file(char *encrypted_file_path, char *decrypted_file_path, uint8_t *key, uint8_t *ctr)
+static int decrypt_file(char *destination_file_path, uint8_t *key, uint8_t *ctr)
 {
     int ret = 0;
     uint64_t file_size = 0;
@@ -1693,35 +1642,20 @@ static int decrypt_file(char *encrypted_file_path, char *decrypted_file_path, ui
     uint64_t bytes_decrypted = 0;
     size_t len = AES_BLOCK_SIZE * 8;
 
-    int encrypted_fd = open(encrypted_file_path, O_RDWR);
-    FILE *decrypted_file = fopen(decrypted_file_path, "w+");
+    FILE *destination_file = fopen(destination_file_path, "r+");
 
-    if (encrypted_fd == -1 || decrypted_file == NULL) {
+    if (destination_file == NULL) {
         ret = 1;
         goto clean_variables;
     }
 
-#ifdef _WIN32
-    struct _stati64 st;
+    fseek(destination_file, 0, SEEK_END);
+    file_size = ftell(destination_file);
+    fseek(destination_file, 0, SEEK_SET);
 
-    if(_fstati64(encrypted_fd, &st) != 0) {
+    int error = map_file(fileno(destination_file), file_size, &data_map, false);
+    if (error) {
         ret = 2;
-        goto clean_variables;
-    }
-#else
-    struct stat st;
-    if(fstat(encrypted_fd, &st) != 0) {
-        ret = 2;
-        goto clean_variables;
-    }
-#endif
-
-    file_size = st.st_size;
-    // int error = map_file(encrypted_fd, file_size, &data_map, false);
-    data_map = (uint8_t *)malloc(file_size);
-    size_t read_bytes = read(encrypted_fd, data_map, file_size);
-    if (read_bytes != file_size) {
-        ret = 3;
         goto clean_variables;
     }
 
@@ -1741,19 +1675,17 @@ static int decrypt_file(char *encrypted_file_path, char *decrypted_file_path, ui
         bytes_decrypted += len;
     }
 
-    size_t write_bytes = fwrite(data_map, 1, file_size, decrypted_file);
-    free(data_map);
-    if (write_bytes != file_size) {
-        ret = 4;
-        goto clean_variables;
+    if(data_map) {
+        error = unmap_file(data_map, file_size);
+        if (error) {
+            ret = 3;
+            goto clean_variables;
+        }
     }
 
 clean_variables:
-    if (encrypted_fd >= 0) {
-        close(encrypted_fd);
-    }
-    if (decrypted_file) {
-        fclose(decrypted_file);
+    if (destination_file) {
+        fclose(destination_file);
     }
 
     return ret;
@@ -1761,15 +1693,14 @@ clean_variables:
 
 int test_encrypt_and_decrypt_file()
 {
-    uint8_t key[AES_BLOCK_SIZE] = {0x01, 0xd8, 0xca, 0x24, 0xeb, 0x31, 0x1f, 0xd3,
-                                   0x04, 0x37, 0x16, 0x71, 0x2b, 0x84, 0xfe, 0x68};
+    uint8_t key[AES_BLOCK_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    uint8_t ctr[AES_BLOCK_SIZE] = {0xc5, 0xe7, 0x09, 0xe0, 0x5b, 0x29, 0x31, 0x1f,
-                                   0x11, 0xe4, 0xd2, 0x10, 0x99, 0xd8, 0x6d, 0xf6};
+    uint8_t ctr[AES_BLOCK_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     char *file_name = "test_encrypt_and_decrypt_file.txt";
-    char *encrypted_file_path = "encrypted.data";
-    char *decrypted_file_path = "decrypted.data";
+    char *destination_file_path = "destination.txt";
 
     FILE *new_file = fopen(file_name, "w+");
     if(!new_file) {
@@ -1785,18 +1716,22 @@ int test_encrypt_and_decrypt_file()
     }
     memset(data, '1', file_size);
     data[file_size] = 0;
-    fprintf(new_file, "%s", data);
+    size_t written_bytes = fwrite(data, 1, file_size, new_file);
     free(data);
     fclose(new_file);
+    if(written_bytes != file_size) {
+        printf("failed to write file\n");
+        return 1;
+    }
 
-    int error = encrypt_file(file_name, encrypted_file_path, key, ctr);
+    int error = encrypt_file(file_name, destination_file_path, key, ctr);
     if(error) {
         printf("failed to encrypt file: %s\n", file_name);
         fail("test_encrypt_and_decrypt_file");
         return 1;
     }
 
-    error = decrypt_file(encrypted_file_path, decrypted_file_path, key, ctr);
+    error = decrypt_file(destination_file_path, key, ctr);
     if(error) {
         printf("failed to decrypt file: %s, ret: %d\n", file_name, error);
         fail("test_encrypt_and_decrypt_file");
@@ -1809,9 +1744,9 @@ int test_encrypt_and_decrypt_file()
         return 1;
     }
 
-    FILE *decrypted_file = fopen(decrypted_file_path, "rb");
-    if(!decrypted_file) {
-        printf("failed to open file: %s\n", decrypted_file_path);
+    FILE *destination_file = fopen(destination_file_path, "rb");
+    if(!destination_file) {
+        printf("failed to open file: %s\n", destination_file_path);
         return 1;
     }
 
@@ -1827,10 +1762,14 @@ int test_encrypt_and_decrypt_file()
         return 1;
     }
 
-    fread(original_data, 1, file_size, original_file);
-    fread(decrypted_data, 1, file_size, decrypted_file);
+    size_t original_read_bytes = fread(original_data, 1, file_size, original_file);
+    size_t decrypted_read_bytes = fread(decrypted_data, 1, file_size, destination_file);
     fclose(original_file);
-    fclose(decrypted_file);
+    fclose(destination_file);
+    if(original_read_bytes != file_size || decrypted_read_bytes != file_size) {
+        printf("failed to read file\n");
+        return 1;
+    }
 
     error = memcmp(original_data, decrypted_data, file_size);
     free(original_data);

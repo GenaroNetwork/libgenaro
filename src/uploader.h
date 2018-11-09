@@ -142,7 +142,8 @@ char *create_tmp_name(genaro_upload_state_t *state, char *extension);
 static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);
 static void cleanup_state(genaro_upload_state_t *state);
-static void free_encryption_ctx(genaro_encryption_ctx_t *ctx);
+genaro_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass);
+void free_encryption_ctx(genaro_encryption_ctx_t *ctx);
 
 static void queue_next_work(genaro_upload_state_t *state);
 

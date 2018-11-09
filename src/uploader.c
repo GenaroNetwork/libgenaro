@@ -168,7 +168,7 @@ static shard_meta_t *shard_meta_new()
     return meta;
 }
 
-static genaro_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
+genaro_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
 {
     genaro_encryption_ctx_t *ctx = calloc(sizeof(genaro_encryption_ctx_t), sizeof(char));
     if (!ctx) {
@@ -332,7 +332,7 @@ static void cleanup_state(genaro_upload_state_t *state)
     free(state);
 }
 
-static void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
+void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
 {
     if (ctx->encryption_ctr) {
         free(ctx->encryption_ctr);
