@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5.0)
 project(libgenaro VERSION 0.1.0)
 
 SET(DEBUG 1)
-SET(STATIC 0)
+SET(STATIC 1)
 SET(COVERAGE 0)
 
 IF(APPLE)
@@ -24,6 +24,12 @@ ENDIF()
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+# get the path of the Developer dir of Xcode
+execute_process(COMMAND xcode-select --print-path OUTPUT_VARIABLE Xcode-dev-dir)
+# strip the last newline character
+string(STRIP ${Xcode-dev-dir} Xcode-dev-dir)
+include_directories(${Xcode-dev-dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include)
 
 add_library(genaro
         src/genaro.c
@@ -70,7 +76,7 @@ ENDIF()
 
 ELSEIF(UNIX)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -DCURL_STATICLIB -pthread")
 
 IF(DEBUG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3")
@@ -80,6 +86,9 @@ IF(COVERAGE)
 # SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -coverage")
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -fprofile-arcs -ftest-coverage")
 ENDIF()
+
+include_directories(depends/build/x86_64-pc-linux-gnu/include)
+link_directories(depends/build/x86_64-pc-linux-gnu/lib)
 
 add_library(genaro
         src/genaro.c
@@ -91,34 +100,19 @@ add_library(genaro
         src/rs.c
         src/uploader.c
         src/utils.c)
-IF(STATIC)
-  target_link_libraries(genaro m libsecp256k1.a libscrypt.a libkeccak.a libgmp.a)
-ELSE()
-  target_link_libraries(genaro m secp256k1 scrypt keccak gmp)
-ENDIF()
+
+target_link_libraries(genaro m z idn2 libnettle.a libhogweed.a libgmp.a libsecp256k1.a libscrypt.a libkeccak.a)
 
 add_executable(genaroeden-cli src/cli.c)
-IF(STATIC)
-  target_link_libraries(genaroeden-cli genaro m libuv.a libjson-c.a libnettle.a curl libsecp256k1.a libscrypt.a libkeccak.a libgmp.a)
-ELSE()
-  target_link_libraries(genaroeden-cli genaro m uv json-c nettle curl secp256k1 scrypt keccak)
-ENDIF()
+target_link_libraries(genaroeden-cli genaro libcurl.a libuv.a libjson-c.a libgnutls.a libgmp.a)
 
 add_executable(tests_rs test/tests_rs.c)
 
 add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
-IF(STATIC)
-  target_link_libraries(tests genaro libuv.a libjson-c.a libnettle.a curl microhttpd)
-ELSE()
-  target_link_libraries(tests genaro uv json-c nettle curl microhttpd)
-ENDIF()
+target_link_libraries(tests genaro libcurl.a libuv.a libjson-c.a libgnutls.a libgmp.a libmicrohttpd.a gcrypt)
 
 add_executable(test_crypto test/test_crypto.c)
-IF(STATIC)
-  target_link_libraries(test_crypto genaro libnettle.a)
-ELSE()
-  target_link_libraries(test_crypto genaro nettle)
-ENDIF()
+target_link_libraries(test_crypto genaro)
 
 ELSEIF(WIN32)
 
