@@ -19,7 +19,7 @@ genaro_bridge_options_t bridge_options_bad = {
 };
 
 genaro_encrypt_options_t encrypt_options = {
-    .priv_key = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    .priv_key = (uint8_t *)"abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
     .key_len = 93
 };
 
@@ -46,7 +46,6 @@ void pass(char *msg)
     test_status += 1;
     tests_ran += 1;
 }
-
 
 void check_bridge_get_info(uv_work_t *work_req, int status)
 {
@@ -245,7 +244,7 @@ void check_resolve_file_progress(double progress,
     // TODO check error case
 }
 
-void check_resolve_file(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
+void check_resolve_file(int status, const char *file_name, const char *temp_file_name, FILE *fd, uint64_t total_bytes, char *sha256, void *handle)
 {
     fclose(fd);
     assert(handle == NULL);
@@ -257,7 +256,7 @@ void check_resolve_file(int status, const char *file_name, const char *temp_file
     }
 }
 
-void check_resolve_file_cancel(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
+void check_resolve_file_cancel(int status, const char *file_name, const char *temp_file_name, FILE *fd, uint64_t total_bytes, char *sha256, void *handle)
 {
     fclose(fd);
     assert(handle == NULL);
@@ -278,10 +277,10 @@ void check_store_file_progress(double progress,
     }
 }
 
-void check_store_file(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
+void check_store_file(const char *bucket_id, const char *file_name, int status, char *file_id, uint64_t total_bytes, char *sha256, void *handle)
 {
     assert(handle == NULL);
-    if (error_status == 0) {
+    if (status == 0) {
         if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
             pass("genaro_bridge_store_file");
         } else {
@@ -289,20 +288,20 @@ void check_store_file(const char *bucket_id, const char *file_name, int error_st
         }
     } else {
         fail("genaro_bridge_store_file(1)");
-        printf("\t\tERROR:   %s\n", genaro_strerror(error_status));
+        printf("\t\tERROR:   %s\n", genaro_strerror(status));
     }
 
     free(file_id);
 }
 
-void check_store_file_cancel(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
+void check_store_file_cancel(const char *bucket_id, const char *file_name, int status, char *file_id, uint64_t total_bytes, char *sha256, void *handle)
 {
     assert(handle == NULL);
-    if (error_status == GENARO_TRANSFER_CANCELED) {
+    if (status == GENARO_TRANSFER_CANCELED) {
         pass("genaro_bridge_store_file_cancel");
     } else {
         fail("genaro_bridge_store_file_cancel");
-        printf("\t\tERROR:   %s\n", genaro_strerror(error_status));
+        printf("\t\tERROR:   %s\n", genaro_strerror(status));
     }
 
     free(file_id);
@@ -498,7 +497,6 @@ int create_test_upload_file(char *filepath)
 
 int test_upload()
 {
-
     // initialize event loop and environment
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
@@ -508,9 +506,10 @@ int test_upload()
     assert(env != NULL);
 
     char *file_name = "genaro-test-upload.data";
-    int len = strlen(folder) + strlen(file_name);
+    int len = strlen(folder) + 1 + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
+    strcat(file, "/");
     strcat(file, file_name);
     file[len] = '\0';
 
@@ -564,9 +563,10 @@ int test_upload_cancel()
     assert(env != NULL);
 
     char *file_name = "genaro-test-upload.data";
-    int len = strlen(folder) + strlen(file_name);
+    int len = strlen(folder) + 1 + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
+    strcat(file, "/");
     strcat(file, file_name);
     file[len] = '\0';
 
@@ -656,6 +656,7 @@ int test_download()
                                                               download_file,
                                                               renamed_file,
                                                               renamed_fp,
+                                                              true,
                                                               NULL,
                                                               check_resolve_file_progress,
                                                               check_resolve_file);
@@ -677,7 +678,6 @@ int test_download()
 
 int test_download_cancel()
 {
-
     // initialize event loop and environment
     genaro_env_t *env = genaro_init_env(&bridge_options,
                                       &encrypt_options,
@@ -707,6 +707,7 @@ int test_download_cancel()
                                                               download_file,
                                                               renamed_file,
                                                               renamed_fp,
+                                                              true,
                                                               NULL,
                                                               check_resolve_file_progress,
                                                               check_resolve_file_cancel);
@@ -737,7 +738,6 @@ int test_download_cancel()
         }
 
     } while (more == true);
-
 
     free(download_file);
     genaro_destroy_env(env);
@@ -1069,7 +1069,7 @@ int test_generate_seed()
     char *seed = calloc(128 + 1, sizeof(char));
     char *expected_seed = "9ca82ad4539dc5b861f3859df21051747ba3fadaad76b065219678883e33b6cfd021848d9359ca95eec18ab8dc9f8e3d665b8ac3eaf0eef1b40612e6661bb508";
 
-    mnemonic_to_seed(mnemonic, 128, "", &seed);
+    mnemonic_to_seed((uint8_t *)mnemonic, 128, "", &seed);
     seed[128] = '\0';
 
     int check = memcmp(seed, expected_seed, 128);
@@ -1094,7 +1094,7 @@ int test_generate_seed_256()
     char *seed = calloc(128 + 1, sizeof(char));
     char *expected_seed = "2facfb042cc06dc665f95578b2b74c682ad05233bb140202dd6aaaebc49177184a2841917b5188ae38e485e4b20add4affb42d77ec447b0c9f96ef3bfdf12cc8";
 
-    mnemonic_to_seed(mnemonic, 128, "", &seed);
+    mnemonic_to_seed((uint8_t *)mnemonic, 128, "", &seed);
     seed[128] = '\0';
 
     int check = memcmp(seed, expected_seed, 128);
@@ -1119,7 +1119,7 @@ int test_generate_seed_256_trezor()
     char *seed = calloc(128 + 1, sizeof(char));
     char *expected_seed = "ec8b9350a0671bb7fe0e2134aa850c054ace6375fd8ca2443f422315e17952829bf4d109e2e6f88f76d69cd741a7685fe0c94c57c5db9b4a734f0d4ad9a31407";
 
-    mnemonic_to_seed(mnemonic, 128, "TREZOR", &seed);
+    mnemonic_to_seed((uint8_t *)mnemonic, 128, "TREZOR", &seed);
     seed[128] = '\0';
 
     int check = memcmp(seed, expected_seed, 128);
@@ -1145,7 +1145,7 @@ int test_generate_bucket_key()
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     char *expected_bucket_key = "06b02124888a696e1da6a739042a4e7a4fb14e44b752f879f0cb2c5491c701a7";
 
-    generate_bucket_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
+    generate_bucket_key((uint8_t *)mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     int check = memcmp(expected_bucket_key, bucket_key, DETERMINISTIC_KEY_SIZE);
@@ -1168,12 +1168,11 @@ int test_generate_file_key()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
-    char *file_name = "samplefile.txt";
     char *index = "150589c9593bbebc0e795d8c4fa97304b42c110d9f0095abfac644763beca66e";
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     char *expected_file_key = "90fa3754222d837835de43d16fac901914fabd0598cedc1cb23be337b4203df7";
 
-    generate_file_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
+    generate_file_key((uint8_t *)mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
 
     int check = strcmp(expected_file_key, file_key);
     if (check != 0) {
@@ -1195,7 +1194,7 @@ int test_str2hex()
 {
     char *data = "632442ba2e5f28a3a4e68dcb0b45d1d8f097d5b47479d74e2259055aa25a08aa";
 
-    uint8_t *buffer = str2hex(64, data);
+    uint8_t *buffer = str_decode_to_hex(64, data);
 
     uint8_t expected[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
                               209,216,240,151,213,180,116,121,215,78,34,89,5,
@@ -1219,15 +1218,15 @@ int test_str2hex()
     return 0;
 }
 
-int test_hex2str()
+int test_hex_to_str()
 {
     uint8_t data[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
                               209,216,240,151,213,180,116,121,215,78,34,89,5,
                               90,162,90,8,170};
 
-    char *result = hex2str(32, data);
+    char *result = hex_encode_to_str(32, data);
     if (!result) {
-        fail("test_hex2str");
+        fail("test_hex_to_str");
         return 0;
     }
 
@@ -1239,9 +1238,9 @@ int test_hex2str()
     }
 
     if (failed) {
-        fail("test_hex2str");
+        fail("test_hex_to_str");
     } else {
-        pass("test_hex2str");
+        pass("test_hex_to_str");
     }
 
     free(result);
@@ -1430,12 +1429,19 @@ int test_increment_ctr_aes_iv()
 int test_meta_encryption_name(char *filename)
 {
 
-    uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
-                               81,126,137,21,253,171,48,217,184,188,8,137,3,
-                               4,83,50,30,251};
-    uint8_t iv[32] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,
-                      82,70,219,247,135,162,7,93,193,44,123,188,234,203,115,
-                      129,82};
+    // uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
+    //                            81,126,137,21,253,171,48,217,184,188,8,137,3,
+    //                            4,83,50,30,251};
+    // uint8_t iv[32] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,
+    //                   82,70,219,247,135,162,7,93,193,44,123,188,234,203,115,
+    //                   129,82};
+
+    uint8_t encrypt_key[32] = {11,22,0,133,172,219,64,35,54,53,171,23,146,160,
+                               81,33,137,21,253,171,48,217,184,188,8,137,3,
+                               4,83,50,33,251};
+    uint8_t iv[32] = {44,219,247,135,162,7,93,193,44,123,188,234,203,115,129,
+                      82,44,219,247,44,162,7,93,193,44,123,188,234,203,115,
+                      12,82};
 
     char *buffer = NULL;
     encrypt_meta(filename, encrypt_key, iv, &buffer);
@@ -1474,11 +1480,11 @@ int test_meta_encryption()
 
 int test_memory_mapping()
 {
-
     char *file_name = "genaro-memory-map.data";
-    int len = strlen(folder) + strlen(file_name);
+    int len = strlen(folder) + 1 + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
+    strcat(file, "/");
     strcat(file, file_name);
     file[len] = '\0';
 
@@ -1554,6 +1560,229 @@ int test_memory_mapping()
     return 0;
 }
 
+static int encrypt_file(char *file_path, char *encrypted_file_path, uint8_t *key, uint8_t *ctr)
+{
+    int ret = 0;
+
+    // Initialize the encryption context
+    genaro_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(ctr, key);
+    if (!encryption_ctx) {
+        return 1;
+    }
+
+    uint8_t cphr_txt[AES_BLOCK_SIZE * 256];
+    memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
+    char read_data[AES_BLOCK_SIZE * 256];
+    memset_zero(read_data, AES_BLOCK_SIZE * 256);
+    unsigned long int read_bytes = 0;
+    unsigned long int written_bytes = 0;
+    uint64_t total_read = 0;
+    uint64_t file_size = 0;
+
+    FILE *original_file = fopen(file_path, "r");
+    FILE *encrypted_file = fopen(encrypted_file_path, "w+");
+
+    if (original_file == NULL || encrypted_file == NULL) {
+        ret = 2;
+        goto clean_variables;
+    }
+
+    fseek(original_file, 0, SEEK_END);
+    file_size = ftell(original_file);
+    fseek(original_file, 0, SEEK_SET);
+
+    do {
+        read_bytes = pread(fileno(original_file),
+                           read_data, AES_BLOCK_SIZE * 256,
+                           total_read);
+
+        if (read_bytes == -1) {
+            ret = 4;
+            goto clean_variables;
+        }
+
+        // Encrypt data
+        ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
+                  (uint8_t *)cphr_txt, (uint8_t *)read_data);
+
+        written_bytes = pwrite(fileno(encrypted_file), cphr_txt, read_bytes, total_read);
+        if (written_bytes != read_bytes) {
+            ret = 4;
+            goto clean_variables;
+        }
+
+        memset_zero(read_data, AES_BLOCK_SIZE * 256);
+        memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
+
+        total_read += read_bytes;
+    } while(total_read < file_size && read_bytes > 0);
+
+clean_variables:
+    if (original_file) {
+        fclose(original_file);
+    }
+    if (encrypted_file) {
+        fclose(encrypted_file);
+    }
+    if (encryption_ctx) {
+        free_encryption_ctx(encryption_ctx);
+    }
+
+    return ret;
+}
+
+static int decrypt_file(char *destination_file_path, uint8_t *key, uint8_t *ctr)
+{
+    int ret = 0;
+    uint64_t file_size = 0;
+    uint8_t *data_map = NULL;
+    struct aes256_ctx ctx;
+    uint64_t bytes_decrypted = 0;
+    size_t len = AES_BLOCK_SIZE * 8;
+
+    FILE *destination_file = fopen(destination_file_path, "r+");
+
+    if (destination_file == NULL) {
+        ret = 1;
+        goto clean_variables;
+    }
+
+    fseek(destination_file, 0, SEEK_END);
+    file_size = ftell(destination_file);
+    fseek(destination_file, 0, SEEK_SET);
+
+    int error = map_file(fileno(destination_file), file_size, &data_map, false);
+    if (error) {
+        ret = 2;
+        goto clean_variables;
+    }
+
+    aes256_set_encrypt_key(&ctx, key);
+
+    while (bytes_decrypted < file_size) {
+        if (bytes_decrypted + len > file_size) {
+            len = file_size - bytes_decrypted;
+        }
+
+        ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
+                AES_BLOCK_SIZE, ctr,
+                len,
+                data_map + bytes_decrypted,
+                data_map + bytes_decrypted);
+
+        bytes_decrypted += len;
+    }
+
+    if(data_map) {
+        error = unmap_file(data_map, file_size);
+        if (error) {
+            ret = 3;
+            goto clean_variables;
+        }
+    }
+
+clean_variables:
+    if (destination_file) {
+        fclose(destination_file);
+    }
+
+    return ret;
+}
+
+int test_encrypt_and_decrypt_file()
+{
+    uint8_t key[AES_BLOCK_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+    uint8_t ctr[AES_BLOCK_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+    char *file_name = "test_encrypt_and_decrypt_file.txt";
+    char *destination_file_path = "destination.txt";
+
+    FILE *new_file = fopen(file_name, "w+");
+    if(!new_file) {
+        printf("failed to open file: %s\n", file_name);
+        return 1;
+    }
+
+    size_t file_size = 3 * 1024 * 1024;  // bytes
+    char *data = (char *)malloc((file_size + 1) * sizeof(char));
+    if(!data) {
+        printf("failed to malloc\n");
+        return 1;
+    }
+    memset(data, '1', file_size);
+    data[file_size] = 0;
+    size_t written_bytes = fwrite(data, 1, file_size, new_file);
+    free(data);
+    fclose(new_file);
+    if(written_bytes != file_size) {
+        printf("failed to write file\n");
+        return 1;
+    }
+
+    int error = encrypt_file(file_name, destination_file_path, key, ctr);
+    if(error) {
+        printf("failed to encrypt file: %s\n", file_name);
+        fail("test_encrypt_and_decrypt_file");
+        return 1;
+    }
+
+    error = decrypt_file(destination_file_path, key, ctr);
+    if(error) {
+        printf("failed to decrypt file: %s, ret: %d\n", file_name, error);
+        fail("test_encrypt_and_decrypt_file");
+        return 1;
+    }
+
+    FILE *original_file = fopen(file_name, "rb");
+    if(!original_file) {
+        printf("failed to open file: %s\n", file_name);
+        return 1;
+    }
+
+    FILE *destination_file = fopen(destination_file_path, "rb");
+    if(!destination_file) {
+        printf("failed to open file: %s\n", destination_file_path);
+        return 1;
+    }
+
+    uint8_t *original_data = (uint8_t *)malloc(file_size);
+    if(!original_data) {
+        printf("failed to malloc\n");
+        return 1;
+    }
+
+    uint8_t *decrypted_data = (uint8_t *)malloc(file_size);
+    if(!decrypted_data) {
+        printf("failed to malloc\n");
+        return 1;
+    }
+
+    size_t original_read_bytes = fread(original_data, 1, file_size, original_file);
+    size_t decrypted_read_bytes = fread(decrypted_data, 1, file_size, destination_file);
+    fclose(original_file);
+    fclose(destination_file);
+    if(original_read_bytes != file_size || decrypted_read_bytes != file_size) {
+        printf("failed to read file\n");
+        return 1;
+    }
+
+    error = memcmp(original_data, decrypted_data, file_size);
+    free(original_data);
+    free(decrypted_data);
+    if(error) {
+        printf("the decrypted file is not the same as the original file\n");
+        fail("test_encrypt_and_decrypt_file");
+        return 1;
+    }
+
+    pass("test_encrypt_and_decrypt_file");
+    return 0;
+}
+
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
@@ -1607,7 +1836,7 @@ int main(void)
 
     printf("Test Suite: Utils\n");
     test_str2hex();
-    test_hex2str();
+    test_hex_to_str();
     test_get_time_milliseconds();
     test_determine_shard_size();
     test_memory_mapping();
@@ -1615,6 +1844,7 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_api();
+    test_encrypt_and_decrypt_file();
     // test_api_badauth();
     printf("\n");
 

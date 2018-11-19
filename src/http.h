@@ -123,6 +123,7 @@ int put_shard(genaro_http_options_t *http_options,
 /**
  * @brief Make a HTTP request for a shard
  *
+ * @param[in] state A pointer to the download state
  * @param[in] http_options The HTTP options including proxy
  * @param[in] farmer_id The farmer id
  * @param[in] proto The protocol "http" or "https"
@@ -137,7 +138,8 @@ int put_shard(genaro_http_options_t *http_options,
  * @param[in] canceled Pointer for canceling downloads
  * @return A non-zero error value on failure and 0 on success.
  */
-int fetch_shard(genaro_http_options_t *http_options,
+int fetch_shard(genaro_download_state_t *state,
+                genaro_http_options_t *http_options,
                 char *farmer_id,
                 char *proto,
                 char *host,

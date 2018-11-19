@@ -7,47 +7,9 @@ void test_ripemd160sha256_as_string()
 
     char digest[RIPEMD160_DIGEST_SIZE * 2 + 1] = { 0 };
 
-    // printf("input:\n");
-    // printf("  data:");
-    // for(int i = 0; i < RIPEMD160_DIGEST_SIZE; i++)
-    // {
-    //     printf(" %02x", data[i]);
-    // }
-    // printf("\n");
-
     ripemd160sha256_as_string(data, RIPEMD160_DIGEST_SIZE, digest);
 
     printf("\tdigest:%s\n", digest);
-}
-
-void test_generate_bucket_key()
-{
-    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-    char *bucket_id = "0123456789ab0123456789ab";
-    char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    // char *expected_bucket_key = "06b02124888a696e1da6a739042a4e7a4fb14e44b752f879f0cb2c5491c701a7";
-
-    generate_bucket_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
-    bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
-
-    printf("\tbucket_key:%s\n", bucket_key);
-
-    free(bucket_key);
-}
-
-void test_generate_file_key()
-{
-    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-    char *bucket_id = "0123456789ab0123456789ab";
-    char *index = "150589c9593bbebc0e795d8c4fa97304b42c110d9f0095abfac644763beca66e";
-    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    // char *expected_file_key = "90fa3754222d837835de43d16fac901914fabd0598cedc1cb23be337b4203df7";
-
-    generate_file_key(mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
-
-    printf("\tfile_key:%s\n", file_key);
-
-    free(file_key);
 }
 
 void test_sha256_of_str()
@@ -110,53 +72,34 @@ void test_ripemd160_of_str()
     printf("\n");
 }
 
-// void test_sha512_of_str()
-// {
-//     /*testcase 1*/
-//     uint8_t digest1[SHA512_DIGEST_SIZE] = { 0 };
-//     uint8_t str1[20] = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa};
-
-//     sha512_of_str(str1, 20, digest1);
-
-//     printf("\tdigest1:");
-//     for(int i = 0; i < SHA512_DIGEST_SIZE; i++)
-//     {
-//         printf(" %02x", digest1[i]);
-//     }
-//     printf("\n");
-
-//     /*testcase 2*/
-//     uint8_t digest2[SHA512_DIGEST_SIZE] = { 0 };
-//     char *temp = "abcde";
-//     uint8_t *str2 = (uint8_t *)temp;
-
-//     sha512_of_str(str2, strlen(temp), digest2);
-
-//     printf("\tdigest2:");
-//     for(int i = 0; i < SHA512_DIGEST_SIZE; i++)
-//     {
-//         printf(" %02x", digest2[i]);
-//     }
-//     printf("\n");
-// }
-
-void test_increment_ctr_aes_iv()
+void test_sha512_of_str()
 {
-    uint8_t iv[16] = {188,14,95,229,78,112,182,107,
-                        34,206,248,225,52,22,16,183};
+    /*testcase 1*/
+    uint8_t digest1[SHA512_DIGEST_SIZE] = { 0 };
+    uint8_t str1[20] = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa};
 
-    int ret1 = increment_ctr_aes_iv(iv, 1);
-    printf("\tret1:%d\n", ret1);
+    sha512_of_str(str1, 20, digest1);
 
-    int ret2 = increment_ctr_aes_iv(iv, AES_BLOCK_SIZE);
-    printf("\tret2:%d\n", ret2);
+    printf("\tdigest1:");
+    for(int i = 0; i < SHA512_DIGEST_SIZE; i++)
+    {
+        printf(" %02x", digest1[i]);
+    }
+    printf("\n");
 
-    printf("\tiv[15]:%d\n", iv[15]);
+    /*testcase 2*/
+    uint8_t digest2[SHA512_DIGEST_SIZE] = { 0 };
+    char *temp = "abcde";
+    uint8_t *str2 = (uint8_t *)temp;
 
-    int ret3 = increment_ctr_aes_iv(iv, AES_BLOCK_SIZE * 72);
-    printf("\tret3:%d\n", ret3);
-    
-    printf("\tiv[15]:%d, iv[14]:%d\n", iv[15], iv[14]);
+    sha512_of_str(str2, strlen(temp), digest2);
+
+    printf("\tdigest2:");
+    for(int i = 0; i < SHA512_DIGEST_SIZE; i++)
+    {
+        printf(" %02x", digest2[i]);
+    }
+    printf("\n");
 }
 
 void test_encrypt_meta()
@@ -237,19 +180,63 @@ int test_meta_encryption()
     return 0;
 }
 
+int test_encrypt_data()
+{
+    char *data = "hello world!你好！";
+    char *encrypted = NULL;
+    encrypt_data("abcdef", "hijk", data, &encrypted);
+
+    printf("encrypted:%s\n", encrypted);
+
+    return 0;
+}
+
+int test_decrypt_data()
+{
+    char *encrypted = "51718eef598ae918b8f41937f8bf51580aaca2ba32059908b332cbcfb6fd44450fd188487cedfb7cfdf3afc76485a68e8bd5288e083ed57c22eee1dc9b62cc7ed639d50fca";
+    char *data = NULL;
+    decrypt_data("abcdef", "hijk", encrypted, &data);
+
+    printf("data:%s\n", data);
+
+    return 0;
+}
+
+int test_encrypt_meta_hmac_sha512()
+{
+    char *meta = "hello world!你好！";
+    uint8_t priv_key[10] = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9};
+    size_t key_len = 10;
+
+    char *encrypted = NULL;
+
+    encrypt_meta_hmac_sha512(meta, priv_key, key_len, BUCKET_NAME_MAGIC, &encrypted);
+
+    printf("encrypted:%s\n", encrypted);
+    
+    return 0;
+}
+
+int test_decrypt_meta_hmac_sha512()
+{
+    char *encrypted = "ehi7zNMMvkGQxlJFemKBdyWTclqRLlx7Fth7lqhnV3dJVDRazVqgtqpSqont5MRAt9FH+oPdpBktZ9uZcoF6Bzv3NAj/";
+    uint8_t priv_key[10] = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9};
+    size_t key_len = 10;
+
+    char *data = NULL;
+
+    decrypt_meta_hmac_sha512(encrypted, priv_key, key_len, BUCKET_NAME_MAGIC, &data);
+
+    printf("data:%s\n", data);
+
+    return 0;
+}
+
 int main()
 {
     printf("\n----BEGIN TEST ripemd160sha256_as_string----\n");
     test_ripemd160sha256_as_string();
     printf("----END TEST ripemd160sha256_as_string----\n");
-
-    printf("\n----BEGIN TEST generate_bucket_key----\n");
-    test_generate_bucket_key();
-    printf("----END TEST generate_bucket_key----\n");
-
-    printf("\n----BEGIN TEST generate_file_key----\n");
-    test_generate_file_key();
-    printf("----END TEST generate_file_key----\n");
 
     printf("\n----BEGIN TEST sha256_of_str----\n");
     test_sha256_of_str();
@@ -259,13 +246,9 @@ int main()
     test_ripemd160_of_str();
     printf("----END TEST ripemd160_of_str----\n");
     
-    // printf("\n----BEGIN TEST sha256_of_str----\n");
-    // test_sha512_of_str();
-    // printf("----END TEST sha256_of_str----\n");
-
-    printf("\n----BEGIN TEST increment_ctr_aes_iv----\n");
-    test_increment_ctr_aes_iv();
-    printf("----END TEST increment_ctr_aes_iv----\n");
+    printf("\n----BEGIN TEST sha256_of_str----\n");
+    test_sha512_of_str();
+    printf("----END TEST sha256_of_str----\n");
 
     printf("\n----BEGIN TEST encrypt_meta----\n");
     test_encrypt_meta();
@@ -279,5 +262,21 @@ int main()
     test_meta_encryption();
     printf("----END TEST encrypt_meta/decrypt_meta----\n");
 
+    printf("\n----BEGIN TEST encrypt_data----\n");
+    test_encrypt_data();
+    printf("----END TEST encrypt_data----\n");
+
+    printf("\n----BEGIN TEST decrypt_data----\n");
+    test_decrypt_data();
+    printf("----END TEST decrypt_data----\n");
+
+    printf("\n----BEGIN TEST encrypt_meta_hmac_sha512----\n");
+    test_encrypt_meta_hmac_sha512();
+    printf("----END TEST encrypt_meta_hmac_sha512----\n");
+
+    printf("\n----BEGIN TEST decrypt_meta_hmac_sha512----\n");
+    test_decrypt_meta_hmac_sha512();
+    printf("----END TEST decrypt_meta_hmac_sha512----\n");
+    
     return 0;
 }

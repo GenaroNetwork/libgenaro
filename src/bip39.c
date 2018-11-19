@@ -209,7 +209,7 @@ int mnemonic_to_seed(uint8_t *priv_key, size_t key_len, const char *passphrase,
         strlen((char *)salt), salt,
         SHA512_DIGEST_SIZE, seed);
 
-    char *sha512_str = hex2str(SHA512_DIGEST_SIZE, seed);
+    char *sha512_str = hex_encode_to_str(SHA512_DIGEST_SIZE, seed);
     if (!sha512_str) {
         return 0;
     }

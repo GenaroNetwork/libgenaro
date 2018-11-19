@@ -5,6 +5,7 @@
 #include "../src/bip39.h"
 #include "../src/utils.h"
 #include "../src/crypto.h"
+#include "../src/uploader.h"
 
 #include "mockbridge.json.h"
 #include "mockbridgeinfo.json.h"

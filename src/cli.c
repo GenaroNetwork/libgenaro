@@ -36,7 +36,6 @@ static inline void noop() {};
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
     "  remove-file <bucket-id> <file-id>\n"                             \
-    "  add-bucket <name> \n"                                            \
     "  remove-bucket <bucket-id>\n"                                     \
     "  rename-bucket <bucket-id> <new-bucket-name>\n"                   \
     "  list-mirrors <bucket-id> <file-id>\n\n"                          \
@@ -56,7 +55,7 @@ static inline void noop() {};
     "environment variables:\n"                                          \
     "  GENARO_BRIDGE                  the bridge host "
 
-#define CLI_VERSION "libgenaro-2.0.0-beta"
+#define CLI_VERSION "libgenaro-4.0.0"
 
 static void json_logger(const char *message, int level, void *handle)
 {
@@ -302,6 +301,7 @@ static int get_password(char *password, int mask)
     return idx; /* number of chars in passwd    */
 }
 
+/*
 static int get_password_verify(char *prompt, char *password, int count)
 {
     printf("%s", prompt);
@@ -328,6 +328,7 @@ static int get_password_verify(char *prompt, char *password, int count)
         return get_password_verify(prompt, password, count);
     }
 }
+*/
 
 void close_signal(uv_handle_t *handle)
 {
@@ -362,7 +363,8 @@ static void file_progress(double progress,
     fflush(stdout);
 }
 
-static void upload_file_complete(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle)
+static void upload_file_complete(const char *bucket_id, const char *file_name, int error_status, char *file_id,
+                                 uint64_t file_bytes, char *sha256_of_encrypted, void *handle)
 {
     printf("\n");
     if (error_status != 0) {
@@ -424,8 +426,6 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
     uv_signal_init(env->loop, sig);
     uv_signal_start(sig, upload_signal_handler, SIGINT);
 
-
-
     genaro_progress_upload_cb progress_cb = (genaro_progress_upload_cb)noop;
     if (env->log_options->level == 0) {
         progress_cb = file_progress;
@@ -434,13 +434,13 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
     genaro_encryption_info_t *encryption_info = genaro_generate_encryption_info(env, NULL, bucket_id);
     genaro_key_ctr_as_str_t *rsa_key_ctr_as_str = NULL;
     genaro_upload_state_t *state = genaro_bridge_store_file(env,
-                                                          &upload_opts,
-                                                          encryption_info->index,
-                                                          encryption_info->key_ctr_as_str,
-                                                          rsa_key_ctr_as_str,
-                                                          NULL,
-                                                          progress_cb,
-                                                          upload_file_complete);
+                                                            &upload_opts,
+                                                            encryption_info->index,
+                                                            encryption_info->key_ctr_as_str,
+                                                            rsa_key_ctr_as_str,
+                                                            NULL,
+                                                            progress_cb,
+                                                            upload_file_complete);
 
     if (!state) {
         return 1;
@@ -451,7 +451,8 @@ static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path
     return state->error_status;
 }
 
-static void download_file_complete(int status, const char *file_name, const char *temp_file_name, FILE *fd, void *handle)
+static void download_file_complete(int status, const char *file_name, const char *temp_file_name,
+                                   FILE *fd, uint64_t file_bytes, char *sha256, void *handle)
 {
     printf("\n");
     fclose(fd);
@@ -613,7 +614,7 @@ static int download_file(genaro_env_t *env, char *bucket_id,
 
     genaro_download_state_t *state = genaro_bridge_resolve_file(env, bucket_id,
                                                               file_id, NULL, strdup(path), 
-                                                              renamed_path, fd, NULL,
+                                                              renamed_path, fd, true, NULL,
                                                               progress_cb,
                                                               download_file_complete);
     if (!state) {
@@ -645,12 +646,9 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
 
     struct json_object *shard;
     struct json_object *established;
-    struct json_object *available;
     struct json_object *item;
     struct json_object *hash;
     struct json_object *contract;
-    struct json_object *address;
-    struct json_object *port;
     struct json_object *node_id;
 
     for (int i = 0; i < num_mirrors; i++) {
@@ -910,7 +908,7 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
 //        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
 //               bucket->id, bucket->decrypted ? "true" : "false",
 //               bucket->created, bucket->name);
-        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s \tlimitStorage: %ld \tusedStorage: %ld \ttimeStart: %ld \ttimeEnd: %ld\n",
+        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s \tlimitStorage: %" PRIu64 "\tusedStorage: %" PRIu64 "\ttimeStart: %" PRIu64 "\ttimeEnd: %" PRIu64 "\n",
                bucket->id, bucket->decrypted ? "true" : "false",
                bucket->created, bucket->name, bucket->limitStorage, bucket->usedStorage, bucket->timeStart, bucket->timeEnd);
     }
@@ -919,6 +917,7 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+/*
 static void create_bucket_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -953,6 +952,7 @@ clean_variables:
     free(req);
     free(work_req);
 }
+*/
 
 static void get_info_callback(uv_work_t *work_req, int status)
 {
@@ -1298,7 +1298,8 @@ int main(int argc, char **argv)
             }
 
             genaro_bridge_list_files(env, bucket_id, NULL, list_files_callback);
-        } else if (strcmp(command, "add-bucket") == 0) {
+        } 
+        /*else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];
 
             if (!bucket_name) {
@@ -1310,7 +1311,8 @@ int main(int argc, char **argv)
             genaro_bridge_create_bucket(env, bucket_name,
                                        NULL, create_bucket_callback);
 
-        } else if (strcmp(command, "remove-bucket") == 0) {
+        }*/
+        else if (strcmp(command, "remove-bucket") == 0) {
             char *bucket_id = argv[command_index + 1];
 
             if (!bucket_id) {

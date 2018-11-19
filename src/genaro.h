@@ -33,6 +33,7 @@ extern "C" {
 #include <uv.h>
 #include <curl/curl.h>
 #include <secp256k1.h>
+#include <nettle/sha.h>
 
 #include <inttypes.h>
 
@@ -136,7 +137,6 @@ typedef struct {
 } genaro_encryption_info_t;
 
 typedef struct {
-    uint8_t *encryption_key;
     uint8_t *encryption_ctr;
     struct aes256_ctx *ctx;
 } genaro_encryption_ctx_t;
@@ -249,6 +249,7 @@ typedef struct {
     const char *name;
     const char *id;
     const char *bucketId;
+    int32_t type;
     bool decrypted;
     uint64_t limitStorage;
     uint64_t usedStorage;
@@ -386,8 +387,6 @@ typedef enum {
     BUCKET_PULL
 } genaro_bucket_op_t;
 
-static const char *BUCKET_OP[] = { "PUSH", "PULL" };
-
 /** @brief A data structure that represents an exchange report
  *
  * These are sent at the end of an exchange with a farmer to report the
@@ -416,8 +415,8 @@ typedef struct {
 */
 
 typedef void (*genaro_progress_upload_cb)(double progress,
-                                  uint64_t file_bytes,
-                                  void *handle);
+                                          uint64_t file_bytes,
+                                          void *handle);
 
 /*typedef void (*genaro_progress_download_cb)(double progress,
                                   uint64_t bytes,
@@ -425,18 +424,28 @@ typedef void (*genaro_progress_upload_cb)(double progress,
                                   void *handle);*/
 
 typedef void (*genaro_progress_download_cb)(double progress,
-                                  uint64_t file_bytes,
-                                  void *handle);
+                                            uint64_t file_bytes,
+                                            void *handle);
 
 /** @brief A function signature for a download complete callback
  */
-typedef void (*genaro_finished_download_cb)(int status, const char *file_name, 
-                                            const char *temp_file_name, FILE *fd, 
+typedef void (*genaro_finished_download_cb)(int status,
+                                            const char *file_name,
+                                            const char *temp_file_name,
+                                            FILE *fd,
+                                            uint64_t file_bytes,
+                                            char *sha256,
                                             void *handle);
 
 /** @brief A function signature for an upload complete callback
  */
-typedef void (*genaro_finished_upload_cb)(const char *bucket_id, const char *file_name, int error_status, char *file_id, void *handle);
+typedef void (*genaro_finished_upload_cb)(const char *bucket_id,
+                                          const char *file_name,
+                                          int error_status,
+                                          char *file_id,
+                                          uint64_t file_bytes,
+                                          char *sha256_of_encrypted,  // The sha256 value of the encrypted file(not including the parity shards)
+                                          void *handle);
 
 /** @brief A structure that represents a pointer to a shard
  *
@@ -517,12 +526,19 @@ typedef struct genaro_download_state {
     uint32_t pointer_fail_count;
     bool requesting_pointers;
     int error_status;
+    char *error_from_bridge;
     bool writing;
     genaro_key_ctr_t *key_ctr;
     const char *hmac;
     uint32_t pending_work_count;
     genaro_log_levels_t *log;
+    bool decrypt;
     void *handle;
+
+    uint64_t file_size;
+
+    // sha256 of the downloaded file
+    char *sha256;
 } genaro_download_state_t;
 
 typedef struct {
@@ -614,10 +630,15 @@ typedef struct genaro_upload_state {
     genaro_progress_upload_cb progress_cb;
     genaro_finished_upload_cb finished_cb;
     int error_status;
+    char *error_from_bridge;
     genaro_log_levels_t *log;
     void *handle;
     shard_tracker_t *shard;
     int pending_work_count;
+
+    // used to calculate the sha256 of the encrypted file(not including the parity shards)
+    struct sha256_ctx sha256_of_encrypted_ctx;
+    char *sha256_of_encrypted;
 } genaro_upload_state_t;
 
 typedef struct {
@@ -992,11 +1013,11 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
  * @param[in] env A pointer to environment
  * @param[in] bucket_id Character array of bucket id
  * @param[in] file_id Character array of file id
- * @param[in] decryption_key The file encryption/decryption key.
- * @param[in] decryption_ctr The file encryption/decryption ctr.
- * @param[in] file_name The file name include path.
- * @param[in] temp_file_name The temp file name include path.
+ * @param[in] key_ctr_as_str The file encryption/decryption key and ctr
+ * @param[in] file_name The file name include path
+ * @param[in] temp_file_name The temp file name include path
  * @param[in] destination File descriptor of the destination
+ * @param[in] decrypt Wheather to decrypt the file after download
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] progress_cb Function called with progress updates
  * @param[in] finished_cb Function called when download finished
@@ -1009,18 +1030,42 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
                                                                const char *file_name,
                                                                const char *temp_file_name,
                                                                FILE *destination,
+                                                               bool decrypt,
                                                                void *handle,
                                                                genaro_progress_download_cb progress_cb,
                                                                genaro_finished_download_cb finished_cb);
+
 /**
- * @brief Decrypt an encrypted name
+ * @brief Encrypt meta information using AES-256-GCM and HMAC-SHA256
  *
  * @param[in] env A pointer to environment
- * @param[in] encrypted_name A pointer to the encrypted name
- * @return NULL on failure and the decrypted name on success.
+ * @param[in] meta A pointer to the meta
+ * @return NULL on failure and the encrypted meta on success.
  */
-GENARO_API char *genaro_decrypt_name(genaro_env_t *env, 
-                                     const char * const encrypted_name);
+GENARO_API char *genaro_encrypt_meta(genaro_env_t *env, 
+                                     const char *meta);
+
+/**
+ * @brief Decrypt an encrypted meta
+ *
+ * @param[in] env A pointer to environment
+ * @param[in] encrypted_meta A pointer to the encrypted meta
+ * @return NULL on failure and the decrypted meta on success.
+ */
+GENARO_API char *genaro_decrypt_meta(genaro_env_t *env, 
+                                     const char *encrypted_meta);
+
+/**
+ * @brief Decrypt a file that hasn't been decrypted
+ *
+ * @param[in] env A pointer to environment
+ * @param[in] file_path The path of the undecrypted file
+ * @param[in] key_ctr_as_str The file encryption/decryption key and ctr 
+ * @return NULL on failure and the decrypted meta on success.
+ */
+GENARO_API char *genaro_decrypt_file(genaro_env_t *env, 
+                                     const char *file_path,
+                                     genaro_key_ctr_as_str_t *key_ctr_as_str);
 
 /*Curl debug function*/
 int curl_debug(CURL *pcurl, curl_infotype itype, char * pData, size_t size, void *userptr);

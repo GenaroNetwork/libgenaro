@@ -1,23 +1,13 @@
 #include "utils.h"
 
-char *hex2str(size_t length, uint8_t *data)
-{
-    size_t encode_len = BASE16_ENCODE_LENGTH(length);
-    uint8_t *result = calloc(encode_len + 1, sizeof(uint8_t));
-    if (!result) {
-        return NULL;
-    }
-
-    base16_encode_update(result, length, data);
-
-    return (char *)result;
-}
-
-void print_int_array(uint8_t *array, unsigned length)
+void print_int_array(uint8_t *array, unsigned length, bool is_hex)
 {
     printf("{");
     for (int i = 0; i < length; i++) {
-        printf("%i", array[i]);
+        if(is_hex)
+            printf("%02x", array[i]);
+        else
+            printf("%i", array[i]);
         if (i != length - 1) {
             printf(",");
         }
@@ -25,7 +15,33 @@ void print_int_array(uint8_t *array, unsigned length)
     printf("}\n");
 }
 
-uint8_t *str2hex(size_t length, char *data)
+char *hex_to_str(size_t length, uint8_t *data)
+{
+    char *result = (char *)calloc(length * 2 + 1, sizeof(char));
+
+    char byte[3];
+    for(int i = 0; i < length; i++) {
+        sprintf(byte, "%02x", data[i]);
+        strcat(result, byte);
+    }
+
+    return result;
+}
+
+char *hex_encode_to_str(size_t length, uint8_t *data)
+{
+    size_t encode_len = BASE16_ENCODE_LENGTH(length);
+    uint8_t *result = calloc(encode_len + 1, sizeof(uint8_t));
+    if (!result) {
+        return NULL;
+    }
+
+    base16_encode_update((char *)result, length, data);
+
+    return (char *)result;
+}
+
+uint8_t *str_decode_to_hex(size_t length, const char *data)
 {
     char *result = calloc(BASE16_DECODE_LENGTH(length) + 1, sizeof(char));
     if (!result) {
@@ -37,7 +53,7 @@ uint8_t *str2hex(size_t length, char *data)
 
     size_t decode_len = 0;
     if (!base16_decode_update(ctx, &decode_len, (uint8_t *)result,
-                              length, (uint8_t *)data)) {
+                              length, data)) {
         free(result);
         free(ctx);
         return NULL;
@@ -82,7 +98,6 @@ char *str_concat_many(int count, ...)
 
 void random_buffer(uint8_t *buf, size_t len)
 {
-    static FILE *frand = NULL;
 #ifdef _WIN32
     HCRYPTPROV hProvider;
     int ret = CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
@@ -91,6 +106,7 @@ void random_buffer(uint8_t *buf, size_t len)
     assert(ret);
     CryptReleaseContext(hProvider, 0);
 #else
+    static FILE *frand = NULL;
     if (!frand) {
         frand = fopen("/dev/urandom", "r");
     }
@@ -332,4 +348,40 @@ win_finished:
     }
 #endif
     return status;
+}
+
+size_t read_file(const char *file_path, char **buffer)
+{
+    FILE *fp;
+    fp = fopen(file_path, "r");
+    if (fp == NULL) {
+		return 0;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    size_t fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    *buffer = (char *)calloc(fsize + 1, sizeof(char));
+    if (*buffer == NULL) {
+		return 0;
+    }
+
+    size_t read_blocks = 0;
+    while ((!feof(fp)) && (!ferror(fp))) {
+        read_blocks = fread(*buffer + read_blocks, 1, fsize, fp);
+        if (read_blocks <= 0) {
+            break;
+        }
+    }
+
+    int error = ferror(fp);
+    fclose(fp);
+
+    if (error) {
+		free(*buffer);
+		return 0;
+    }
+
+    return fsize;
 }

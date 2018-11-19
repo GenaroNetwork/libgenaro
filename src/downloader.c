@@ -355,6 +355,14 @@ static void after_request_pointers(uv_work_t *work, int status)
     } else if (req->status_code == 429 || req->status_code == 420) {
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
     } else if (req->status_code != 200) {
+        struct json_object *error_value;
+        if (json_object_object_get_ex(req->response, "error", &error_value)) {
+            state->error_from_bridge = (char *)json_object_get_string(error_value);
+            state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+        } else {
+            state->error_from_bridge = NULL;
+        }
+        
         if (req->status_code > 0 && req->status_code < 500) {
             state->error_status = GENARO_BRIDGE_POINTER_ERROR;
         } else {
@@ -408,6 +416,14 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     } else if (req->status_code == 429 || req->status_code == 420) {
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
     } else if (req->status_code != 200) {
+        struct json_object *error_value;
+        if (json_object_object_get_ex(req->response, "error", &error_value)) {
+            state->error_from_bridge = (char *)json_object_get_string(error_value);
+            state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+        } else {
+            state->error_from_bridge = NULL;
+        }
+
         if (req->status_code > 0 && req->status_code < 500) {
             state->pointers[req->pointer_index].status = POINTER_MISSING;
         } else {
@@ -436,7 +452,6 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
                               true);
 
         if (state->pointers[req->pointer_index].index != req->pointer_index) {
-
             state->log->error(state->env->log_options,
                               state->handle,
                               "Replacement shard index %i does not match %i",
@@ -462,7 +477,6 @@ static void queue_request_pointers(genaro_download_state_t *state)
 
     // queue request to replace pointer if any pointers have failure
     for (int i = 0; i < state->total_pointers; i++) {
-
         genaro_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->replace_count >= GENARO_DEFAULT_MIRRORS) {
@@ -628,7 +642,8 @@ static void request_shard(uv_work_t *work)
 
     uint64_t file_position = req->pointer_index * req->state->shard_size;
 
-    int error_status = fetch_shard(req->http_options,
+    int error_status = fetch_shard(req->state,
+                                   req->http_options,
                                    req->farmer_id,
                                    req->farmer_proto,
                                    req->farmer_host,
@@ -645,9 +660,8 @@ static void request_shard(uv_work_t *work)
 
     req->end = get_time_milliseconds();
 
-    if(genaro_debug) {
-        printf("\nFinish download shard %d from %s:%d(nodeid: %s), time: %.1lfs\n", req->pointer_index, req->farmer_host, req->farmer_port, req->farmer_id, (req->end - req->start) / 1000.0);
-    }
+    req->state->log->debug(req->state->env->log_options, req->state->handle, "Finish download shard %d from %s:%d(nodeid: %s), time: %.1lfs", 
+                          req->pointer_index, req->farmer_host, req->farmer_port, req->farmer_id, (req->end - req->start) / 1000.0);
 
     if (write_code != 0) {
         req->state->log->error(req->state->env->log_options, req->state->handle,
@@ -767,7 +781,6 @@ static void after_request_shard(uv_work_t *work, int status)
     pointer->report->end = req->end;
 
     if (req->error_status) {
-
         req->state->log->warn(req->state->env->log_options,
                               req->state->handle,
                               "Error downloading shard: %s, reason: %s",
@@ -784,9 +797,7 @@ static void after_request_shard(uv_work_t *work, int status)
                 pointer->report->code = GENARO_REPORT_FAILURE;
                 pointer->report->message = GENARO_REPORT_DOWNLOAD_ERROR;
         }
-
     } else {
-
         req->state->log->info(req->state->env->log_options,
                               req->state->handle,
                               "Finished downloading shard: %s",
@@ -995,7 +1006,6 @@ static void queue_send_exchange_reports(genaro_download_state_t *state)
     }
 
     for (int i = 0; i < state->total_pointers; i++) {
-
         genaro_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->report->send_status < 1 &&
@@ -1059,7 +1069,7 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
     }
     file_key_as_str[DETERMINISTIC_KEY_SIZE] = '\0';
 
-    uint8_t *decrypt_key = str2hex(strlen(file_key_as_str), file_key_as_str);
+    uint8_t *decrypt_key = str_decode_to_hex(strlen(file_key_as_str), file_key_as_str);
     if (!decrypt_key) {
         state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
@@ -1067,7 +1077,7 @@ static void determine_decryption_key_v1(genaro_download_state_t *state)
 
     state->key_ctr->key = decrypt_key;
 
-    index = str2hex(strlen(state->info->index), (char *)state->info->index);
+    index = str_decode_to_hex(strlen(state->info->index), (char *)state->info->index);
     if (!index) {
         state->error_status = GENARO_MEMORY_ERROR;
         goto cleanup;
@@ -1183,7 +1193,6 @@ static void after_request_info(uv_work_t *work, int status)
 
         // Now that we have info we can calculate the decryption key
         determine_decryption_key(req->state);
-
     } else if (req->error_status) {
         switch(req->error_status) {
             case GENARO_BRIDGE_REQUEST_ERROR:
@@ -1238,6 +1247,14 @@ static void request_info(uv_work_t *work)
                                     true,
                                     &response,
                                     &status_code);
+
+    struct json_object *error_value;
+    if (json_object_object_get_ex(response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
 
     req->status_code = status_code;
 
@@ -1359,7 +1376,6 @@ static void request_info(uv_work_t *work)
         }
         char *hmac = (char *)json_object_get_string(hmac_value);
         req->info->hmac = strdup(hmac);
-
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = GENARO_BRIDGE_AUTH_ERROR;
     } else if (status_code == 404 || status_code == 400) {
@@ -1438,7 +1454,7 @@ static int prepare_file_hmac(genaro_download_state_t *state)
                                   &decode_len,
                                   hash,
                                   RIPEMD160_DIGEST_SIZE * 2,
-                                  (uint8_t *)pointer->shard_hash)) {
+                                  pointer->shard_hash)) {
             return 1;
 
         }
@@ -1458,7 +1474,7 @@ static int prepare_file_hmac(genaro_download_state_t *state)
         return 1;
     }
 
-    base16_encode_update((uint8_t *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
+    base16_encode_update((char *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
 
     return 0;
 }
@@ -1541,6 +1557,8 @@ static void recover_shards(uv_work_t *work)
     uint64_t bytes_decrypted = 0;
     size_t len = AES_BLOCK_SIZE * 8;
 
+    uint8_t sha256[SHA256_DIGEST_SIZE];
+
     // Make sure that the file is the correct size before recovering
     // shards in case that the last shard is the one being recovered.
 #ifdef _WIN32
@@ -1569,9 +1587,11 @@ static void recover_shards(uv_work_t *work)
     if (ftruncate(req->fd, req->filesize)) {
         // errno for more details
         req->error_status = GENARO_FILE_RESIZE_ERROR;
+        return;
     }
 #endif
 
+    // req->filesize includes the parity parts
     error = map_file(req->fd, req->filesize, &data_map, false);
     if (error) {
         req->error_status = GENARO_MAPPING_ERROR;
@@ -1596,6 +1616,7 @@ static void recover_shards(uv_work_t *work)
         goto finish;
     }
 
+    // fec: Forward Error Correction
     fec_blocks = (uint8_t**)malloc(req->parity_shards * sizeof(uint8_t *));
     if (!fec_blocks) {
         req->error_status = GENARO_MEMORY_ERROR;
@@ -1631,26 +1652,30 @@ static void recover_shards(uv_work_t *work)
     }
 
 decrypt:
+    if(state->decrypt) {
+        aes256_set_encrypt_key(&ctx, req->key_ctr.key);
 
-    aes256_set_encrypt_key(&ctx, req->key_ctr.key);
+        while (bytes_decrypted < req->data_filesize) {
+            if (bytes_decrypted + len > req->data_filesize) {
+                len = req->data_filesize - bytes_decrypted;
+            }
 
-    while (bytes_decrypted < req->data_filesize) {
+            ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
+                    AES_BLOCK_SIZE, req->key_ctr.ctr,
+                    len,
+                    data_map + bytes_decrypted,
+                    data_map + bytes_decrypted);
 
-        if (bytes_decrypted + len > req->data_filesize) {
-            len = req->data_filesize - bytes_decrypted;
+            bytes_decrypted += len;
         }
-
-        ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
-                  AES_BLOCK_SIZE, req->key_ctr.ctr,
-                  len,
-                  data_map + bytes_decrypted,
-                  data_map + bytes_decrypted);
-
-        bytes_decrypted += len;
     }
 
 finish:
-    if (data_map) {
+    if (!req->error_status) {
+        // Get the sha256 of the downloaded file, the second para is req->data_filesize, not req->filesize!
+        sha256_of_str(data_map, req->data_filesize, sha256);
+        state->sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);
+
         error = unmap_file(data_map, req->filesize);
         if (error) {
             req->error_status = GENARO_UNMAPPING_ERROR;
@@ -1670,7 +1695,6 @@ finish:
     }
 
 #ifdef _WIN32
-
     HANDLE file = (HANDLE)_get_osfhandle(req->fd);
     if (file == INVALID_HANDLE_VALUE) {
         req->error_status = GENARO_FILE_RESIZE_ERROR;
@@ -1690,20 +1714,18 @@ finish:
         req->error_status = GENARO_FILE_RESIZE_ERROR;
         return;
     }
-
 #else
     if (ftruncate(req->fd, req->data_filesize)) {
         // errno for more details
         req->error_status = GENARO_FILE_RESIZE_ERROR;
+        return;
     }
 #endif
-
 }
 
 static void queue_recover_shards(genaro_download_state_t *state)
 {
     if (!state->recovering_shards && state->pointers_completed) {
-
         int total_missing = 0;
         bool has_missing = false;
         bool is_ready = true;
@@ -1725,7 +1747,6 @@ static void queue_recover_shards(genaro_download_state_t *state)
                                   state->handle,
                                   "Pointer %i not ready with status: %i",
                                   i, pointer->status);
-
             }
         }
 
@@ -1759,6 +1780,8 @@ static void queue_recover_shards(genaro_download_state_t *state)
         req->shard_size = state->shard_size;
         req->zilch = zilch;
         req->has_missing = has_missing;
+
+        state->file_size = req->data_filesize;
 
         if (state->key_ctr && state->key_ctr->key && state->key_ctr->ctr) {
             req->key_ctr.key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
@@ -1810,6 +1833,8 @@ static void queue_next_work(genaro_download_state_t *state)
                                state->file_name,
                                state->temp_file_name,
                                state->destination,
+                               0,
+                               NULL,
                                state->handle);
 
             free_download_state(state);
@@ -1841,8 +1866,8 @@ static void queue_next_work(genaro_download_state_t *state)
             }
 
             state->finished = true;
-            state->finished_cb(state->error_status, state->file_name, 
-                state->temp_file_name, state->destination, state->handle);
+            state->finished_cb(state->error_status, state->file_name, state->temp_file_name,
+                state->destination, state->file_size, state->sha256, state->handle);
 
             free_download_state(state);
             return;
@@ -1882,7 +1907,6 @@ static void queue_next_work(genaro_download_state_t *state)
     queue_send_exchange_reports(state);
 
 finish_up:
-
     state->log->debug(state->env->log_options, state->handle,
                       "Pending work count: %d", state->pending_work_count);
 }
@@ -1910,15 +1934,16 @@ GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)
 }
 
 GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env,
-                                                            const char *bucket_id,
-                                                            const char *file_id,
-                                                            genaro_key_ctr_as_str_t *key_ctr_as_str,
-                                                            const char *file_name,
-                                                            const char *temp_file_name,
-                                                            FILE *destination,
-                                                            void *handle,
-                                                            genaro_progress_download_cb progress_cb,
-                                                            genaro_finished_download_cb finished_cb)
+                                                               const char *bucket_id,
+                                                               const char *file_id,
+                                                               genaro_key_ctr_as_str_t *key_ctr_as_str,
+                                                               const char *file_name,
+                                                               const char *temp_file_name,
+                                                               FILE *destination,
+                                                               bool decrypt,
+                                                               void *handle,
+                                                               genaro_progress_download_cb progress_cb,
+                                                               genaro_finished_download_cb finished_cb)
 {
     genaro_download_state_t *state = malloc(sizeof(genaro_download_state_t));
     if (!state) {
@@ -1952,6 +1977,7 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->pointer_fail_count = 0;
     state->requesting_pointers = false;
     state->error_status = GENARO_TRANSFER_OK;
+    state->error_from_bridge = NULL;
     state->writing = false;
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
@@ -1959,16 +1985,18 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
+    state->decrypt = decrypt;
     state->handle = handle;
     state->key_ctr = NULL;
+    state->file_size = 0;
     
     state->key_ctr = (genaro_key_ctr_t *)malloc(sizeof(genaro_key_ctr_t));
     if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
-        uint8_t *key = str2hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
-        uint8_t *ctr = str2hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
+        uint8_t *key = str_decode_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+        uint8_t *ctr = str_decode_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
 
-        free(key_ctr_as_str->key_as_str);
-        free(key_ctr_as_str->ctr_as_str);
+        free((void *)key_ctr_as_str->key_as_str);
+        free((void *)key_ctr_as_str->ctr_as_str);
         free(key_ctr_as_str);
 
         if (!key || !ctr) {
@@ -1982,8 +2010,50 @@ GENARO_API genaro_download_state_t *genaro_bridge_resolve_file(genaro_env_t *env
         state->key_ctr->ctr = NULL;
     }
 
+    state->sha256 = NULL;
+
     // start download
     queue_next_work(state);
 
     return state;
+}
+
+GENARO_API char *genaro_decrypt_file(genaro_env_t *env, 
+                                     const char *file_path,
+                                     genaro_key_ctr_as_str_t *key_ctr_as_str)
+{
+    char *file_data = NULL;
+    struct aes256_ctx ctx;
+    uint64_t bytes_decrypted = 0;
+    uint8_t *key = NULL;
+    uint8_t *ctr = NULL;
+    size_t len = AES_BLOCK_SIZE * 8;
+    size_t fsize = 0;
+    
+    if ((fsize = read_file(file_path, &file_data)) == 0) {
+        return NULL;
+    }
+
+    key = str_decode_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+    ctr = str_decode_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
+
+    aes256_set_encrypt_key(&ctx, key);
+
+    while (bytes_decrypted < fsize) {
+        if (bytes_decrypted + len > fsize) {
+            len = fsize - bytes_decrypted;
+        }
+
+        ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
+                AES_BLOCK_SIZE, ctr, len,
+                (uint8_t *)file_data + bytes_decrypted,
+                (const uint8_t *)file_data + bytes_decrypted);
+
+        bytes_decrypted += len;
+    }
+
+    free(key);
+    free(ctr);
+
+    return file_data;
 }

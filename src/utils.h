@@ -40,11 +40,13 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 
 int allocatefile(int fd, uint64_t length);
 
-char *hex2str(size_t length, uint8_t *data);
+void print_int_array(uint8_t *array, unsigned length, bool is_hex);
 
-void print_int_array(uint8_t *array, unsigned length);
+char *hex_to_str(size_t length, uint8_t *data);
 
-uint8_t *str2hex(size_t length, char *data);
+char *hex_encode_to_str(size_t length, uint8_t *data);
+
+uint8_t *str_decode_to_hex(size_t length, const char *data);
 
 char *str_concat_many(int count, ...);
 
@@ -61,5 +63,7 @@ uint64_t determine_shard_size(uint64_t file_size, int accumulator);
 int unmap_file(uint8_t *map, uint64_t filesize);
 
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
+
+size_t read_file(const char *file_path, char **buffer);
 
 #endif /* GENARO_UTILS_H */

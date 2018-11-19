@@ -67,6 +67,7 @@ static uv_work_t *frame_work_new(int *index, genaro_upload_state_t *state)
     req->error_status = 0;
     req->status_code = 0;
     req->log = state->log;
+    req->response = NULL;
 
     if (index != NULL) {
         req->shard_meta_index = *index;
@@ -167,7 +168,7 @@ static shard_meta_t *shard_meta_new()
     return meta;
 }
 
-static genaro_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
+genaro_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
 {
     genaro_encryption_ctx_t *ctx = calloc(sizeof(genaro_encryption_ctx_t), sizeof(char));
     if (!ctx) {
@@ -254,7 +255,7 @@ static void cleanup_state(genaro_upload_state_t *state)
     }
 
     if (state->index) {
-        free(state->index);
+        free((void *)state->index);
     }
 
     if (state->encrypted_file_name) {
@@ -279,11 +280,11 @@ static void cleanup_state(genaro_upload_state_t *state)
 
     if(state->rsa_key_ctr_as_str) {
         if (state->rsa_key_ctr_as_str->ctr_as_str) {
-            free(state->rsa_key_ctr_as_str->ctr_as_str);
+            free((void *)state->rsa_key_ctr_as_str->ctr_as_str);
         }
 
         if (state->rsa_key_ctr_as_str->key_as_str) {
-            free(state->rsa_key_ctr_as_str->key_as_str);
+            free((void *)state->rsa_key_ctr_as_str->key_as_str);
         }
 
         free(state->rsa_key_ctr_as_str);
@@ -326,19 +327,15 @@ static void cleanup_state(genaro_upload_state_t *state)
         free(state->shard);
     }
 
-    state->finished_cb(state->bucket_id, state->file_name, state->error_status, state->file_id, state->handle);
+    state->finished_cb(state->bucket_id, state->file_name, state->error_status, state->file_id, state->file_size, state->sha256_of_encrypted, state->handle);
 
     free(state);
 }
 
-static void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
+void free_encryption_ctx(genaro_encryption_ctx_t *ctx)
 {
     if (ctx->encryption_ctr) {
         free(ctx->encryption_ctr);
-    }
-
-    if (ctx->encryption_key) {
-        free(ctx->encryption_key);
     }
 
     if (ctx->ctx) {
@@ -363,6 +360,14 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
 
     state->add_bucket_entry_count += 1;
     state->creating_bucket_entry = false;
+
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
 
     if (req->error_status) {
         state->error_status = req->error_status;
@@ -508,7 +513,7 @@ static int prepare_bucket_entry_hmac(genaro_upload_state_t *state)
         uint8_t hash[RIPEMD160_DIGEST_SIZE];
         if (!base16_decode_update(&base16_ctx, &decode_len, hash,
                                   RIPEMD160_DIGEST_SIZE * 2,
-                                  (uint8_t *)shard->meta->hash)) {
+                                  shard->meta->hash)) {
             return 1;
 
         }
@@ -528,7 +533,7 @@ static int prepare_bucket_entry_hmac(genaro_upload_state_t *state)
         return 1;
     }
 
-    base16_encode_update((uint8_t *)state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
+    base16_encode_update(state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
 
     return 0;
 }
@@ -729,9 +734,11 @@ static void push_shard(uv_work_t *work)
                                req->canceled);
 
     uint64_t end = get_time_milliseconds();
-    if(genaro_debug) {
-        printf("\nFinish upload shard %d to %s:%s(nodeid: %s), time: %.1lfs\n", req->shard_meta_index, shard->pointer->farmer_address, shard->pointer->farmer_port, shard->pointer->farmer_node_id, (end - start) / 1000.0);
-    }
+
+
+    state->log->debug(state->env->log_options, state->handle, "Finish upload shard %d to %s:%s(nodeid: %s), time: %.1lfs", 
+                      req->shard_meta_index, shard->pointer->farmer_address, shard->pointer->farmer_port,
+                      shard->pointer->farmer_node_id, (end - start) / 1000.0);
 
     if (read_code != 0) {
         req->log->error(state->env->log_options, state->handle,
@@ -790,7 +797,7 @@ static void progress_put_shard(uv_async_t* async)
 
     double total_progress = (double)uploaded_bytes / (double)state->total_bytes;
 
-    // will not happen.
+    // will never happen
     if(total_progress > 1.0) {
         total_progress = 1.0;
     }
@@ -925,10 +932,16 @@ static void after_push_frame(uv_work_t *work, int status)
     // Increment request count every request for retry counts
     state->shard[req->shard_meta_index].push_frame_request_count += 1;
 
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
+
     if (req->status_code == 429 || req->status_code == 420) {
-
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
-
     } else if ((req->status_code == 200 || req->status_code == 201) &&
         pointer->token != NULL) {
         // Check if we got a 200 status and token
@@ -1021,6 +1034,11 @@ static void after_push_frame(uv_work_t *work, int status)
 
 clean_variables:
     queue_next_work(state);
+
+    if (req->response) {
+        json_object_put(req->response);
+    }
+
     if (pointer) {
         pointer_cleanup(pointer);
     }
@@ -1110,7 +1128,6 @@ static void push_frame(uv_work_t *work)
                     "fn[push_frame] - JSON body: %s", json_object_to_json_string(body));
 
     int status_code;
-    struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
                                     req->encrypt_options,
                                     req->options,
@@ -1119,12 +1136,12 @@ static void push_frame(uv_work_t *work)
                                     NULL,
                                     body,
                                     true,
-                                    &response,
+                                    &req->response,
                                     &status_code);
 
     req->log->debug(state->env->log_options, state->handle,
                     "fn[push_frame] - JSON Response: %s",
-                    json_object_to_json_string(response));
+                    json_object_to_json_string(req->response));
 
     if (request_status) {
         req->log->warn(state->env->log_options, state->handle,
@@ -1134,13 +1151,13 @@ static void push_frame(uv_work_t *work)
     }
 
     struct json_object *obj_token;
-    if (!json_object_object_get_ex(response, "token", &obj_token)) {
+    if (!json_object_object_get_ex(req->response, "token", &obj_token)) {
         req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
 
     struct json_object *obj_farmer;
-    if (!json_object_object_get_ex(response, "farmer", &obj_farmer)) {
+    if (!json_object_object_get_ex(req->response, "farmer", &obj_farmer)) {
         req->error_status = GENARO_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
@@ -1260,9 +1277,6 @@ static void push_frame(uv_work_t *work)
     req->status_code = status_code;
 
 clean_variables:
-    if (response) {
-        json_object_put(response);
-    }
     if (body) {
         json_object_put(body);
     }
@@ -1402,7 +1416,7 @@ static void prepare_frame(uv_work_t *work)
         memcpy(shard_meta->challenges[i], buff, 32);
 
         // Convert the uint8_t challenges to character arrays
-        char *challenge_as_str = hex2str(32, buff);
+        char *challenge_as_str = hex_encode_to_str(32, buff);
         if (!challenge_as_str) {
             req->error_status = GENARO_MEMORY_ERROR;
             goto clean_variables;
@@ -1479,9 +1493,11 @@ static void prepare_frame(uv_work_t *work)
             ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
                       (uint8_t *)cphr_txt, (uint8_t *)read_data);
+
+            sha256_update(&state->sha256_of_encrypted_ctx, read_bytes, cphr_txt);
         } else {
             // Just use the already encrypted data
-            memcpy(cphr_txt, read_data, AES_BLOCK_SIZE*256);
+            memcpy(cphr_txt, read_data, AES_BLOCK_SIZE * 256);
         }
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
@@ -1504,7 +1520,7 @@ static void prepare_frame(uv_work_t *work)
     ripemd160_of_str(prehash_sha256, SHA256_DIGEST_SIZE, prehash_ripemd160);
 
     // Shard Hash
-    char *hash = hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
+    char *hash = hex_encode_to_str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
     if (!hash) {
         req->error_status = GENARO_MEMORY_ERROR;
         goto clean_variables;
@@ -1595,7 +1611,6 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
 
     state->creating_encrypted_file = false;
 
-clean_variables:
     queue_next_work(state);
     free(work->data);
     free(work);
@@ -1661,6 +1676,7 @@ static void create_encrypted_file(uv_work_t *work)
                   (uint8_t *)cphr_txt, (uint8_t *)read_data);
 
         written_bytes = pwrite(fileno(encrypted_file), cphr_txt, read_bytes, total_read);
+        sha256_update(&state->sha256_of_encrypted_ctx, read_bytes, cphr_txt);
 
         memset_zero(read_data, AES_BLOCK_SIZE * 256);
         memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
@@ -1670,7 +1686,6 @@ static void create_encrypted_file(uv_work_t *work)
         if (written_bytes != read_bytes) {
             goto clean_variables;
         }
-
     } while(total_read < state->file_size && read_bytes > 0);
 
 clean_variables:
@@ -1685,7 +1700,7 @@ clean_variables:
         time(&end);
         double interval = (double)(end - start);
         if(interval > 10.0) {
-            printf("time of create_encrypted_file: %lfs\n", interval);
+            printf("Time of create_encrypted_file: %lfs\n", interval);
         }
     }
 }
@@ -1731,12 +1746,17 @@ static void after_request_frame_id(uv_work_t *work, int status)
 
     state->frame_request_count += 1;
 
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
+
     if (req->status_code == 429 || req->status_code == 420) {
-
         state->error_status = GENARO_BRIDGE_RATE_ERROR;
-
     } else if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
-
         state->log->info(state->env->log_options, state->handle,
                          "Successfully retrieved frame id: %s", req->frame_id);
 
@@ -1863,7 +1883,6 @@ static void after_create_parity_shards(uv_work_t *work, int status)
 
     }
 
-clean_variables:
     queue_next_work(state);
     free(work->data);
     free(work);
@@ -1912,7 +1931,6 @@ static void create_parity_shards(uv_work_t *work)
     uint64_t parity_size = state->total_shards * state->shard_size - state->file_size;
 
     // determine parity shard location
-    char *tmp_folder = NULL;
     if (!state->parity_file_path) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
@@ -1996,10 +2014,6 @@ clean_variables:
         free(fec_blocks);
     }
 
-    if (tmp_folder) {
-        free(tmp_folder);
-    }
-
     if (map) {
         unmap_file(map, state->file_size);
     }
@@ -2020,7 +2034,7 @@ clean_variables:
         time(&end);
         double interval = (double)(end - start);
         if(interval > 10.0) {
-            printf("time of create_parity_shards: %lfs\n", interval);
+            printf("Time of create_parity_shards: %lfs\n", interval);
         }
     }
 }
@@ -2186,6 +2200,14 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 
     state->pending_work_count -= 1;
     state->bucket_verify_count += 1;
+    
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
 
     if (req->status_code == 200) {
         state->bucket_verified = true;
@@ -2227,6 +2249,14 @@ static void verify_file_name_callback(uv_work_t *work_req, int status)
 
     state->pending_work_count -= 1;
     state->file_verify_count += 1;
+    
+    struct json_object *error_value;
+    if (json_object_object_get_ex(req->response, "error", &error_value)) {
+        state->error_from_bridge = (char *)json_object_get_string(error_value);
+        state->log->warn(state->env->log_options, state->handle, "Error from bridge: %s", state->error_from_bridge);
+    } else {
+        state->error_from_bridge = NULL;
+    }
 
     if (req->status_code == 404) {
         state->file_verified = true;
@@ -2356,7 +2386,6 @@ static int check_in_progress(genaro_upload_state_t *state, int status)
 static void queue_push_frame_and_shard(genaro_upload_state_t *state)
 {
     for (int index = 0; index < state->total_shards; index++) {
-
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
             state->shard[index].report->send_status == GENARO_REPORT_NOT_PREPARED &&
             check_in_progress(state, PUSHING_FRAME) < state->push_frame_limit) {
@@ -2433,6 +2462,11 @@ static void queue_next_work(genaro_upload_state_t *state)
     if (state->completed_shards == state->total_shards &&
         !state->creating_bucket_entry &&
         !state->completed_upload) {
+        // calculate the sha256 of the whole encrypted file.
+        uint8_t sha256[SHA256_DIGEST_SIZE];
+        sha256_digest(&state->sha256_of_encrypted_ctx, SHA256_DIGEST_SIZE, sha256);
+        state->sha256_of_encrypted = hex_to_str(SHA256_DIGEST_SIZE, sha256);
+
         queue_create_bucket_entry(state);
     }
 
@@ -2538,49 +2572,24 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].work = NULL;
     }
 
-    // Get the bucket key to encrypt the filename
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(state->env->encrypt_options->priv_key,
-                        state->env->encrypt_options->key_len,
-                        state->bucket_id,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
+    char *encrypted_file_name = NULL;
+    if (encrypt_meta_hmac_sha512(state->file_name,
+                                 state->env->encrypt_options->priv_key,
+                                 state->env->encrypt_options->key_len,
+                                 state->bucket_id,
+                                 &encrypted_file_name)) {
         state->error_status = GENARO_MEMORY_ERROR;
         return;
     }
-
-    free(bucket_key_as_str);
-
-    // Get file name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    // Generate the synthetic iv with first half of hmac w/ bucket and filename
-    struct hmac_sha512_ctx ctx2;
-    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(state->bucket_id),
-                       (uint8_t *)state->bucket_id);
-    hmac_sha512_update(&ctx2, strlen(state->file_name),
-                       (uint8_t *)state->file_name);
-    uint8_t filename_iv[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
-
-    free(bucket_key);
-
-    char *encrypted_file_name;
-    encrypt_meta(state->file_name, key, filename_iv, &encrypted_file_name);
-
     state->encrypted_file_name = encrypted_file_name;
 
     if (state->rs) {
-        state->parity_file_path = create_tmp_name(state, ".parity");
         state->encrypted_file_path = create_tmp_name(state, ".crypt");
+        state->parity_file_path = create_tmp_name(state, ".parity");
     }
+
+    // Initialize context for sha256 of the whole encrypted data
+    sha256_init(&state->sha256_of_encrypted_ctx);
 }
 
 char *create_tmp_name(genaro_upload_state_t *state, char *extension)
@@ -2605,9 +2614,9 @@ char *create_tmp_name(genaro_upload_state_t *state, char *extension)
     uint8_t digest[SHA256_DIGEST_SIZE];
     uint8_t digest_encoded[encode_len + 1];
     sha256_init(&ctx);
-    sha256_update(&ctx, file_name_len, state->encrypted_file_name);
+    sha256_update(&ctx, file_name_len, (const uint8_t *)state->encrypted_file_name);
     sha256_digest(&ctx, SHA256_DIGEST_SIZE, digest);
-    base16_encode_update(digest_encoded, SHA256_DIGEST_SIZE, digest);
+    base16_encode_update((char *)digest_encoded, SHA256_DIGEST_SIZE, digest);
     digest_encoded[encode_len] = '\0';
 
     sprintf(path,
@@ -2683,15 +2692,16 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     state->frame_id = NULL;
     state->hmac_id = NULL;
     state->index = index;
+    state->sha256_of_encrypted = NULL;
 
     if(key_ctr_as_str && key_ctr_as_str->key_as_str && key_ctr_as_str->ctr_as_str) {
         genaro_key_ctr_t *key_ctr = (genaro_key_ctr_t *)malloc(sizeof(genaro_key_ctr_t));
 
-        uint8_t *key = str2hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
-        uint8_t *ctr = str2hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
+        uint8_t *key = str_decode_to_hex(strlen(key_ctr_as_str->key_as_str), key_ctr_as_str->key_as_str);
+        uint8_t *ctr = str_decode_to_hex(strlen(key_ctr_as_str->ctr_as_str), key_ctr_as_str->ctr_as_str);
         
-        free(key_ctr_as_str->key_as_str);
-        free(key_ctr_as_str->ctr_as_str);
+        free((void *)key_ctr_as_str->key_as_str);
+        free((void *)key_ctr_as_str->ctr_as_str);
         free(key_ctr_as_str);
         
         if (!key || !ctr) {
@@ -2742,6 +2752,7 @@ GENARO_API genaro_upload_state_t *genaro_bridge_store_file(genaro_env_t *env,
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->error_status = 0;
+    state->error_from_bridge = NULL;
     state->log = env->log;
     state->handle = handle;
     state->shard = NULL;

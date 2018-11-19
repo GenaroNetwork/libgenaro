@@ -10,7 +10,7 @@ int ripemd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
     ripemd160sha256(data, data_size, ripemd160_digest);
 
     // Convert ripemd160 hex to character array
-    char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
+    char *ripemd160_str = hex_encode_to_str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
     if (!ripemd160_str) {
         return 1;
     }
@@ -77,7 +77,7 @@ int double_ripemd160sha256_as_string(uint8_t *data, uint64_t data_size,
     }
 
     // Convert ripemd160 hex to character array
-    char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
+    char *ripemd160_str = hex_encode_to_str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
     if (!ripemd160_str) {
         return 1;
     }
@@ -157,7 +157,7 @@ int get_deterministic_key(const char *key, int key_len,
     sha512input[input_len] = '\0';
 
     // Convert input to hexdata
-    uint8_t *sha512input_as_hex = str2hex(input_len, sha512input);
+    uint8_t *sha512input_as_hex = str_decode_to_hex(input_len, sha512input);
     if (!sha512input_as_hex) {
         return 2;
     }
@@ -167,7 +167,7 @@ int get_deterministic_key(const char *key, int key_len,
     sha512_of_str(sha512input_as_hex, input_len / 2, sha512_digest);
 
     // Convert Sha512 hex to character array
-    char *sha512_str = hex2str(SHA512_DIGEST_SIZE, sha512_digest);
+    char *sha512_str = hex_encode_to_str(SHA512_DIGEST_SIZE, sha512_digest);
     if (!sha512_str) {
         return 2;
     }
@@ -187,7 +187,7 @@ int get_deterministic_key(const char *key, int key_len,
     return 0;
 }
 
-int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest)
+int sha256_of_str(const uint8_t *str, size_t str_len, uint8_t *digest)
 {
     struct sha256_ctx ctx;
     sha256_init(&ctx);
@@ -197,7 +197,7 @@ int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest)
     return 0;
 }
 
-int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest)
+int ripemd160_of_str(const uint8_t *str, size_t str_len, uint8_t *digest)
 {
     struct ripemd160_ctx ctx;
     ripemd160_init(&ctx);
@@ -207,7 +207,7 @@ int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest)
     return 0;
 }
 
-int sha512_of_str(const uint8_t *str, int str_len, uint8_t *digest)
+int sha512_of_str(const uint8_t *str, size_t str_len, uint8_t *digest)
 {
     struct sha512_ctx ctx;
     sha512_init(&ctx);
@@ -278,7 +278,6 @@ uint8_t *key_from_passphrase(const char *passphrase, const char *salt)
 int decrypt_data(const char *passphrase, const char *salt, const char *data,
                  char **result)
 {
-
     uint8_t *key = key_from_passphrase(passphrase, salt);
     if (!key) {
         return 1;
@@ -292,7 +291,7 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
     }
     size_t enc_len = len / 2;
     size_t data_size = enc_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
-    uint8_t *enc = str2hex(len, (char *)data);
+    uint8_t *enc = str_decode_to_hex(len, (char *)data);
     if (!enc) {
         free(key);
         return 1;
@@ -396,13 +395,12 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
            &cipher_text, data_size);
 
     // Convert to hex string
-    *result = hex2str(buffer_size, buffer);
+    *result = hex_encode_to_str(buffer_size, buffer);
     if (!*result) {
         return 1;
     }
 
     free(buffer);
-
 
     return 0;
 }
@@ -449,9 +447,9 @@ int encrypt_meta(const char *filemeta,
 
     struct base64_encode_ctx ctx3;
     base64_encode_init(&ctx3);
-    size_t out_len = base64_encode_update(&ctx3, (uint8_t *)*buffer_base64,
+    size_t out_len = base64_encode_update(&ctx3, *buffer_base64,
                                           buf_len, buf);
-    out_len += base64_encode_final(&ctx3, (uint8_t *)*buffer_base64 + out_len);
+    out_len += base64_encode_final(&ctx3, *buffer_base64 + out_len);
 
     return 0;
 }
@@ -471,7 +469,7 @@ int decrypt_meta(const char *buffer_base64,
     struct base64_decode_ctx ctx3;
     base64_decode_init(&ctx3);
     if (!base64_decode_update(&ctx3, &decode_len, buffer,
-                              strlen(buffer_base64), (uint8_t *)buffer_base64)) {
+                              strlen(buffer_base64), buffer_base64)) {
         free(buffer);
         return 1;
     }
@@ -531,6 +529,73 @@ int decrypt_meta(const char *buffer_base64,
         return 1;
     }
     memcpy(*filemeta, &clear_text, length);
+
+    return 0;
+}
+
+int encrypt_meta_hmac_sha512(const char *meta, uint8_t *priv_key, size_t key_len, const char *bucket_id, char **buffer_base64)
+{
+    // Derive a key based on the master seed and bucket name magic number
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(priv_key, key_len, bucket_id, &bucket_key_as_str);
+
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        return 1;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    // Generate the synthetic iv with first half of hmac w/ name
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx2, strlen(meta), (uint8_t *)meta);
+    uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
+
+    free(bucket_key);
+
+    int error_status = encrypt_meta(meta, key, bucketname_iv, buffer_base64);
+    if (error_status) {
+        return 1;
+    }
+    
+    return 0;
+}
+
+int decrypt_meta_hmac_sha512(const char *buffer_base64, uint8_t *priv_key, size_t key_len, const char *bucket_id, char **meta)
+{
+    // Derive a key based on the master seed
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(priv_key, key_len, bucket_id, &bucket_key_as_str);
+
+    uint8_t *bucket_key = str_decode_to_hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        return 1;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    free(bucket_key);
+
+    int error_status = decrypt_meta(buffer_base64, key, meta);
+    if (error_status) {
+        return 1;
+    }
 
     return 0;
 }

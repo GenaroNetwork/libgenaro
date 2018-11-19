@@ -26,11 +26,11 @@
 
 static const uint8_t BUCKET_META_MAGIC[32] = {66,150,71,16,50,114,88,160,163,35,154,65,162,213,226,215,70,138,57,61,52,19,210,170,38,164,162,200,86,201,2,81};
 
-int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
+int sha256_of_str(const uint8_t *str, size_t str_len, uint8_t *digest);
 
-int sha512_of_str(const uint8_t *str, int str_len, uint8_t *digest);
+int sha512_of_str(const uint8_t *str, size_t str_len, uint8_t *digest);
 
-int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest);
+int ripemd160_of_str(const uint8_t *str, size_t str_len, uint8_t *digest);
 
 int ripemd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
 
@@ -180,5 +180,44 @@ int encrypt_meta(const char *filemeta,
 int decrypt_meta(const char *buffer_base64,
                  uint8_t *decrypt_key,
                  char **filemeta);
+
+/**
+ * @brief Will encrypt meta
+ *
+ * This will encrypt meta information using AES-256-GCM and HMAC-SHA256. The
+ * resulting buffer will concat digest, iv and cipher text as base54
+ * null terminated string.
+ *
+ * @param[in] meta - The null terminated meta
+ * @param[in] priv_key Private key
+ * @param[in] key_len Length of priv_key
+ * @param[in] bucket_id Bucket ID
+ * @param[out] buffer_base64 - The base64 encoded encrypted data including
+ * digest, iv and cipher text
+ * @return A non-zero value on error, zero on success.
+ */
+int encrypt_meta_hmac_sha512(const char *meta,
+                             uint8_t *priv_key,
+                             size_t key_len,
+                             const char *bucket_id,
+                             char **buffer_base64);
+
+/**
+ * @brief Will decrypt meta
+ *
+ * This will decrypt meta information.
+ *
+ * @param[in] buffer_base64 - The base64 encrypted data
+ * @param[in] priv_key Private key
+ * @param[in] key_len Length of priv_key
+ * @param[in] bucket_id Bucket ID
+ * @param[out] meta - The null terminated meta
+ * @return A non-zero value on error, zero on success.
+ */
+int decrypt_meta_hmac_sha512(const char *buffer_base64,
+                             uint8_t *priv_key,
+                             size_t key_len,
+                             const char *bucket_id,
+                             char **meta);
 
 #endif /* GENARO_CRYPTO_H */

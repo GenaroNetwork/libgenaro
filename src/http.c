@@ -36,8 +36,6 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
             return CURL_READFUNC_ABORT;
         }
 
-        body->ctx;
-
         if (body->ctx != NULL) {
             ctr_crypt(body->ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, body->ctx->encryption_ctr, read_bytes,
@@ -178,10 +176,10 @@ int put_shard(genaro_http_options_t *http_options,
     // Ignore any data sent back, we only need to know the status code
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_ignore_receive);
 
-    time_t start = 0, end = 0;
-    if(genaro_debug) {  
-        time(&start);
-    }
+    // time_t start = 0, end = 0;
+    // if(genaro_debug) {  
+    //     time(&start);
+    // }
     
     int req = curl_easy_perform(curl);
 
@@ -312,7 +310,8 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
 }
 
 /* shard_data must be allocated for shard_total_bytes */
-int fetch_shard(genaro_http_options_t *http_options,
+int fetch_shard(genaro_download_state_t *state,
+                genaro_http_options_t *http_options,
                 char *farmer_id,
                 char *proto,
                 char *host,
@@ -409,7 +408,7 @@ int fetch_shard(genaro_http_options_t *http_options,
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
 
     time_t start = 0, end = 0;
-    if(genaro_debug) {  
+    if(genaro_debug) {
         time(&start);
     }
     
@@ -419,7 +418,7 @@ int fetch_shard(genaro_http_options_t *http_options,
         time(&end);
         double interval = (double)(end - start);
         if(interval > 10.0) {
-            printf("curl_easy_perform in fetch_shard: %lfs\n", interval);
+            printf("Time of curl_easy_perform in fetch_shard: %lfs\n", interval);
         }
     }
 
@@ -430,7 +429,6 @@ int fetch_shard(genaro_http_options_t *http_options,
     if (body) {
         *write_code = body->error_code;
     }
-
 
     int error_code = 0;
     if (req != CURLE_OK) {
@@ -658,13 +656,22 @@ int fetch_json(genaro_http_options_t *http_options,
         uint8_t hash[SHA256_DIGEST_SIZE + 1];
         sha256_of_str((uint8_t *)hash_msg, hash_msg_len, hash);
 
+        int ret = 0;
+
         // hash -> signature
         secp256k1_ecdsa_signature sig;
-        secp256k1_ecdsa_sign(g_secp256k1_ctx, &sig, hash, encrypt_options->priv_key, NULL, NULL);
+        ret = secp256k1_ecdsa_sign(g_secp256k1_ctx, &sig, hash, encrypt_options->priv_key, NULL, NULL);
+        if(!ret) {
+            return 1;
+        }
 
         // privkey -> pubkey
         secp256k1_pubkey pubkey;
-        secp256k1_ec_pubkey_create(g_secp256k1_ctx, &pubkey, encrypt_options->priv_key);
+        ret = secp256k1_ec_pubkey_create(g_secp256k1_ctx, &pubkey, encrypt_options->priv_key);
+        if(!ret) {
+            return 1;
+        }
+
         size_t pubkey_ser_len = 65;
         uint8_t pubkey_ser[65];
         secp256k1_ec_pubkey_serialize(g_secp256k1_ctx, pubkey_ser, &pubkey_ser_len, &pubkey, SECP256K1_EC_UNCOMPRESSED);
@@ -672,8 +679,12 @@ int fetch_json(genaro_http_options_t *http_options,
         // append signature to http header.
         size_t sig_str_len = 74;
         uint8_t sig_str[74];
-        secp256k1_ecdsa_signature_serialize_der(g_secp256k1_ctx, sig_str, &sig_str_len, &sig);
-        char *sig_str_hex = hex2str(sig_str_len, sig_str);
+        ret = secp256k1_ecdsa_signature_serialize_der(g_secp256k1_ctx, sig_str, &sig_str_len, &sig);
+        if(!ret) {
+            return 1;
+        }
+        
+        char *sig_str_hex = hex_encode_to_str(sig_str_len, sig_str);
 
         const char *h_sig_key = "x-signature: ";
         char *h_sig = calloc(strlen(h_sig_key) + strlen(sig_str_hex) + 1, sizeof(char));
@@ -682,7 +693,7 @@ int fetch_json(genaro_http_options_t *http_options,
         header_list = curl_slist_append(header_list, h_sig);
 
         // append public key to http header
-        char *pubkey_str = hex2str(pubkey_ser_len, pubkey_ser);
+        char *pubkey_str = hex_encode_to_str(pubkey_ser_len, pubkey_ser);
 
         char h_pub[200];
         sprintf(h_pub, "x-pubkey: %s", pubkey_str);
@@ -729,7 +740,7 @@ int fetch_json(genaro_http_options_t *http_options,
         time(&end);
         double interval = (double)(end - start);
         if(interval > 10.0) {
-            printf("curl_easy_perform in fetch_json: %lfs\n", interval);
+            printf("Time of curl_easy_perform in fetch_json: %lfs\n", interval);
         }
     }
 
