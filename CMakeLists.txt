@@ -25,6 +25,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+include_directories(/usr/local/include)
+link_directories(/usr/local/lib)
+
 # get the path of the Developer dir of Xcode
 execute_process(COMMAND xcode-select --print-path OUTPUT_VARIABLE Xcode-dev-dir)
 # strip the last newline character
@@ -109,7 +112,7 @@ target_link_libraries(genaroeden-cli genaro libcurl.a libuv.a libjson-c.a libgnu
 add_executable(tests_rs test/tests_rs.c)
 
 add_executable(tests test/mockbridge.c test/mockfarmer.c test/tests.c)
-target_link_libraries(tests genaro libcurl.a libuv.a libjson-c.a libgnutls.a libgmp.a libmicrohttpd.a gcrypt)
+target_link_libraries(tests genaro gcrypt libcurl.a libuv.a libjson-c.a libgnutls.a libgmp.a libmicrohttpd.a)
 
 add_executable(test_crypto test/test_crypto.c)
 target_link_libraries(test_crypto genaro)

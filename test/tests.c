@@ -1832,7 +1832,6 @@ int main(void)
     test_increment_ctr_aes_iv();
     /*test_read_write_encrypted_file();*/
     test_meta_encryption();
-    test_encrypt_and_decrypt_file();
     printf("\n");
 
     printf("Test Suite: Utils\n");
@@ -1845,6 +1844,7 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_api();
+    test_encrypt_and_decrypt_file();
     // test_api_badauth();
     printf("\n");
 

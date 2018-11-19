@@ -1671,7 +1671,7 @@ decrypt:
     }
 
 finish:
-    if (data_map) {
+    if (!req->error_status) {
         // Get the sha256 of the downloaded file, the second para is req->data_filesize, not req->filesize!
         sha256_of_str(data_map, req->data_filesize, sha256);
         state->sha256 = hex_to_str(SHA256_DIGEST_SIZE, sha256);

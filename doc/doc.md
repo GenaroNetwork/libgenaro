@@ -17,6 +17,7 @@
 * json-c: Implements a reference counting object model that allows you to easily construct JSON objects in C, output them as JSON formatted strings and parse JSON formatted strings back into the C representation of JSON objects.(https://github.com/json-c/json-c)
 * gmp: The GNU Multiple Precision Arithmetic Library, it's a free library for arbitrary precision arithmetic, operating on signed integers, rational numbers, and floating-point numbers.(https://gmplib.org)
 * nettle: A low-level cryptographic library.(http://www.lysator.liu.se/~nisse/nettle)
+* gnutls: A secure communications library implementing the SSL, TLS and DTLS protocols and technologies around them.
 * curl: A client-side URL transfer library.(https://curl.haxx.se/libcurl)
 * secp256k1: Optimized C library for EC operations on curve secp256k1.(https://github.com/bitcoin-core/secp256k1)
 * scrypt: A shared library that implements scrypt() functionality - a replacement for bcrypt().(https://github.com/technion/libscrypt)
