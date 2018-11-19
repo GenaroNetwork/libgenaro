@@ -38,6 +38,10 @@ script:
   - cd -
   - sed -i 's/SET(STATIC.*)/SET(STATIC 1)/' CMakeLists.txt
 #  - sed -i 's/SET(COVERAGE.*)/SET(COVERAGE 1)/' CMakeLists.txt
+  - sed -i 's/target_link_libraries(genaro m z idn2 .*)/target_link_libraries(genaro m libsecp256k1.a libscrypt.a libkeccak.a libgmp.a)/' CMakeLists.txt
+  - sed -i 's/target_link_libraries(genaroeden-cli genaro libcurl.a .*)/target_link_libraries(genaroeden-cli genaro m libuv.a libjson-c.a libnettle.a curl libsecp256k1.a libscrypt.a libkeccak.a libgmp.a)/' CMakeLists.txt
+  - sed -i 's/target_link_libraries(tests genaro gcrypt .*)/target_link_libraries(tests genaro libuv.a libjson-c.a libnettle.a curl microhttpd)/' CMakeLists.txt
+  - sed -i 's/target_link_libraries(test_crypto genaro)/target_link_libraries(test_crypto genaro libnettle.a)/' CMakeLists.txt
   - mkdir build
   - cd build
   - cmake ..
