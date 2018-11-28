@@ -1058,7 +1058,7 @@ int test_mnemonic_generate()
     }
     free(mnemonic);
 
-    pass("test_mnemonic_check");
+    pass("test_mnemonic_generate");
 
     return 0;
 }
