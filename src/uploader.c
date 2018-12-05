@@ -691,7 +691,7 @@ static void push_shard(uv_work_t *work)
     shard_tracker_t *shard = &state->shard[req->shard_meta_index];
 
     req->log->info(state->env->log_options, state->handle,
-                   "Transfering Shard index %d... (retry: %d)",
+                   "Transferring Shard index %d... (retry: %d)",
                    req->shard_meta_index,
                    state->shard[req->shard_meta_index].push_shard_request_count);
 
@@ -734,7 +734,6 @@ static void push_shard(uv_work_t *work)
                                req->canceled);
 
     uint64_t end = get_time_milliseconds();
-
 
     state->log->debug(state->env->log_options, state->handle, "Finish upload shard %d to %s:%s(nodeid: %s), time: %.1lfs", 
                       req->shard_meta_index, shard->pointer->farmer_address, shard->pointer->farmer_port,
@@ -1413,6 +1412,11 @@ static void prepare_frame(uv_work_t *work)
         memset_zero(buff, 32);
 
         random_buffer(buff, 32);
+        uint8_t buff2[32] = {99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+                            99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+                            99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+                            99, 99};
+        memcpy(buff, buff2, 32);
         memcpy(shard_meta->challenges[i], buff, 32);
 
         // Convert the uint8_t challenges to character arrays

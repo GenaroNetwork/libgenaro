@@ -816,8 +816,6 @@ GENARO_API genaro_env_t *genaro_init_env(genaro_bridge_options_t *options,
     char *genaro_debug_str = getenv("GENARO_DEBUG");
     if(genaro_debug_str) {
         genaro_debug = atoi(genaro_debug_str);
-        if(genaro_debug) {
-        }
     }
 
     int level = log_options->level;

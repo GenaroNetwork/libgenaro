@@ -1065,9 +1065,9 @@ int test_mnemonic_generate()
 
 int test_generate_seed()
 {
-    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+    char *mnemonic = "abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde ab";
     char *seed = calloc(128 + 1, sizeof(char));
-    char *expected_seed = "9ca82ad4539dc5b861f3859df21051747ba3fadaad76b065219678883e33b6cfd021848d9359ca95eec18ab8dc9f8e3d665b8ac3eaf0eef1b40612e6661bb508";
+    char *expected_seed = "0e07b8f829d493a3430682a087ccb592b543434c157fbe0e2c15235a2b64169b1274acfcdcf15c366cf2769c16077060b88ca324d4cd40177870164ff16ef7a3";
 
     mnemonic_to_seed((uint8_t *)mnemonic, 128, "", &seed);
     seed[128] = '\0';
@@ -1088,36 +1088,11 @@ int test_generate_seed()
     return 0;
 }
 
-int test_generate_seed_256()
+int test_generate_seed_trezor()
 {
-    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art";
+    char *mnemonic = "abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde ab";
     char *seed = calloc(128 + 1, sizeof(char));
-    char *expected_seed = "2facfb042cc06dc665f95578b2b74c682ad05233bb140202dd6aaaebc49177184a2841917b5188ae38e485e4b20add4affb42d77ec447b0c9f96ef3bfdf12cc8";
-
-    mnemonic_to_seed((uint8_t *)mnemonic, 128, "", &seed);
-    seed[128] = '\0';
-
-    int check = memcmp(seed, expected_seed, 128);
-    if (check != 0) {
-        fail("test_generate_seed_256");
-        printf("\t\texpected seed: %s\n", expected_seed);
-        printf("\t\tactual seed:   %s\n", seed);
-
-        free(seed);
-        return 1;
-    }
-
-    free(seed);
-    pass("test_generate_seed_256");
-
-    return 0;
-}
-
-int test_generate_seed_256_trezor()
-{
-    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art";
-    char *seed = calloc(128 + 1, sizeof(char));
-    char *expected_seed = "ec8b9350a0671bb7fe0e2134aa850c054ace6375fd8ca2443f422315e17952829bf4d109e2e6f88f76d69cd741a7685fe0c94c57c5db9b4a734f0d4ad9a31407";
+    char *expected_seed = "2a941bdadf69c0ca370ca1974b8d25ed053bae5f27144f554bcca6fe8556df77ef937c7b5892ff951ee738862f4c6aff1f9aa1472bb1ded441c03edeb7e75479";
 
     mnemonic_to_seed((uint8_t *)mnemonic, 128, "TREZOR", &seed);
     seed[128] = '\0';
@@ -1138,14 +1113,36 @@ int test_generate_seed_256_trezor()
     return 0;
 }
 
+int test_get_deterministic_key()
+{
+    char *key = "1625348fba";
+    char *bucket_id = "385960ffa4";
+    char *buffer = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    char *expected_buffer = "296195601e0557bef8963a418c53489f4216e8fe033768b5ca2a9bfb02188296";
+
+    get_deterministic_key(key, strlen(key), bucket_id, &buffer);
+
+    int check = memcmp(expected_buffer, buffer, DETERMINISTIC_KEY_SIZE);
+    if (check != 0) {
+        fail("test_get_deterministic_key");
+        printf("\t\texpected buffer: %s\n", expected_buffer);
+        printf("\t\tactual buffer:   %s\n", buffer);
+        return 1;
+    }
+
+    pass("test_get_deterministic_key");
+
+    return 0;
+}
+
 int test_generate_bucket_key()
 {
-    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+    char *mnemonic = "abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcd";
     char *bucket_id = "0123456789ab0123456789ab";
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    char *expected_bucket_key = "06b02124888a696e1da6a739042a4e7a4fb14e44b752f879f0cb2c5491c701a7";
+    char *expected_bucket_key = "b17403c5130847731abd1c233e74002aa666c71497a19c90b7c305479ccd5844";
 
-    generate_bucket_key((uint8_t *)mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, &bucket_key);
+    generate_bucket_key((uint8_t *)mnemonic, strlen(mnemonic), bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     int check = memcmp(expected_bucket_key, bucket_key, DETERMINISTIC_KEY_SIZE);
@@ -1166,13 +1163,13 @@ int test_generate_bucket_key()
 
 int test_generate_file_key()
 {
-    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+    char *mnemonic = "abcde abcde abcde abcde abcde abcde abcde abcde abcde abcde abcd";
     char *bucket_id = "0123456789ab0123456789ab";
     char *index = "150589c9593bbebc0e795d8c4fa97304b42c110d9f0095abfac644763beca66e";
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    char *expected_file_key = "90fa3754222d837835de43d16fac901914fabd0598cedc1cb23be337b4203df7";
+    char *expected_file_key = "eccd01f6a87991ff0b504718df1da40cb2bcda48099375f5124358771c9ebe2c";
 
-    generate_file_key((uint8_t *)mnemonic, DETERMINISTIC_KEY_SIZE, bucket_id, index, &file_key);
+    generate_file_key((uint8_t *)mnemonic, strlen(mnemonic), bucket_id, index, &file_key);
 
     int check = strcmp(expected_file_key, file_key);
     if (check != 0) {
@@ -1822,11 +1819,11 @@ int main(void)
     /*test_genaro_mnemonic_generate();
     test_genaro_mnemonic_generate_256();*/
     test_generate_seed();
-    test_generate_seed_256();
-    test_generate_seed_256_trezor();
+    test_generate_seed_trezor();
     printf("\n");
 
     printf("Test Suite: Crypto\n");
+    test_get_deterministic_key();
     test_generate_bucket_key();
     test_generate_file_key();
     test_increment_ctr_aes_iv();

@@ -659,7 +659,6 @@ GENARO_API void genaro_key_result_to_encrypt_options(key_result_t *key_result, g
  *
  * @param[in] options - Genaro Bridge API options
  * @param[in] encrypt_options - File encryption options
- * @param[in] rsaPrikey_options - RSA private key options
  * @param[in] http_options - HTTP settings
  * @param[in] log_options - Logging settings
  * @param[in] is_support_share - Whether the feature of file share is support.
@@ -773,6 +772,7 @@ GENARO_API int genaro_bridge_delete_bucket(genaro_env_t *env,
  *
  * @param[in] env The genaro environment struct
  * @param[in] id The bucket id
+ * @param[in] name The new name of bucket
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -787,7 +787,7 @@ GENARO_API int genaro_bridge_rename_bucket(genaro_env_t *env,
  * @brief Get a info of specific bucket.
  *
  * @param[in] env The genaro environment struct
- * @param[in] bucket_id The bucket id
+ * @param[in] id The bucket id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -962,7 +962,8 @@ GENARO_API int genaro_bridge_list_mirrors(genaro_env_t *env,
  * @brief Generate the encryption key and ctr of AES256 CTR, and also the index that can regenerate them.
  * 
  * @param[in] env A pointer to environment
- * @param[in] bucket_id Character array of bucket id
+ * @param[in] index The salt of AES
+ * @param[in] bucket_id The bucket id
  * @return A pointer to the encryption info.
  */
 GENARO_API genaro_encryption_info_t *genaro_generate_encryption_info(genaro_env_t *env,

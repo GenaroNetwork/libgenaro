@@ -1,5 +1,6 @@
 #include "../src/utils.h"
 #include "../src/crypto.h"
+// #include "../src/genaro.h"
 
 void test_ripemd160sha256_as_string()
 {
@@ -232,6 +233,28 @@ int test_decrypt_meta_hmac_sha512()
     return 0;
 }
 
+/*int test_parse_key_file()
+{
+    char *key_file = 
+    "{\"address\": \"fbad65391d2d2eafda9b27326d1e81d52a6a3dc8\",\"crypto\":{\"ciphertext\":\"e968751f3d60827b6e62e3ff6c024ecc82f33a6c55428be33249c83edba444ca\",\"cipherparams\":{\"iv\":\"e80d9ec9ba6241a143c756ec78066ad9\"},\"cipher\":\"aes-128-ctr\",\"kdf\":\"scrypt\",\"kdfparams\":{\"dklen\":32,\"salt\":\"ea7cb2b004db67d3103b3790caced7a96b636762f280b243e794fb5bef8ef74b\",\"n\":262144,\"r\":8,\"p\":1},\"mac\":\"cdb3789e77be8f2a7ab4d205bf1b54e048ad3f5b080b96e07759de7442e050d2\"},\"id\": \"e28f31b4-1f43-428b-9b12-ab586638d4b1\",\"version\": 3}";
+    char *passphrase = "lgygn_9982";
+    json_object *key_json_obj = json_tokener_parse(key_file);
+    key_result_t *key_result = genaro_parse_key_file(key_json_obj, passphrase);
+
+    assert(key_result != 0);
+
+    char *key_str = hex_to_str(key_result->key_len, key_result->priv_key);
+
+    printf("key: %s\n", key_str);
+    int equal = !strcmp(key_str, "61968cf440e7735e28bac3a431a81b49c3298d37910d54f62f1e5a32c518e556");
+
+    free(key_str);
+
+    assert(equal == 1);
+
+    return 0;
+}*/
+
 int main()
 {
     printf("\n----BEGIN TEST ripemd160sha256_as_string----\n");
@@ -277,6 +300,12 @@ int main()
     printf("\n----BEGIN TEST decrypt_meta_hmac_sha512----\n");
     test_decrypt_meta_hmac_sha512();
     printf("----END TEST decrypt_meta_hmac_sha512----\n");
+
+/*
+    printf("\n----BEGIN TEST parse_key_file----\n");
+    test_parse_key_file();
+    printf("----END TEST parse_key_file----\n");
+*/
     
     return 0;
 }
