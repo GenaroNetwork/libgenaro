@@ -1907,8 +1907,9 @@ static void queue_next_work(genaro_download_state_t *state)
     queue_send_exchange_reports(state);
 
 finish_up:
-    state->log->debug(state->env->log_options, state->handle,
-                      "Pending work count: %d", state->pending_work_count);
+    ;
+    // state->log->debug(state->env->log_options, state->handle,
+    //                   "Pending work count: %d", state->pending_work_count);
 }
 
 GENARO_API int genaro_bridge_resolve_file_cancel(genaro_download_state_t *state)

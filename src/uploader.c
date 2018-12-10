@@ -1356,11 +1356,11 @@ static void after_prepare_frame(uv_work_t *work, int status)
                shard_meta->challenges_as_str[i],
                64);
 
-        state->log->debug(state->env->log_options, state->handle,
-                          "Shard %d Challenge [%d]: %s",
-                          req->shard_meta_index,
-                          i,
-                          state->shard[req->shard_meta_index].meta->challenges_as_str[i]);
+        // state->log->debug(state->env->log_options, state->handle,
+        //                   "Shard %d Challenge [%d]: %s",
+        //                   req->shard_meta_index,
+        //                   i,
+        //                   state->shard[req->shard_meta_index].meta->challenges_as_str[i]);
     }
 
     // Add Merkle Tree leaves.
@@ -1373,9 +1373,9 @@ static void after_prepare_frame(uv_work_t *work, int status)
                shard_meta->tree[i],
                40);
 
-        state->log->debug(state->env->log_options, state->handle,
-                          "Shard %d Leaf [%d]: %s", req->shard_meta_index, i,
-                          state->shard[req->shard_meta_index].meta->tree[i]);
+        // state->log->debug(state->env->log_options, state->handle,
+        //                   "Shard %d Leaf [%d]: %s", req->shard_meta_index, i,
+        //                   state->shard[req->shard_meta_index].meta->tree[i]);
     }
 
     // Add index
@@ -1412,11 +1412,6 @@ static void prepare_frame(uv_work_t *work)
         memset_zero(buff, 32);
 
         random_buffer(buff, 32);
-        uint8_t buff2[32] = {99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
-                            99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
-                            99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
-                            99, 99};
-        memcpy(buff, buff2, 32);
         memcpy(shard_meta->challenges[i], buff, 32);
 
         // Convert the uint8_t challenges to character arrays
@@ -2488,9 +2483,9 @@ static void queue_next_work(genaro_upload_state_t *state)
     }
 
 finish_up:
-
-    log->debug(log_options, handle,
-               "Pending work count: %d", *pending_work_count);
+    ;
+    // log->debug(log_options, handle,
+    //            "Pending work count: %d", *pending_work_count);
 }
 
 static void begin_work_queue(uv_work_t *work, int status)
