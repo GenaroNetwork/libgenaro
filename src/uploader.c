@@ -393,7 +393,7 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
             state->file_id = strdup(file_id);
         }
 
-    } else if (state->add_bucket_entry_count == 6) {
+    } else if (state->add_bucket_entry_count == GENARO_MAX_ADD_BUCKET_ENTRY) {
         state->error_status = GENARO_BRIDGE_REQUEST_ERROR;
     }
 
@@ -646,7 +646,7 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->report->message = GENARO_REPORT_UPLOAD_ERROR;
         shard->report->send_status = GENARO_REPORT_AWAITING_SEND;
 
-        if (shard->push_shard_request_count == 6) {
+        if (shard->push_shard_request_count == GENARO_MAX_PUSH_SHARD) {
             req->log->error(state->env->log_options, state->handle,
                             "Failed to push shard %d\n", req->shard_meta_index);
 
@@ -1595,7 +1595,7 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
         state->log->warn(state->env->log_options, state->handle,
                        "Failed to encrypt data.");
 
-        if (state->create_encrypted_file_count == 6) {
+        if (state->create_encrypted_file_count == GENARO_MAX_CREATE_ENCRYPTED_FILE) {
             state->error_status = GENARO_FILE_ENCRYPTION_ERROR;
         }
     } else {
@@ -1761,7 +1761,7 @@ static void after_request_frame_id(uv_work_t *work, int status)
 
         state->frame_id = req->frame_id;
 
-    } else if (state->frame_request_count == 6) {
+    } else if (state->frame_request_count == GENARO_MAX_REQUEST_FRAME_ID) {
         state->error_status = GENARO_BRIDGE_FRAME_ERROR;
     }
 
@@ -2086,7 +2086,7 @@ static void after_send_exchange_report(uv_work_t *work, int status)
                          req->report->pointer_index);
 
         req->report->send_status = GENARO_REPORT_NOT_PREPARED; // report has been sent
-    } else if (req->report->send_count == 6) {
+    } else if (req->report->send_count == GENARO_MAX_REPORT_TRIES) {
         req->report->send_status = GENARO_REPORT_NOT_PREPARED; // report failed retries
     } else {
         req->report->send_status = GENARO_REPORT_AWAITING_SEND; // reset report back to unsent
@@ -2109,14 +2109,14 @@ static void send_exchange_report(uv_work_t *work)
     json_object_object_add(body, "dataHash",
                            json_object_new_string(req->report->data_hash));
 
-    json_object_object_add(body, "reporterId",
-                           json_object_new_string(req->report->reporter_id));
+    // json_object_object_add(body, "reporterId",
+    //                        json_object_new_string(req->report->reporter_id));
 
     json_object_object_add(body, "farmerId",
                            json_object_new_string(req->report->farmer_id));
 
-    json_object_object_add(body, "clientId",
-                           json_object_new_string(req->report->client_id));
+    // json_object_object_add(body, "clientId",
+    //                        json_object_new_string(req->report->client_id));
 
     json_object_object_add(body, "exchangeStart",
                            json_object_new_int64(req->report->start));
@@ -2154,7 +2154,7 @@ static void send_exchange_report(uv_work_t *work)
 
 static void queue_send_exchange_report(genaro_upload_state_t *state, int index)
 {
-    if (state->shard[index].report->send_count == 6) {
+    if (state->shard[index].report->send_count == GENARO_MAX_REPORT_TRIES) {
         return;
     }
 
@@ -2219,7 +2219,7 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
         state->log->error(state->env->log_options, state->handle,
                          "Request failed with status code: %i", req->status_code);
 
-         if (state->bucket_verify_count == 6) {
+         if (state->bucket_verify_count == GENARO_MAX_VERIFY_BUCKET_ID) {
              state->error_status = GENARO_BRIDGE_REQUEST_ERROR;
              state->bucket_verify_count = 0;
          }
@@ -2268,7 +2268,7 @@ static void verify_file_name_callback(uv_work_t *work_req, int status)
         state->log->error(state->env->log_options, state->handle,
                           "Request failed with status code: %i", req->status_code);
 
-        if (state->file_verify_count == 6) {
+        if (state->file_verify_count == GENARO_MAX_VERIFY_BUCKET_ID) {
             state->error_status = GENARO_BRIDGE_REQUEST_ERROR;
             state->file_verify_count = 0;
         }

@@ -17,9 +17,8 @@
 #define GENARO_DOWNLOAD_WRITESYNC_CONCURRENCY 4
 #define GENARO_DEFAULT_MIRRORS 5
 #define GENARO_MAX_REPORT_TRIES 2
-#define GENARO_MAX_TOKEN_TRIES 6
-#define GENARO_MAX_POINTER_TRIES 6
-#define GENARO_MAX_INFO_TRIES 6
+#define GENARO_MAX_POINTER_TRIES 3
+#define GENARO_MAX_INFO_TRIES 3
 
 /** @brief Enumerable that defines that status of a pointer
  *

@@ -924,14 +924,14 @@ static void send_exchange_report(uv_work_t *work)
     json_object_object_add(body, "dataHash",
                            json_object_new_string(req->report->data_hash));
 
-    json_object_object_add(body, "reporterId",
-                           json_object_new_string(req->report->reporter_id));
+    // json_object_object_add(body, "reporterId",
+    //                        json_object_new_string(req->report->reporter_id));
 
     json_object_object_add(body, "farmerId",
                            json_object_new_string(req->report->farmer_id));
 
-    json_object_object_add(body, "clientId",
-                           json_object_new_string(req->report->client_id));
+    // json_object_object_add(body, "clientId",
+    //                        json_object_new_string(req->report->client_id));
 
     json_object_object_add(body, "exchangeStart",
                            json_object_new_int64(req->report->start));
