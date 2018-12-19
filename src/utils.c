@@ -353,7 +353,7 @@ win_finished:
 size_t read_file(const char *file_path, char **buffer)
 {
     FILE *fp;
-    fp = fopen(file_path, "r");
+    fp = fopen(file_path, "rb");
     if (fp == NULL) {
 		return 0;
     }
@@ -368,17 +368,21 @@ size_t read_file(const char *file_path, char **buffer)
     }
 
     size_t read_blocks = 0;
+    size_t read_bytes = 0;
     while ((!feof(fp)) && (!ferror(fp))) {
         read_blocks = fread(*buffer + read_blocks, 1, fsize, fp);
+
         if (read_blocks <= 0) {
             break;
         }
+
+        read_bytes += read_blocks;
     }
 
     int error = ferror(fp);
     fclose(fp);
 
-    if (error) {
+    if (error || (read_bytes != fsize)) {
 		free(*buffer);
 		return 0;
     }

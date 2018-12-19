@@ -2268,7 +2268,7 @@ static void verify_file_name_callback(uv_work_t *work_req, int status)
         state->log->error(state->env->log_options, state->handle,
                           "Request failed with status code: %i", req->status_code);
 
-        if (state->file_verify_count == GENARO_MAX_VERIFY_BUCKET_ID) {
+        if (state->file_verify_count == GENARO_MAX_VERIFY_FILE_NAME) {
             state->error_status = GENARO_BRIDGE_REQUEST_ERROR;
             state->file_verify_count = 0;
         }

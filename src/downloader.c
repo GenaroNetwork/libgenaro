@@ -2048,7 +2048,7 @@ GENARO_API char *genaro_decrypt_file(genaro_env_t *env,
         ctr_crypt(&ctx, (nettle_cipher_func *)aes256_encrypt,
                 AES_BLOCK_SIZE, ctr, len,
                 (uint8_t *)file_data + bytes_decrypted,
-                (const uint8_t *)file_data + bytes_decrypted);
+                (uint8_t *)file_data + bytes_decrypted);
 
         bytes_decrypted += len;
     }
