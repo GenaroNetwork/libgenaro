@@ -391,7 +391,7 @@ void upload_signal_handler(uv_signal_t *req, int signum)
 
 static int upload_file(genaro_env_t *env, char *bucket_id, const char *file_path)
 {
-    FILE *fd = fopen(file_path, "r");
+    FILE *fd = fopen(file_path, "rb");
 
     if (!fd) {
         printf("Invalid file path: %s\n", file_path);
@@ -592,7 +592,7 @@ static int download_file(genaro_env_t *env, char *bucket_id,
         }
 
         renamed_path = str_concat_many(2, path, ".genarotmp");
-        fd = fopen(renamed_path, "w+");
+        fd = fopen(renamed_path, "wb+");
     } else {
         fd = stdout;
     }
@@ -1026,7 +1026,7 @@ static int export_keys(char *host)
         status = 1;
         goto clear_variables;
     }
-    fp = fopen(user_file, "r");
+    fp = fopen(user_file, "rb");
     if (fp == NULL) {
         status = 1;
         goto clear_variables;

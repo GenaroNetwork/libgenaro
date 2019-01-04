@@ -293,7 +293,7 @@ json_object *parse_key_file(char *path) {
     key_file_obj_t *key_file_obj = NULL;
 
     // check in case of over-sized
-    fp = fopen(path, "r");
+    fp = fopen(path, "rb");
     fseek(fp, 0, SEEK_END);
     size_t len = (size_t) ftell(fp);
     if (len > 1024) {

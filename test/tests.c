@@ -475,7 +475,7 @@ void check_register(uv_work_t *work_req, int status)
 int create_test_upload_file(char *filepath)
 {
     FILE *fp;
-    fp = fopen(filepath, "w+");
+    fp = fopen(filepath, "wb+");
 
     if (fp == NULL) {
         printf(KRED "Could not create upload file: %s\n" RESET, filepath);
@@ -522,7 +522,7 @@ int test_upload()
     genaro_upload_opts_t upload_opts = {\
         .bucket_id = bucket_id,
         .file_name = file_name,
-        .fd = fopen(file, "r"),
+        .fd = fopen(file, "rb"),
         .rs = true
     };
 
@@ -578,7 +578,7 @@ int test_upload_cancel()
     genaro_upload_opts_t upload_opts = {
         .bucket_id = bucket_id,
         .file_name = file_name,
-        .fd = fopen(file, "r")
+        .fd = fopen(file, "rb")
     };
 
     genaro_encryption_info_t *encryption_info = genaro_generate_encryption_info(env, index, bucket_id);
@@ -644,7 +644,7 @@ int test_download()
     strcpy(renamed_file, download_file);
     strcat(renamed_file, ".genarotmp");
 
-    FILE *renamed_fp = fopen(renamed_file, "w+");
+    FILE *renamed_fp = fopen(renamed_file, "wb+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
@@ -695,7 +695,7 @@ int test_download_cancel()
     strcpy(renamed_file, download_file);
     strcat(renamed_file, ".genarotmp");
 
-    FILE *renamed_fp = fopen(renamed_file, "w+");
+    FILE *renamed_fp = fopen(renamed_file, "wb+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
@@ -1487,7 +1487,7 @@ int test_memory_mapping()
 
     create_test_upload_file(file);
 
-    FILE *fp = fopen(file, "r+");
+    FILE *fp = fopen(file, "rb+");
     int fd = fileno(fp);
 
     if (!fp) {
@@ -1522,7 +1522,7 @@ int test_memory_mapping()
 
     fclose(fp);
 
-    FILE *fp2 = fopen(file, "r+");
+    FILE *fp2 = fopen(file, "rb+");
     int fd2 = fileno(fp2);
 
     if (!fp2) {
@@ -1576,8 +1576,8 @@ static int encrypt_file(char *file_path, char *encrypted_file_path, uint8_t *key
     uint64_t total_read = 0;
     uint64_t file_size = 0;
 
-    FILE *original_file = fopen(file_path, "r");
-    FILE *encrypted_file = fopen(encrypted_file_path, "w+");
+    FILE *original_file = fopen(file_path, "rb");
+    FILE *encrypted_file = fopen(encrypted_file_path, "wb+");
 
     if (original_file == NULL || encrypted_file == NULL) {
         ret = 2;
@@ -1638,7 +1638,7 @@ static int decrypt_file(char *destination_file_path, uint8_t *key, uint8_t *ctr)
     uint64_t bytes_decrypted = 0;
     size_t len = AES_BLOCK_SIZE * 8;
 
-    FILE *destination_file = fopen(destination_file_path, "r+");
+    FILE *destination_file = fopen(destination_file_path, "rb+");
 
     if (destination_file == NULL) {
         ret = 1;
@@ -1698,7 +1698,7 @@ int test_encrypt_and_decrypt_file()
     char *file_name = "test_encrypt_and_decrypt_file.txt";
     char *destination_file_path = "destination.txt";
 
-    FILE *new_file = fopen(file_name, "w+");
+    FILE *new_file = fopen(file_name, "wb+");
     if(!new_file) {
         printf("failed to open file: %s\n", file_name);
         return 1;

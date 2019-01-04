@@ -82,7 +82,7 @@ char *path = "/usr/user/download/download.file";
 char *renamed_path = "/usr/user/download/download.file.genarotmp";
 
 FILE *fd = NULL;
-fd = fopen(path, "w+");
+fd = fopen(path, "wb+");
 
 genaro_bridge_resolve_file(env, bucket_id, file_id, NULL, path,
                            renamed_path, fd, true, NULL,
@@ -98,7 +98,7 @@ char *file_id = "998960317b6725a3f8080c2b";
 char *path = "/usr/user/download/upload.file"; // file full path
 
 FILE *fd = NULL;
-fd = fopen(path, "r");
+fd = fopen(path, "rb");
 const char *file_name = "upload.file"; // file name in bucket
 
 char *prepare_frame_limit = getenv("GENARO_PREPARE_FRAME_LIMIT");

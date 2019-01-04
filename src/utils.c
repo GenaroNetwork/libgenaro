@@ -108,7 +108,7 @@ void random_buffer(uint8_t *buf, size_t len)
 #else
     static FILE *frand = NULL;
     if (!frand) {
-        frand = fopen("/dev/urandom", "r");
+        frand = fopen("/dev/urandom", "rb");
     }
     size_t len_read = fread(buf, 1, len, frand);
     (void)len_read;

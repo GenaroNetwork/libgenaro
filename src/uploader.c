@@ -1602,7 +1602,7 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
         state->log->info(state->env->log_options, state->handle,
                        "Successfully encrypted file");
 
-        state->encrypted_file = fopen(state->encrypted_file_path, "r");
+        state->encrypted_file = fopen(state->encrypted_file_path, "rb");
         if (!state->encrypted_file) {
             state->error_status = GENARO_FILE_READ_ERROR;
         }
@@ -1643,7 +1643,7 @@ static void create_encrypted_file(uv_work_t *work)
     unsigned long int written_bytes = 0;
     uint64_t total_read = 0;
 
-    FILE *encrypted_file = fopen(state->encrypted_file_path, "w+");
+    FILE *encrypted_file = fopen(state->encrypted_file_path, "wb+");
 
     if (encrypted_file == NULL) {
       state->log->error(state->env->log_options, state->handle,
@@ -1874,7 +1874,7 @@ static void after_create_parity_shards(uv_work_t *work, int status)
         state->log->info(state->env->log_options, state->handle,
                        "Successfully created parity shards");
 
-        state->parity_file = fopen(state->parity_file_path, "r");
+        state->parity_file = fopen(state->parity_file_path, "rb");
 
         if (!state->parity_file) {
             state->error_status = GENARO_FILE_READ_ERROR;
@@ -1909,7 +1909,7 @@ static void create_parity_shards(uv_work_t *work)
     uint8_t *map = NULL;
     int status = 0;
 
-    FILE *encrypted_file = fopen(state->encrypted_file_path, "r");
+    FILE *encrypted_file = fopen(state->encrypted_file_path, "rb");
 
     if (!encrypted_file) {
         req->error_status = 1;
@@ -1937,7 +1937,7 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    FILE *parity_file = fopen(state->parity_file_path, "w+");
+    FILE *parity_file = fopen(state->parity_file_path, "wb+");
     if (!parity_file) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,

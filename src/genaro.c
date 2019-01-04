@@ -919,7 +919,7 @@ GENARO_API int genaro_destroy_env(genaro_env_t *env)
 GENARO_API int genaro_write_auth(const char *filepath, json_object *key_json_obj)
 {
     FILE *fp;
-    fp = fopen(filepath, "w");
+    fp = fopen(filepath, "wb");
     if (fp == NULL) {
         return 1;
     }
