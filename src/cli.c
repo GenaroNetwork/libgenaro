@@ -55,7 +55,7 @@ static inline void noop() {};
     "environment variables:\n"                                          \
     "  GENARO_BRIDGE                  the bridge host "
 
-#define CLI_VERSION "libgenaro-4.0.0"
+#define CLI_VERSION "libgenaro-4.0.1"
 
 static void json_logger(const char *message, int level, void *handle)
 {
@@ -1140,7 +1140,7 @@ int main(int argc, char **argv)
     }
 
     if (!genaro_bridge) {
-        genaro_bridge = "http://118.31.61.119:8080";
+        genaro_bridge = "http://47.100.33.60:8080";
     }
 
     // Parse the host, part and proto from the genaro bridge url
@@ -1265,7 +1265,7 @@ int main(int argc, char **argv)
             char *path = argv[command_index + 3];
 
             if (!bucket_id || !file_id || !path) {
-                printf("Missing arguments: <bucket-id> <file-id> <path>\n");
+                printf("Missing arguments, expected: <bucket-id> <file-id> <path>\n");
                 status = 1;
                 goto end_program;
             }
@@ -1279,7 +1279,7 @@ int main(int argc, char **argv)
             char *path = argv[command_index + 2];
 
             if (!bucket_id || !path) {
-                printf("Missing arguments: <bucket-id> <path>\n");
+                printf("Missing arguments, expected: <bucket-id> <path>\n");
                 status = 1;
                 goto end_program;
             }
