@@ -711,29 +711,74 @@ static uint64_t calculate_data_filesize(genaro_download_state_t *state)
     return total_bytes;
 }
 
+// move k max elements to the front of arr
+static void select_largest_elements(uint64_t *arr, int len, int k)
+{
+    int max, temp;
+
+    // partial selection sort, move k max elements to front
+    for (int i = 0; i < k; i++)
+    {
+        max = i;
+        // find next max index
+        for (int j = i + 1; j < len; j++)
+        {
+            if (arr[j] > arr[max])  {
+                max = j;
+            }
+        }
+        // swap numbers in input array
+        temp = arr[i];
+        arr[i] = arr[max];
+        arr[max] = temp;
+    }
+}
+
 static void report_progress(genaro_download_state_t *state)
 {
-    uint64_t downloaded_bytes = 0;
-    uint64_t total_bytes = 0;
+    uint64_t fake_down_bytes = 0;
+    uint64_t fake_total_bytes = 0;
+    genaro_pointer_t *pointer = NULL;
 
-    for (int i = 0; i < state->total_pointers; i++) {
-        genaro_pointer_t *pointer = &state->pointers[i];
+    // use the original file size to calculate the bytes that need to be downloaded, the algorithm is the same as upload.
+    uint32_t total_data_shards = ceil((double)state->info->size / state->shard_size);
+    uint32_t total_parity_shards = state->rs ? ceil((double)total_data_shards * 2.0 / 3.0) : 0;
 
-        downloaded_bytes += pointer->downloaded_size;
-        total_bytes += pointer->size;
-    }
+    if (state->total_pointers <= total_data_shards) {
+        for (int i = 0; i < state->total_pointers; i++) {
+            pointer = &state->pointers[i];
+            fake_down_bytes += pointer->downloaded_size;
+        }
+        
+        fake_total_bytes = state->info->size + total_parity_shards * state->shard_size;
+    } else {
+        uint64_t *downloaded_size_arr = (uint64_t *)malloc((state->total_pointers - 1) * sizeof(uint64_t));
+        genaro_pointer_t *lastDataPointer = &state->pointers[total_data_shards - 1];
 
-    // if pointers have not been completely gotten, use the original file size to calculate
-    // the bytes that need to be downloaded, the algorithm is the same as upload.
-    if(!state->pointers_completed) {
-        if (state->shard_size) {
-            uint32_t total_data_shards = ceil((double)state->info->size / state->shard_size);
-            uint32_t total_parity_shards = state->rs ? ceil((double)total_data_shards * 2.0 / 3.0) : 0;
+        int index = 0;
+        for (int i = 0; i < state->total_pointers; i++) {
+            if (i != total_data_shards - 1)
+            {
+                pointer = &state->pointers[i];
+                downloaded_size_arr[index] = pointer->downloaded_size;
+                index++;
+            }
+        }
 
-            total_bytes = state->info->size + total_parity_shards * state->shard_size;
+        select_largest_elements(downloaded_size_arr, state->total_pointers - 1, total_data_shards - 1);
+
+        for (int i = 0; i < total_data_shards - 1; i++) {
+            fake_down_bytes += downloaded_size_arr[i];
+        }
+        fake_down_bytes += lastDataPointer->downloaded_size;
+
+        if (lastDataPointer->status != POINTER_DOWNLOADED) {
+            fake_total_bytes = state->shard_size * total_data_shards;
+        } else {
+            fake_total_bytes = state->shard_size * (total_data_shards - 1) + lastDataPointer->size;
         }
     }
-
+    
     // // calculate the speed of downloading
     // static uint64_t lastTime = 0;
     // static uint64_t lastBytes = 0;
@@ -752,7 +797,7 @@ static void report_progress(genaro_download_state_t *state)
     //     lastBytes = downloaded_bytes;
     // }
     
-    double total_progress = (double)downloaded_bytes / (double)total_bytes;
+    double total_progress = (double)fake_down_bytes / (double)fake_total_bytes;
 
     state->progress_cb(total_progress,
                        state->info->size,
@@ -1753,8 +1798,12 @@ static void queue_recover_shards(genaro_download_state_t *state)
                                   i, pointer->status);
             }
         }
-
-        if (total_downloaded >= state->total_pointers - state->total_parity_pointers) {
+        
+        // the file created with "mkfile -n 2097153 2097153.data" (may be when there are 2 data shards)
+        // will fail to be recovered when use Reed-Solomon if the first shard is missing(while libgenaro-java works normal)
+        // but it will not occur when there are many data shards such as 7
+        if (state->pointers[0].status == POINTER_DOWNLOADED
+            && total_downloaded >= state->total_pointers - state->total_parity_pointers) {
             is_ready = true;
             
             if (total_downloaded != state->total_pointers) {
