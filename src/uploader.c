@@ -796,9 +796,9 @@ static void progress_put_shard(uv_async_t* async)
 
     double total_progress = (double)uploaded_bytes / (double)state->total_bytes;
 
-    // will never happen
-    if(total_progress > 1.0) {
-        total_progress = 1.0;
+    // will not display 100%
+    if(total_progress >= 0.999) {
+        total_progress = 0.999;
     }
 
     if (state->progress_finished) {

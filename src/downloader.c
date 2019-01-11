@@ -796,8 +796,13 @@ static void report_progress(genaro_download_state_t *state)
     //     lastTime = get_time_milliseconds();
     //     lastBytes = downloaded_bytes;
     // }
-    
+
     double total_progress = (double)fake_down_bytes / (double)fake_total_bytes;
+
+    // after the whole data are downloaded, Reed-Solomon algorithm and decryption may take a long time
+    if(total_progress >= 0.999) {
+        total_progress = 0.999;
+    }
 
     state->progress_cb(total_progress,
                        state->info->size,
