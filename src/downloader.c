@@ -1727,17 +1727,21 @@ static void queue_recover_shards(genaro_download_state_t *state)
 {
     if (!state->recovering_shards && state->pointers_completed) {
         int total_missing = 0;
+        int total_downloaded = 0;
         bool has_missing = false;
         bool is_ready = true;
 
         uint8_t *zilch = (uint8_t *)calloc(1, state->total_pointers);
 
         for (int i = 0; i < state->total_pointers; i++) {
+            zilch[i] = 1;
             genaro_pointer_t *pointer = &state->pointers[i];
             if (pointer->status == POINTER_MISSING) {
                 total_missing += 1;
                 has_missing = true;
-                zilch[i] = 1;
+            } else if (pointer->status == POINTER_DOWNLOADED) {
+                total_downloaded += 1;
+                zilch[i] = 0;
             }
 
             if (pointer->status != POINTER_MISSING &&
@@ -1747,6 +1751,28 @@ static void queue_recover_shards(genaro_download_state_t *state)
                                   state->handle,
                                   "Pointer %i not ready with status: %i",
                                   i, pointer->status);
+            }
+        }
+
+        if (total_downloaded >= state->total_pointers - state->total_parity_pointers) {
+            is_ready = true;
+            
+            if (total_downloaded != state->total_pointers) {
+                has_missing = true;
+            }
+            
+            if (state->rs) {
+                state->canceled = true;
+
+                // loop over all pointers, and cancel any that are queued to be downloaded
+                // any downloads that are in-progress will monitor the state->canceled
+                // status and exit when set to true
+                for (int i = 0; i < state->total_pointers; i++) {
+                    genaro_pointer_t *pointer = &state->pointers[i];
+                    if (pointer->status == POINTER_BEING_DOWNLOADED) {
+                        uv_cancel((uv_req_t *)pointer->work);
+                    }
+                }
             }
         }
 
