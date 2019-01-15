@@ -53,9 +53,11 @@ static inline void noop() {};
     "  -l, --log <level>         set the log level (default 0)\n"       \
     "  -d, --debug               set the debug log level\n\n"           \
     "environment variables:\n"                                          \
-    "  GENARO_BRIDGE                  the bridge host "
+    "  GENARO_BRIDGE             the bridge host\n"                     \
+    "  GENARO_PROXY              the socks proxy "                      \
+    "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"
 
-#define CLI_VERSION "libgenaro-4.0.3"
+#define CLI_VERSION "libgenaro-4.0.4"
 
 static void json_logger(const char *message, int level, void *handle)
 {
